@@ -1,0 +1,543 @@
+export default {
+  // Auth Screen Translations
+  auth: {
+    welcomeBack: 'Welcome Back!',
+    signInToAccount: 'Sign in to your account',
+    collegeEmail: 'College Email',
+    password: 'Password',
+    confirmPassword: 'Confirm Password',
+    forgotPassword: 'Forgot Password?',
+    signIn: 'Sign In',
+    signUp: 'Sign Up',
+    dontHaveAccount: "Don't have an account? ",
+    alreadyHaveAccount: 'Already have an account? ',
+    createAccount: 'Create Account',
+    joinCommunity: 'Join the Community',
+    fullName: 'Full Name',
+    age: 'Age',
+    selectUniversity: 'Select University',
+    selectCollege: 'Select College',
+    selectStage: 'Select Stage',
+    passwordStrength: 'Password Strength',
+    weak: 'Weak',
+    medium: 'Medium',
+    strong: 'Strong',
+    passwordGuideWeak: 'Password is too weak. Add more characters.',
+    passwordGuideMedium: 'Password is okay. Add symbols or numbers for better security.',
+    passwordGuideStrong: 'Password is strong!',
+    passwordMismatch: 'Passwords do not match',
+    passwordRequirements: 'Use at least 8 characters with letters, numbers, and symbols',
+    invalidCredentials: 'Invalid email or password. Please check your credentials and try again.',
+    fullNameRequired: 'Full name is required',
+    validEmailRequired: 'A valid email address is required',
+    validAgeRequired: 'Please enter a valid age (16-100)',
+    universityRequired: 'Please select your university',
+    collegeRequired: 'Please select your college',
+    stageRequired: 'Please select your academic stage',
+    departmentRequired: 'Please select your department',
+    selectDepartment: 'Select Department',
+    passwordTooShort: 'Password must be at least 8 characters long',
+    fillAllFields: 'Please fill in all fields',
+    signUpError: 'Failed to create account. Please try again.',
+    signInError: 'Failed to sign in. Please try again.',
+    signInSuccess: 'Signed in successfully!',
+    emailAlreadyExists: 'An account with this email already exists.',
+    accountCreated: 'Account created successfully!',
+    verifyEmail: 'Verify Your Email',
+    verificationCodeSent: 'We sent a verification code to',
+    enterCode: 'Enter the 6-digit code',
+    resendCode: 'Resend Code',
+    resendIn: 'Resend in',
+    changeEmail: 'Change Email Address',
+    codeSent: 'Verification code sent to your email!',
+    verificationError: 'Failed to verify email. Please try again.',
+    or: 'OR',
+    demoAccount: 'Demo: demo@university.edu / demo123',
+    forgotPasswordMessage: 'Password recovery feature coming soon!',
+  },
+  
+  // Universities
+  universities: {
+    // Kurdistan Region Universities
+    erbilPolytechnic: 'Erbil Polytechnic University',
+    salahaddin: 'Salahaddin University',
+    kurdistan: 'University of Kurdistan Hewler',
+    sulaimani: 'University of Sulaimani',
+    duhok: 'University of Duhok',
+    koya: 'Koya University',
+    raparin: 'Raparin University',
+    charmo: 'Charmo University',
+    halabja: 'University of Halabja',
+    garmian: 'Garmian University',
+    soran: 'Soran University',
+    
+    // Baghdad and Central Iraq
+    baghdad: 'Baghdad University',
+    mustansiriya: 'Al-Mustansiriyah University',
+    iraqi: 'Iraqi University',
+    technology: 'University of Technology',
+    nahrain: 'Al-Nahrain University',
+    
+    // Northern Iraq
+    mosul: 'University of Mosul',
+    tikrit: 'Tikrit University',
+    anbar: 'University of Anbar',
+    
+    // Southern Iraq
+    basra: 'University of Basra',
+    kufa: 'University of Kufa',
+    qadisiyah: 'Al-Qadisiyah University',
+    muthanna: 'Al-Muthanna University',
+    thi_qar: 'Thi-Qar University',
+    karbala: 'University of Karbala',
+    babylon: 'University of Babylon',
+    
+    // Private Universities
+    americanUniversity: 'American University of Iraq, Sulaimani',
+    cihan: 'Cihan University',
+    ishik: 'Ishik University',
+    lebanese: 'Lebanese French University',
+    catholic: 'Catholic University in Erbil',
+  },
+  
+  // Colleges/Departments
+  colleges: {
+    // Erbil Polytechnic University - Technical Colleges
+    technicalEngineering: 'Technical Engineering College',
+    technicalAdministration: 'Technical Administration College',
+    technicalHealth: 'Technical Health and Medical College',
+    technicalComputer: 'Technical Computer College',
+    
+    // Technical Institutes
+    erbilTechnical: 'Erbil Technical Institute',
+    shaqlawaTechnical: 'Shaqlawa Technical Institute',
+    koyaTechnical: 'Koya Technical Institute',
+    mergasurTechnical: 'Mergasur Technical Institute',
+    akre: 'Akre Technical Institute',
+    soran: 'Soran Technical Institute',
+    
+    // General Colleges - Sciences
+    engineering: 'Engineering',
+    computerScience: 'Computer Science',
+    informationTechnology: 'Information Technology',
+    science: 'Science',
+    appliedSciences: 'Applied Sciences',
+    
+    // Medical Colleges
+    medicine: 'Medicine',
+    dentistry: 'Dentistry',
+    pharmacy: 'Pharmacy',
+    nursing: 'Nursing',
+    medicalTechnology: 'Medical Technology',
+    publicHealth: 'Public Health',
+    veterinary: 'Veterinary Medicine',
+    
+    // Humanities and Social Sciences
+    arts: 'Arts',
+    law: 'Law',
+    politicalScience: 'Political Science',
+    education: 'Education',
+    basicEducation: 'Basic Education',
+    languages: 'Languages',
+    islamicStudies: 'Islamic Studies',
+    
+    // Business and Management
+    businessAdministration: 'Business Administration',
+    economics: 'Economics and Administrative Sciences',
+    commerce: 'Commerce',
+    
+    // Agriculture and Environment
+    agriculture: 'Agriculture',
+    agriculturalEngineering: 'Agricultural Engineering',
+    
+    // Arts and Sports
+    fineArts: 'Fine Arts',
+    physicalEducation: 'Physical Education and Sports Sciences',
+    media: 'Media',
+    
+    // Other Specializations
+    archaeology: 'Archaeology',
+    tourism: 'Tourism Sciences',
+    geography: 'Geography',
+  },
+  
+  // Academic Stages
+  stages: {
+    firstYear: 'First Year',
+    secondYear: 'Second Year',
+    thirdYear: 'Third Year',
+    fourthYear: 'Fourth Year',
+    fifthYear: 'Fifth Year',
+    sixthYear: 'Sixth Year',
+  },
+
+  // Departments
+  departments: {
+    // Engineering Departments
+    civil: 'Civil Engineering',
+    mechanical: 'Mechanical Engineering',
+    electrical: 'Electrical Engineering',
+    computerEngineering: 'Computer Engineering',
+    chemical: 'Chemical Engineering',
+    architecture: 'Architecture',
+    petroleum: 'Petroleum Engineering',
+    aerospace: 'Aerospace Engineering',
+    biomedical: 'Biomedical Engineering',
+    industrial: 'Industrial Engineering',
+    environmental: 'Environmental Engineering',
+    telecommunications: 'Telecommunications Engineering',
+    electronics: 'Electronics Engineering',
+    surveying: 'Surveying Engineering',
+    construction: 'Construction Engineering',
+    
+    // Medicine Departments
+    surgery: 'Surgery',
+    internalMedicine: 'Internal Medicine',
+    pediatrics: 'Pediatrics',
+    obstetrics: 'Obstetrics and Gynecology',
+    pathology: 'Pathology',
+    radiology: 'Radiology',
+    anesthesia: 'Anesthesia',
+    familyMedicine: 'Family Medicine',
+    communityMedicine: 'Community Medicine',
+    anatomy: 'Anatomy',
+    physiology: 'Physiology',
+    biochemistry: 'Biochemistry',
+    
+    // Dentistry Departments
+    oralSurgery: 'Oral and Maxillofacial Surgery',
+    orthodontics: 'Orthodontics',
+    periodontics: 'Periodontics',
+    prosthodontics: 'Prosthodontics',
+    pediatricDentistry: 'Pediatric Dentistry',
+    oralPathology: 'Oral Pathology',
+    
+    // Pharmacy Departments
+    pharmaceuticalChemistry: 'Pharmaceutical Chemistry',
+    pharmacology: 'Pharmacology',
+    pharmaceutics: 'Pharmaceutics',
+    clinicalPharmacy: 'Clinical Pharmacy',
+    pharmacognosy: 'Pharmacognosy',
+    
+    // Nursing Departments
+    adultNursing: 'Adult Nursing',
+    pediatricNursing: 'Pediatric Nursing',
+    mentalHealth: 'Mental Health Nursing',
+    communityHealth: 'Community Health Nursing',
+    maternalHealth: 'Maternal Health Nursing',
+    criticalCare: 'Critical Care Nursing',
+    
+    // Science Departments
+    mathematics: 'Mathematics',
+    physics: 'Physics',
+    chemistry: 'Chemistry',
+    biology: 'Biology',
+    computerScience: 'Computer Science',
+    statistics: 'Statistics',
+    geology: 'Geology',
+    biotechnology: 'Biotechnology',
+    
+    // Computer Science & IT Departments
+    softwareEngineering: 'Software Engineering',
+    artificialIntelligence: 'Artificial Intelligence',
+    cybersecurity: 'Cybersecurity',
+    dataScience: 'Data Science',
+    networkEngineering: 'Network Engineering',
+    informationSystems: 'Information Systems',
+    networkManagement: 'Network Management',
+    webDevelopment: 'Web Development',
+    systemsAnalysis: 'Systems Analysis',
+    softwareDevelopment: 'Software Development',
+    systemsAdministration: 'Systems Administration',
+    webDesign: 'Web Design',
+    databaseManagement: 'Database Management',
+    
+    // Arts & Humanities Departments
+    english: 'English Language',
+    arabic: 'Arabic Language',
+    history: 'History',
+    geography: 'Geography',
+    sociology: 'Sociology',
+    psychology: 'Psychology',
+    philosophy: 'Philosophy',
+    translation: 'Translation',
+    journalism: 'Journalism',
+    french: 'French Language',
+    german: 'German Language',
+    spanish: 'Spanish Language',
+    turkish: 'Turkish Language',
+    persian: 'Persian Language',
+    
+    // Law Departments
+    publicLaw: 'Public Law',
+    privateLaw: 'Private Law',
+    criminalLaw: 'Criminal Law',
+    internationalLaw: 'International Law',
+    commercialLaw: 'Commercial Law',
+    islamicLaw: 'Islamic Law',
+    
+    // Education Departments
+    educationalPsychology: 'Educational Psychology',
+    curriculumInstruction: 'Curriculum and Instruction',
+    educationalAdministration: 'Educational Administration',
+    guidance: 'Guidance and Counseling',
+    specialEducation: 'Special Education',
+    earlyChildhood: 'Early Childhood Education',
+    arabicLanguage: 'Arabic Language Education',
+    mathematics: 'Mathematics Education',
+    science: 'Science Education',
+    socialStudies: 'Social Studies',
+    islamicStudies: 'Islamic Studies',
+    
+    // Business Administration Departments
+    accounting: 'Accounting',
+    finance: 'Finance',
+    marketing: 'Marketing',
+    management: 'Management',
+    economics: 'Economics',
+    businessStatistics: 'Business Statistics',
+    humanResources: 'Human Resources',
+    businessManagement: 'Business Management',
+    hotelManagement: 'Hotel Management',
+    tourism: 'Tourism Management',
+    
+    // Economics & Political Science
+    microeconomics: 'Microeconomics',
+    macroeconomics: 'Macroeconomics',
+    developmentEconomics: 'Development Economics',
+    internationalEconomics: 'International Economics',
+    publicFinance: 'Public Finance',
+    internationalRelations: 'International Relations',
+    publicPolicy: 'Public Policy',
+    politicalTheory: 'Political Theory',
+    comparativePolitics: 'Comparative Politics',
+    publicAdministration: 'Public Administration',
+    
+    // Fine Arts Departments
+    painting: 'Painting',
+    sculpture: 'Sculpture',
+    music: 'Music',
+    theater: 'Theater',
+    photography: 'Photography',
+    graphicDesign: 'Graphic Design',
+    
+    // Agriculture Departments
+    cropScience: 'Crop Science',
+    animalScience: 'Animal Science',
+    soilScience: 'Soil Science',
+    horticulture: 'Horticulture',
+    agriculturalEconomics: 'Agricultural Economics',
+    foodScience: 'Food Science',
+    
+    // Veterinary Departments
+    animalSurgery: 'Animal Surgery',
+    internalMedicine: 'Internal Medicine',
+    pathology: 'Pathology',
+    publicHealth: 'Public Health',
+    pharmacology: 'Pharmacology',
+    
+    // Physical Education Departments
+    sportsTraining: 'Sports Training',
+    sportsManagement: 'Sports Management',
+    physicalTherapy: 'Physical Therapy',
+    sportsScience: 'Sports Science',
+    recreation: 'Recreation',
+    
+    // Islamic Studies Departments
+    quran: 'Quran and Quranic Sciences',
+    hadith: 'Hadith Sciences',
+    fiqh: 'Islamic Jurisprudence',
+    islamicHistory: 'Islamic History',
+    comparativeReligion: 'Comparative Religion',
+    islamicPhilosophy: 'Islamic Philosophy',
+    
+    // Technical Health Departments
+    medicalLaboratory: 'Medical Laboratory',
+    dentalHealth: 'Dental Health',
+    
+    // Applied Sciences
+    appliedPhysics: 'Applied Physics',
+    appliedChemistry: 'Applied Chemistry',
+    appliedMathematics: 'Applied Mathematics',
+    environmentalScience: 'Environmental Science',
+    
+    // Archaeology & Tourism
+    ancientCivilizations: 'Ancient Civilizations',
+    islamicArchaeology: 'Islamic Archaeology',
+    restoration: 'Restoration and Conservation',
+    museology: 'Museology',
+    tourismManagement: 'Tourism Management',
+    tourGuiding: 'Tour Guiding',
+    culturalHeritage: 'Cultural Heritage',
+    
+    // Media Departments
+    broadcasting: 'Broadcasting',
+    publicRelations: 'Public Relations',
+    advertising: 'Advertising',
+    filmProduction: 'Film Production',
+    
+    // General
+    general: 'General',
+  },
+  
+  // Tab Navigation
+  tabs: {
+    home: 'Home',
+    chats: 'Chats',
+    post: 'Post',
+    lecture: 'Lecture',
+    profile: 'Profile',
+  },
+  
+  // Home Screen
+  home: {
+    welcome: 'Welcome Back',
+    subtitle: 'Explore your college community',
+    quickActions: 'Quick Actions',
+    askQuestion: 'Ask Question',
+    shareNotes: 'Share Notes',
+    findStudyGroup: 'Study Group',
+    pastPapers: 'Past Papers',
+    recentActivity: 'Recent Activity',
+    recentPosts: 'Recent Posts',
+    popularTopics: 'Popular Topics',
+    emptyTitle: 'Welcome Home',
+    emptyMessage: 'Your feed will appear here once you start connecting with your college community',
+  },
+  
+  // Chats Screen
+  chats: {
+    conversations: 'Conversations',
+    newMessage: 'New Message',
+    search: 'Search chats...',
+    emptyTitle: 'No Conversations Yet',
+    emptyMessage: 'Start chatting with your classmates and study groups',
+  },
+  
+  // Post Screen
+  post: {
+    createPost: 'Create Post',
+    whatsOnMind: "What's on your mind?",
+    postQuestion: 'Post Question',
+    shareKnowledge: 'Share Knowledge',
+    emptyTitle: 'Create a Post',
+    emptyMessage: 'Share questions, notes, or start a discussion with your peers',
+  },
+  
+  // Lecture Screen
+  lecture: {
+    myLectures: 'My Lectures',
+    notes: 'Notes',
+    pastPapers: 'Past Papers',
+    resources: 'Resources',
+    uploadResource: 'Upload Resource',
+    emptyTitle: 'No Resources Yet',
+    emptyMessage: 'Your lecture notes and study materials will appear here',
+  },
+  
+  // Profile Screen
+  profile: {
+    myProfile: 'My Profile',
+    editProfile: 'Edit Profile',
+    settings: 'Settings',
+    language: 'Language',
+    logout: 'Logout',
+    about: 'About',
+    posts: 'Posts',
+    myPosts: 'My Posts',
+    activity: 'Activity',
+    followers: 'Followers',
+    following: 'Following',
+    noSavedPosts: 'No saved posts yet',
+    noTaggedPosts: 'No tagged posts yet',
+    noPosts: 'No posts yet',
+    noActivity: 'No activity yet',
+    defaultBio: 'Student',
+    email: 'Email',
+    university: 'University',
+    college: 'College',
+    stage: 'Stage',
+    notSignedIn: 'Not Signed In',
+    pleaseSignIn: 'Please sign in to view your profile',
+  },
+  
+  // Settings Screen
+  settings: {
+    title: 'Settings',
+    subtitle: 'Customize your experience',
+    profileSettings: 'Profile Settings',
+    profileDesc: 'Manage your profile information',
+    editProfile: 'Edit Profile',
+    personalInfo: 'Personal Information',
+    academicInfo: 'Academic Information',
+    bio: 'Bio',
+    bioPlaceholder: 'Tell us about yourself...',
+    updateProfile: 'Update Profile',
+    profileUpdated: 'Profile updated successfully!',
+    profileUpdateError: 'Failed to update profile. Please try again.',
+    profilePictureUploaded: 'Profile picture uploaded successfully!',
+    profilePictureUploadError: 'Failed to upload profile picture. Please try again.',
+    cameraPermissionRequired: 'Camera roll permission is required to upload images.',
+    tapToUpload: 'Tap to upload profile picture',
+    personalization: 'Personalization',
+    personalizationDesc: 'Customize theme, language, and display',
+    appearance: 'Appearance',
+    darkMode: 'Dark Mode',
+    lightMode: 'Light Mode',
+    systemDefault: 'System Default',
+    language: 'Language',
+    selectLanguage: 'Select Language',
+    fontSize: 'Font Size',
+    fontSizeDesc: 'Changes will apply throughout the app',
+    small: 'Small',
+    medium: 'Medium',
+    large: 'Large',
+    notifications: 'Notifications',
+    enableNotifications: 'Enable Notifications',
+    notificationDesc: 'Get notified about new messages and updates',
+    generalNotifications: 'General',
+    notificationInfo: 'More notification preferences will be available in future updates',
+    general: 'General',
+    resetSettings: 'Reset Settings',
+    resetDesc: 'Restore all settings to default',
+    resetConfirm: 'Are you sure you want to reset all settings?',
+    version: 'Version',
+    changePassword: 'Change Password',
+    changePasswordDesc: 'Update your account password',
+    currentPassword: 'Current Password',
+    newPassword: 'New Password',
+    updatePassword: 'Update Password',
+    fillAllPasswordFields: 'Please fill all password fields correctly',
+    passwordChanged: 'Password changed successfully!',
+    changePasswordError: 'Failed to change password. Please try again.',
+    currentPasswordIncorrect: 'Current password is incorrect',
+    accountSettings: 'Account Settings',
+    accountDesc: 'Password, security, and account actions',
+    security: 'Security',
+    dangerZone: 'Danger Zone',
+    warningText: 'Resetting settings will restore all preferences to default. Logging out will sign you out of your account.',
+    logout: 'Logout',
+    logoutDesc: 'Sign out of your account',
+    logoutConfirm: 'Are you sure you want to logout?',
+    logoutError: 'Failed to logout. Please try again.',
+  },
+  
+  // Common
+  common: {
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    share: 'Share',
+    search: 'Search',
+    loading: 'Loading...',
+    error: 'Error',
+    success: 'Success',
+    yes: 'Yes',
+    no: 'No',
+    ok: 'OK',
+    retry: 'Retry',
+    noResults: 'No results found',
+    networkError: 'Network error. Please check your connection.',
+  },
+};

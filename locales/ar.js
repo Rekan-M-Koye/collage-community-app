@@ -1,0 +1,542 @@
+export default {
+  // Auth Screen Translations
+  auth: {
+    welcomeBack: 'مرحباً بعودتك!',
+    signInToAccount: 'تسجيل الدخول إلى حسابك',
+    collegeEmail: 'البريد الإلكتروني للكلية',
+    password: 'كلمة المرور',
+    confirmPassword: 'تأكيد كلمة المرور',
+    forgotPassword: 'هل نسيت كلمة المرور؟',
+    signIn: 'تسجيل الدخول',
+    signUp: 'إنشاء حساب',
+    dontHaveAccount: 'ليس لديك حساب؟ ',
+    alreadyHaveAccount: 'لديك حساب بالفعل؟ ',
+    createAccount: 'إنشاء حساب',
+    joinCommunity: 'انضم إلى المجتمع',
+    fullName: 'الاسم الكامل',
+    age: 'العمر',
+    selectUniversity: 'اختر الجامعة',
+    selectCollege: 'اختر الكلية',
+    selectStage: 'اختر المرحلة',
+    passwordStrength: 'قوة كلمة المرور',
+    weak: 'ضعيفة',
+    medium: 'متوسطة',
+    strong: 'قوية',
+    passwordGuideWeak: 'كلمة المرور ضعيفة جداً. أضف المزيد من الأحرف.',
+    passwordGuideMedium: 'كلمة المرور مقبولة. أضف رموز أو أرقام لمزيد من الأمان.',
+    passwordGuideStrong: 'كلمة المرور قوية!',
+    passwordMismatch: 'كلمات المرور غير متطابقة',
+    passwordRequirements: 'استخدم 8 أحرف على الأقل مع أحرف وأرقام ورموز',
+    invalidCredentials: 'البريد الإلكتروني أو كلمة المرور غير صحيحة. تحقق من بياناتك وحاول مرة أخرى.',
+    fullNameRequired: 'الاسم الكامل مطلوب',
+    validEmailRequired: 'عنوان بريد إلكتروني صالح مطلوب',
+    validAgeRequired: 'الرجاء إدخال عمر صالح (16-100)',
+    universityRequired: 'الرجاء اختيار جامعتك',
+    collegeRequired: 'الرجاء اختيار كليتك',
+    stageRequired: 'الرجاء اختيار مرحلتك الدراسية',
+    departmentRequired: 'الرجاء اختيار قسمك',
+    selectDepartment: 'اختر القسم',
+    passwordTooShort: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل',
+    fillAllFields: 'الرجاء ملء جميع الحقول',
+    signUpError: 'فشل إنشاء الحساب. حاول مرة أخرى.',
+    signInError: 'فشل تسجيل الدخول. حاول مرة أخرى.',
+    signInSuccess: 'تم تسجيل الدخول بنجاح!',
+    emailAlreadyExists: 'يوجد حساب بهذا البريد الإلكتروني بالفعل.',
+    accountCreated: 'تم إنشاء الحساب بنجاح!',
+    verifyEmail: 'تأكيد بريدك الإلكتروني',
+    verificationCodeSent: 'أرسلنا رمز التحقق إلى',
+    enterCode: 'أدخل الرمز المكون من 6 أرقام',
+    resendCode: 'إعادة إرسال الرمز',
+    resendIn: 'إعادة الإرسال خلال',
+    changeEmail: 'تغيير عنوان البريد الإلكتروني',
+    codeSent: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني!',
+    verificationError: 'فشل التحقق من البريد الإلكتروني. حاول مرة أخرى.',
+    or: 'أو',
+    demoAccount: 'تجريبي: demo@university.edu / demo123',
+    forgotPasswordMessage: 'ميزة استعادة كلمة المرور قريباً!',
+  },
+  
+  // Universities
+  universities: {
+    // Kurdistan Region Universities
+    erbilPolytechnic: 'جامعة أربيل التقنية',
+    salahaddin: 'جامعة صلاح الدين',
+    kurdistan: 'جامعة كردستان هەولێر',
+    sulaimani: 'جامعة السليمانية',
+    duhok: 'جامعة دهوك',
+    koya: 'جامعة كويا',
+    raparin: 'جامعة رابرين',
+    charmo: 'جامعة جارمو',
+    halabja: 'جامعة حلبجة',
+    garmian: 'جامعة گرميان',
+    soran: 'جامعة سوران',
+    
+    // Baghdad and Central Iraq
+    baghdad: 'جامعة بغداد',
+    mustansiriya: 'الجامعة المستنصرية',
+    iraqi: 'الجامعة العراقية',
+    technology: 'الجامعة التكنولوجية',
+    nahrain: 'جامعة النهرين',
+    
+    // Northern Iraq
+    mosul: 'جامعة الموصل',
+    tikrit: 'جامعة تكريت',
+    anbar: 'جامعة الأنبار',
+    
+    // Southern Iraq
+    basra: 'جامعة البصرة',
+    kufa: 'جامعة الكوفة',
+    qadisiyah: 'جامعة القادسية',
+    muthanna: 'جامعة المثنى',
+    thi_qar: 'جامعة ذي قار',
+    karbala: 'جامعة كربلاء',
+    babylon: 'جامعة بابل',
+    
+    // Private Universities
+    americanUniversity: 'الجامعة الأمريكية في السليمانية',
+    cihan: 'جامعة جيهان',
+    ishik: 'جامعة إيشك',
+    lebanese: 'الجامعة اللبنانية الفرنسية',
+    catholic: 'الجامعة الكاثوليكية في أربيل',
+  },
+  
+  // Colleges/Departments
+  colleges: {
+    // Erbil Polytechnic University - Technical Colleges
+    technicalEngineering: 'كلية الهندسة التقنية',
+    technicalAdministration: 'كلية الإدارة التقنية',
+    technicalHealth: 'كلية التقنيات الصحية والطبية',
+    technicalComputer: 'كلية الحاسوب التقنية',
+    
+    // Technical Institutes
+    erbilTechnical: 'المعهد التقني أربيل',
+    shaqlawaTechnical: 'المعهد التقني شقلاوة',
+    koyaTechnical: 'المعهد التقني كويا',
+    mergasurTechnical: 'المعهد التقني ميركه سور',
+    akre: 'المعهد التقني عقرة',
+    soran: 'المعهد التقني سوران',
+    
+    // General Colleges - Sciences
+    engineering: 'الهندسة',
+    computerScience: 'علوم الحاسوب',
+    informationTechnology: 'تقنية المعلومات',
+    science: 'العلوم',
+    appliedSciences: 'العلوم التطبيقية',
+    
+    // Medical Colleges
+    medicine: 'الطب',
+    dentistry: 'طب الأسنان',
+    pharmacy: 'الصيدلة',
+    nursing: 'التمريض',
+    medicalTechnology: 'تقنيات طبية',
+    publicHealth: 'الصحة العامة',
+    veterinary: 'الطب البيطري',
+    
+    // Humanities and Social Sciences
+    arts: 'الآداب',
+    law: 'القانون',
+    politicalScience: 'العلوم السياسية',
+    education: 'التربية',
+    basicEducation: 'التربية الأساسية',
+    languages: 'اللغات',
+    islamicStudies: 'العلوم الإسلامية',
+    
+    // Business and Management
+    businessAdministration: 'إدارة الأعمال',
+    economics: 'العلوم الاقتصادية والإدارية',
+    commerce: 'التجارة',
+    
+    // Agriculture and Environment
+    agriculture: 'الزراعة',
+    agriculturalEngineering: 'الهندسة الزراعية',
+    
+    // Arts and Sports
+    fineArts: 'الفنون الجميلة',
+    physicalEducation: 'التربية الرياضية وعلوم الرياضة',
+    media: 'الإعلام',
+    
+    // Other Specializations
+    archaeology: 'الآثار',
+    tourism: 'علوم السياحة',
+    geography: 'الجغرافيا',
+  },
+  
+  // Academic Stages
+  stages: {
+    firstYear: 'السنة الأولى',
+    secondYear: 'السنة الثانية',
+    thirdYear: 'السنة الثالثة',
+    fourthYear: 'السنة الرابعة',
+    fifthYear: 'السنة الخامسة',
+    sixthYear: 'السنة السادسة',
+  },
+
+  // Departments
+  departments: {
+    // Engineering Departments
+    civil: 'الهندسة المدنية',
+    mechanical: 'الهندسة الميكانيكية',
+    electrical: 'الهندسة الكهربائية',
+    computerEngineering: 'هندسة الحاسوب',
+    chemical: 'الهندسة الكيميائية',
+    architecture: 'الهندسة المعمارية',
+    petroleum: 'هندسة النفط',
+    aerospace: 'هندسة الطيران',
+    biomedical: 'الهندسة الطبية الحيوية',
+    industrial: 'الهندسة الصناعية',
+    environmental: 'الهندسة البيئية',
+    telecommunications: 'هندسة الاتصالات',
+    electronics: 'الهندسة الإلكترونية',
+    surveying: 'هندسة المساحة',
+    construction: 'هندسة البناء والإنشاءات',
+    
+    // Medicine Departments
+    surgery: 'الجراحة',
+    internalMedicine: 'الطب الباطني',
+    pediatrics: 'طب الأطفال',
+    obstetrics: 'التوليد وأمراض النساء',
+    pathology: 'علم الأمراض',
+    radiology: 'الأشعة',
+    anesthesia: 'التخدير',
+    familyMedicine: 'طب الأسرة',
+    communityMedicine: 'الطب المجتمعي',
+    anatomy: 'التشريح',
+    physiology: 'علم وظائف الأعضاء',
+    biochemistry: 'الكيمياء الحيوية',
+    
+    // Dentistry Departments
+    oralSurgery: 'جراحة الفم والوجه والفكين',
+    orthodontics: 'تقويم الأسنان',
+    periodontics: 'أمراض اللثة',
+    prosthodontics: 'التعويضات السنية',
+    pediatricDentistry: 'طب أسنان الأطفال',
+    oralPathology: 'أمراض الفم',
+    
+    // Pharmacy Departments
+    pharmaceuticalChemistry: 'الكيمياء الصيدلانية',
+    pharmacology: 'علم الأدوية',
+    pharmaceutics: 'الصيدلانيات',
+    clinicalPharmacy: 'الصيدلة السريرية',
+    pharmacognosy: 'علم العقاقير',
+    
+    // Nursing Departments
+    adultNursing: 'تمريض البالغين',
+    pediatricNursing: 'تمريض الأطفال',
+    mentalHealth: 'تمريض الصحة النفسية',
+    communityHealth: 'تمريض صحة المجتمع',
+    maternalHealth: 'تمريض صحة الأمومة',
+    criticalCare: 'تمريض العناية المركزة',
+    
+    // Science Departments
+    mathematics: 'الرياضيات',
+    physics: 'الفيزياء',
+    chemistry: 'الكيمياء',
+    biology: 'علم الأحياء',
+    computerScience: 'علوم الحاسوب',
+    statistics: 'الإحصاء',
+    geology: 'الجيولوجيا',
+    biotechnology: 'التقنية الحيوية',
+    
+    // Computer Science & IT Departments
+    softwareEngineering: 'هندسة البرمجيات',
+    artificialIntelligence: 'الذكاء الاصطناعي',
+    cybersecurity: 'الأمن السيبراني',
+    dataScience: 'علم البيانات',
+    networkEngineering: 'هندسة الشبكات',
+    informationSystems: 'نظم المعلومات',
+    networkManagement: 'إدارة الشبكات',
+    webDevelopment: 'تطوير الويب',
+    systemsAnalysis: 'تحليل النظم',
+    softwareDevelopment: 'تطوير البرمجيات',
+    systemsAdministration: 'إدارة الأنظمة',
+    webDesign: 'تصميم الويب',
+    databaseManagement: 'إدارة قواعد البيانات',
+    
+    // Arts & Humanities Departments
+    english: 'اللغة الإنجليزية',
+    arabic: 'اللغة العربية',
+    history: 'التاريخ',
+    geography: 'الجغرافيا',
+    sociology: 'علم الاجتماع',
+    psychology: 'علم النفس',
+    philosophy: 'الفلسفة',
+    translation: 'الترجمة',
+    journalism: 'الصحافة',
+    french: 'اللغة الفرنسية',
+    german: 'اللغة الألمانية',
+    spanish: 'اللغة الإسبانية',
+    turkish: 'اللغة التركية',
+    persian: 'اللغة الفارسية',
+    
+    // Law Departments
+    publicLaw: 'القانون العام',
+    privateLaw: 'القانون الخاص',
+    criminalLaw: 'القانون الجنائي',
+    internationalLaw: 'القانون الدولي',
+    commercialLaw: 'القانون التجاري',
+    islamicLaw: 'الشريعة الإسلامية',
+    
+    // Education Departments
+    educationalPsychology: 'علم النفس التربوي',
+    curriculumInstruction: 'المناهج وطرق التدريس',
+    educationalAdministration: 'الإدارة التربوية',
+    guidance: 'التوجيه والإرشاد',
+    specialEducation: 'التربية الخاصة',
+    earlyChildhood: 'تربية الطفولة المبكرة',
+    arabicLanguage: 'تعليم اللغة العربية',
+    science: 'تعليم العلوم',
+    socialStudies: 'الدراسات الاجتماعية',
+    islamicStudies: 'الدراسات الإسلامية',
+    
+    // Business Administration Departments
+    accounting: 'المحاسبة',
+    finance: 'المالية',
+    marketing: 'التسويق',
+    management: 'الإدارة',
+    economics: 'الاقتصاد',
+    businessStatistics: 'الإحصاء التجاري',
+    humanResources: 'الموارد البشرية',
+    businessManagement: 'إدارة الأعمال',
+    hotelManagement: 'إدارة الفنادق',
+    tourism: 'إدارة السياحة',
+    
+    // Economics & Political Science
+    microeconomics: 'الاقتصاد الجزئي',
+    macroeconomics: 'الاقتصاد الكلي',
+    developmentEconomics: 'اقتصاد التنمية',
+    internationalEconomics: 'الاقتصاد الدولي',
+    publicFinance: 'المالية العامة',
+    internationalRelations: 'العلاقات الدولية',
+    publicPolicy: 'السياسة العامة',
+    politicalTheory: 'النظرية السياسية',
+    comparativePolitics: 'السياسة المقارنة',
+    publicAdministration: 'الإدارة العامة',
+    
+    // Fine Arts Departments
+    painting: 'الرسم',
+    sculpture: 'النحت',
+    music: 'الموسيقى',
+    theater: 'المسرح',
+    photography: 'التصوير الفوتوغرافي',
+    graphicDesign: 'التصميم الجرافيكي',
+    
+    // Agriculture Departments
+    cropScience: 'علوم المحاصيل',
+    animalScience: 'علوم الحيوان',
+    soilScience: 'علوم التربة',
+    horticulture: 'البستنة',
+    agriculturalEconomics: 'الاقتصاد الزراعي',
+    foodScience: 'علوم الأغذية',
+    
+    // Veterinary Departments
+    animalSurgery: 'جراحة الحيوان',
+    internalMedicine: 'الطب الباطني',
+    pathology: 'علم الأمراض',
+    publicHealth: 'الصحة العامة',
+    pharmacology: 'علم الأدوية',
+    
+    // Physical Education Departments
+    sportsTraining: 'التدريب الرياضي',
+    sportsManagement: 'الإدارة الرياضية',
+    physicalTherapy: 'العلاج الطبيعي',
+    sportsScience: 'علوم الرياضة',
+    recreation: 'الترويح',
+    
+    // Islamic Studies Departments
+    quran: 'القرآن الكريم وعلومه',
+    hadith: 'علوم الحديث',
+    fiqh: 'الفقه وأصوله',
+    islamicHistory: 'التاريخ الإسلامي',
+    comparativeReligion: 'الأديان المقارنة',
+    islamicPhilosophy: 'الفلسفة الإسلامية',
+    
+    // Technical Health Departments
+    medicalLaboratory: 'المختبرات الطبية',
+    dentalHealth: 'صحة الأسنان',
+    
+    // Applied Sciences
+    appliedPhysics: 'الفيزياء التطبيقية',
+    appliedChemistry: 'الكيمياء التطبيقية',
+    appliedMathematics: 'الرياضيات التطبيقية',
+    environmentalScience: 'العلوم البيئية',
+    
+    // Archaeology & Tourism
+    ancientCivilizations: 'الحضارات القديمة',
+    islamicArchaeology: 'الآثار الإسلامية',
+    restoration: 'الترميم والصيانة',
+    museology: 'علم المتاحف',
+    tourismManagement: 'إدارة السياحة',
+    tourGuiding: 'الإرشاد السياحي',
+    culturalHeritage: 'التراث الثقافي',
+    
+    // Media Departments
+    broadcasting: 'الإذاعة والتلفزيون',
+    publicRelations: 'العلاقات العامة',
+    advertising: 'الإعلان',
+    filmProduction: 'إنتاج الأفلام',
+    
+    // General
+    general: 'عام',
+  },
+  
+  // Tab Navigation
+  tabs: {
+    home: 'الرئيسية',
+    chats: 'المحادثات',
+    post: 'نشر',
+    lecture: 'المحاضرات',
+    profile: 'الملف الشخصي',
+  },
+  
+  // Home Screen
+  home: {
+    welcome: 'مرحباً بعودتك',
+    subtitle: 'استكشف مجتمع كليتك',
+    quickActions: 'إجراءات سريعة',
+    askQuestion: 'اطرح سؤالاً',
+    shareNotes: 'شارك الملاحظات',
+    findStudyGroup: 'مجموعة دراسية',
+    pastPapers: 'أوراق سابقة',
+    recentActivity: 'النشاط الأخير',
+    recentPosts: 'المنشورات الأخيرة',
+    popularTopics: 'المواضيع الشائعة',
+    emptyTitle: 'مرحباً بك',
+    emptyMessage: 'ستظهر منشوراتك هنا بمجرد البدء في التواصل مع مجتمع كليتك',
+  },
+  
+  // Chats Screen
+  chats: {
+    conversations: 'المحادثات',
+    newMessage: 'رسالة جديدة',
+    search: 'البحث في المحادثات...',
+    emptyTitle: 'لا توجد محادثات بعد',
+    emptyMessage: 'ابدأ الدردشة مع زملائك ومجموعاتك الدراسية',
+  },
+  
+  // Post Screen
+  post: {
+    createPost: 'إنشاء منشور',
+    whatsOnMind: 'ما الذي يدور في ذهنك؟',
+    postQuestion: 'نشر سؤال',
+    shareKnowledge: 'مشاركة المعرفة',
+    emptyTitle: 'إنشاء منشور',
+    emptyMessage: 'شارك الأسئلة أو الملاحظات أو ابدأ نقاشاً مع أقرانك',
+  },
+  
+  // Lecture Screen
+  lecture: {
+    myLectures: 'محاضراتي',
+    notes: 'الملاحظات',
+    pastPapers: 'الأوراق السابقة',
+    resources: 'الموارد',
+    uploadResource: 'تحميل مورد',
+    emptyTitle: 'لا توجد موارد بعد',
+    emptyMessage: 'ستظهر ملاحظات محاضراتك والمواد الدراسية هنا',
+  },
+  
+  // Profile Screen
+  profile: {
+    myProfile: 'ملفي الشخصي',
+    editProfile: 'تعديل الملف الشخصي',
+    settings: 'الإعدادات',
+    language: 'اللغة',
+    logout: 'تسجيل الخروج',
+    about: 'حول',
+    posts: 'المنشورات',
+    myPosts: 'منشوراتي',
+    activity: 'النشاط',
+    followers: 'المتابعون',
+    following: 'المتابَعون',
+    noSavedPosts: 'لا توجد منشورات محفوظة بعد',
+    noTaggedPosts: 'لا توجد منشورات موسومة بعد',
+    noPosts: 'لا توجد منشورات بعد',
+    noActivity: 'لا يوجد نشاط بعد',
+    defaultBio: 'طالب',
+    email: 'البريد الإلكتروني',
+    university: 'الجامعة',
+    college: 'الكلية',
+    stage: 'المرحلة',
+    notSignedIn: 'غير مسجل الدخول',
+    pleaseSignIn: 'الرجاء تسجيل الدخول لعرض ملفك الشخصي',
+  },
+  
+  // Settings Screen
+  settings: {
+    title: 'الإعدادات',
+    subtitle: 'خصص تجربتك',
+    profileSettings: 'إعدادات الملف الشخصي',
+    profileDesc: 'إدارة معلومات ملفك الشخصي',
+    editProfile: 'تعديل الملف الشخصي',
+    personalInfo: 'المعلومات الشخصية',
+    academicInfo: 'المعلومات الأكاديمية',
+    bio: 'النبذة التعريفية',
+    bioPlaceholder: 'أخبرنا عن نفسك...',
+    updateProfile: 'تحديث الملف الشخصي',
+    profileUpdated: 'تم تحديث الملف الشخصي بنجاح!',
+    profileUpdateError: 'فشل تحديث الملف الشخصي. حاول مرة أخرى.',
+    profilePictureUploaded: 'تم رفع الصورة الشخصية بنجاح!',
+    profilePictureUploadError: 'فشل رفع الصورة الشخصية. حاول مرة أخرى.',
+    cameraPermissionRequired: 'إذن الوصول إلى معرض الصور مطلوب لرفع الصور.',
+    tapToUpload: 'اضغط لرفع صورة الملف الشخصي',
+    personalization: 'التخصيص',
+    personalizationDesc: 'تخصيص السمة واللغة والعرض',
+    appearance: 'المظهر',
+    darkMode: 'الوضع الداكن',
+    lightMode: 'الوضع الفاتح',
+    systemDefault: 'افتراضي النظام',
+    language: 'اللغة',
+    selectLanguage: 'اختر اللغة',
+    fontSize: 'حجم الخط',
+    fontSizeDesc: 'سيتم تطبيق التغييرات على التطبيق بأكمله',
+    small: 'صغير',
+    medium: 'متوسط',
+    large: 'كبير',
+    notifications: 'الإشعارات',
+    enableNotifications: 'تفعيل الإشعارات',
+    notificationDesc: 'احصل على إشعارات حول الرسائل والتحديثات الجديدة',
+    generalNotifications: 'عام',
+    notificationInfo: 'ستكون المزيد من خيارات الإشعارات متاحة في التحديثات المستقبلية',
+    general: 'عام',
+    resetSettings: 'إعادة تعيين الإعدادات',
+    resetDesc: 'استعادة جميع الإعدادات إلى الافتراضية',
+    resetConfirm: 'هل أنت متأكد من إعادة تعيين جميع الإعدادات؟',
+    version: 'الإصدار',
+    changePassword: 'تغيير كلمة المرور',
+    changePasswordDesc: 'تحديث كلمة مرور حسابك',
+    currentPassword: 'كلمة المرور الحالية',
+    newPassword: 'كلمة المرور الجديدة',
+    updatePassword: 'تحديث كلمة المرور',
+    fillAllPasswordFields: 'الرجاء ملء جميع حقول كلمة المرور بشكل صحيح',
+    passwordChanged: 'تم تغيير كلمة المرور بنجاح!',
+    changePasswordError: 'فشل تغيير كلمة المرور. حاول مرة أخرى.',
+    currentPasswordIncorrect: 'كلمة المرور الحالية غير صحيحة',
+    accountSettings: 'إعدادات الحساب',
+    accountDesc: 'كلمة المرور والأمان وإجراءات الحساب',
+    security: 'الأمان',
+    dangerZone: 'منطقة الخطر',
+    warningText: 'إعادة تعيين الإعدادات ستستعيد جميع التفضيلات إلى الإعدادات الافتراضية. تسجيل الخروج سيخرجك من حسابك.',
+    logout: 'تسجيل الخروج',
+    logoutDesc: 'تسجيل الخروج من حسابك',
+    logoutConfirm: 'هل أنت متأكد من تسجيل الخروج؟',
+    logoutError: 'فشل تسجيل الخروج. حاول مرة أخرى.',
+  },
+  
+  // Common
+  common: {
+    save: 'حفظ',
+    cancel: 'إلغاء',
+    delete: 'حذف',
+    edit: 'تعديل',
+    share: 'مشاركة',
+    search: 'بحث',
+    loading: 'جاري التحميل...',
+    error: 'خطأ',
+    success: 'نجاح',
+    yes: 'نعم',
+    no: 'لا',
+    ok: 'حسناً',
+    retry: 'إعادة المحاولة',
+    noResults: 'لا توجد نتائج',
+    networkError: 'خطأ في الشبكة. تحقق من اتصالك بالإنترنت.',
+  },
+};

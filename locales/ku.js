@@ -1,0 +1,542 @@
+export default {
+  // Auth Screen Translations
+  auth: {
+    welcomeBack: 'بەخێربێیتەوە!',
+    signInToAccount: 'چوونەژوورەوە بۆ ئەکاونتەکەت',
+    collegeEmail: 'ئیمەیڵی کۆلێژ',
+    password: 'وشەی نهێنی',
+    confirmPassword: 'دڵنیاکردنەوەی وشەی نهێنی',
+    forgotPassword: 'وشەی نهێنیت لەبیرکردووە؟',
+    signIn: 'چوونەژوورەوە',
+    signUp: 'دروستکردنی ئەکاونت',
+    dontHaveAccount: 'ئەکاونتت نییە؟ ',
+    alreadyHaveAccount: 'پێشتر ئەکاونتت هەیە؟ ',
+    createAccount: 'دروستکردنی ئەکاونت',
+    joinCommunity: 'بەشداریکردن لە کۆمەڵگا',
+    fullName: 'ناوی تەواو',
+    age: 'تەمەن',
+    selectUniversity: 'زانکۆ هەڵبژێرە',
+    selectCollege: 'کۆلێژ هەڵبژێرە',
+    selectStage: 'قۆناغ هەڵبژێرە',
+    passwordStrength: 'بەهێزی وشەی نهێنی',
+    weak: 'لاواز',
+    medium: 'مامناوەند',
+    strong: 'بەهێز',
+    passwordGuideWeak: 'وشەی نهێنی زۆر لاوازە. پیتی زیاتر زیاد بکە.',
+    passwordGuideMedium: 'وشەی نهێنی باشە. هێما یان ژمارە زیاد بکە بۆ پاراستنی باشتر.',
+    passwordGuideStrong: 'وشەی نهێنی بەهێزە!',
+    passwordMismatch: 'وشەکانی نهێنی یەکناگرنەوە',
+    passwordRequirements: 'لانیکەم 8 پیت بەکاربهێنە لەگەڵ پیت و ژمارە و هێما',
+    invalidCredentials: 'ئیمەیڵ یان وشەی نهێنی هەڵەیە. زانیاریەکانت پشکنین بکەرەوە و دووبارە هەوڵ بدەرەوە.',
+    fullNameRequired: 'ناوی تەواو پێویستە',
+    validEmailRequired: 'ئیمەیڵێکی دروست پێویستە',
+    validAgeRequired: 'تکایە تەمەنێکی دروست بنووسە (16-100)',
+    universityRequired: 'تکایە زانکۆکەت هەڵبژێرە',
+    collegeRequired: 'تکایە کۆلێژەکەت هەڵبژێرە',
+    stageRequired: 'تکایە قۆناغی خوێندنەکەت هەڵبژێرە',
+    departmentRequired: 'تکایە بەشەکەت هەڵبژێرە',
+    selectDepartment: 'بەش هەڵبژێرە',
+    passwordTooShort: 'وشەی نهێنی دەبێت لانیکەم 8 پیت بێت',
+    fillAllFields: 'تکایە هەموو خانەکان پڕ بکەرەوە',
+    signUpError: 'دروستکردنی ئەکاونت سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+    signInError: 'چوونەژوورەوە سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+    signInSuccess: 'بە سەرکەوتوویی چوویتە ژوورەوە!',
+    emailAlreadyExists: 'ئەکاونتێک بەم ئیمەیڵە پێشتر دروستکراوە.',
+    accountCreated: 'ئەکاونت بە سەرکەوتوویی دروستکرا!',
+    verifyEmail: 'ئیمەیڵەکەت پشتڕاست بکەرەوە',
+    verificationCodeSent: 'کۆدی پشتڕاستکردنەوەمان ناردووە بۆ',
+    enterCode: 'کۆدی 6 ژمارەیی بنووسە',
+    resendCode: 'کۆد دووبارە بنێرەوە',
+    resendIn: 'دووبارە ناردن لە',
+    changeEmail: 'ئیمەیڵ بگۆڕە',
+    codeSent: 'کۆدی پشتڕاستکردنەوە نێردرا بۆ ئیمەیڵەکەت!',
+    verificationError: 'پشتڕاستکردنەوەی ئیمەیڵ سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+    or: 'یان',
+    demoAccount: 'تاقیکردنەوە: demo@university.edu / demo123',
+    forgotPasswordMessage: 'تایبەتمەندی گەڕانەوەی وشەی نهێنی بەم زووانە!',
+  },
+  
+  // Universities
+  universities: {
+    // Kurdistan Region Universities
+    erbilPolytechnic: 'زانکۆی پۆلیتەکنیکی هەولێر',
+    salahaddin: 'زانکۆی سەلاحەدین',
+    kurdistan: 'زانکۆی کوردستان هەولێر',
+    sulaimani: 'زانکۆی سلێمانی',
+    duhok: 'زانکۆی دهۆک',
+    koya: 'زانکۆی کۆیە',
+    raparin: 'زانکۆی ڕاپەڕین',
+    charmo: 'زانکۆی چەرمۆ',
+    halabja: 'زانکۆی هەڵەبجە',
+    garmian: 'زانکۆی گەرمیان',
+    soran: 'زانکۆی سۆران',
+    
+    // Baghdad and Central Iraq
+    baghdad: 'زانکۆی بەغدا',
+    mustansiriya: 'زانکۆی موستەنسریە',
+    iraqi: 'زانکۆی عێراقی',
+    technology: 'زانکۆی تەکنەلۆژیا',
+    nahrain: 'زانکۆی نەهرەین',
+    
+    // Northern Iraq
+    mosul: 'زانکۆی مووسڵ',
+    tikrit: 'زانکۆی تکریت',
+    anbar: 'زانکۆی ئەنبار',
+    
+    // Southern Iraq
+    basra: 'زانکۆی بەسرە',
+    kufa: 'زانکۆی کوفە',
+    qadisiyah: 'زانکۆی قادسیە',
+    muthanna: 'زانکۆی موسەننا',
+    thi_qar: 'زانکۆی زیقار',
+    karbala: 'زانکۆی کەربەلا',
+    babylon: 'زانکۆی بابل',
+    
+    // Private Universities
+    americanUniversity: 'زانکۆی ئەمریکی لە سلێمانی',
+    cihan: 'زانکۆی جیهان',
+    ishik: 'زانکۆی ئیشک',
+    lebanese: 'زانکۆی لوبنانی فەڕەنسی',
+    catholic: 'زانکۆی کاسۆلیک لە هەولێر',
+  },
+  
+  // Colleges/Departments
+  colleges: {
+    // Erbil Polytechnic University - Technical Colleges
+    technicalEngineering: 'کۆلێژی ئەندازیاری تەکنیکی',
+    technicalAdministration: 'کۆلێژی بەڕێوەبردنی تەکنیکی',
+    technicalHealth: 'کۆلێژی تەندروستی و تەکنیکی پزیشکی',
+    technicalComputer: 'کۆلێژی کۆمپیوتەری تەکنیکی',
+    
+    // Technical Institutes
+    erbilTechnical: 'پەیمانگای تەکنیکی هەولێر',
+    shaqlawaTechnical: 'پەیمانگای تەکنیکی شەقڵاوە',
+    koyaTechnical: 'پەیمانگای تەکنیکی کۆیە',
+    mergasurTechnical: 'پەیمانگای تەکنیکی مێرگەسوور',
+    akre: 'پەیمانگای تەکنیکی عەقرێ',
+    soran: 'پەیمانگای تەکنیکی سۆران',
+    
+    // General Colleges - Sciences
+    engineering: 'ئەندازیاری',
+    computerScience: 'زانستی کۆمپیوتەر',
+    informationTechnology: 'تەکنەلۆژیای زانیاری',
+    science: 'زانست',
+    appliedSciences: 'زانستە جێبەجێکراوەکان',
+    
+    // Medical Colleges
+    medicine: 'پزیشکی',
+    dentistry: 'پزیشکی ددان',
+    pharmacy: 'دەرمانسازی',
+    nursing: 'پەرستاری',
+    medicalTechnology: 'تەکنیکی پزیشکی',
+    publicHealth: 'تەندروستی گشتی',
+    veterinary: 'پزیشکی ئاژەڵ',
+    
+    // Humanities and Social Sciences
+    arts: 'ئەدەبیات',
+    law: 'یاسا',
+    politicalScience: 'زانستە سیاسیەکان',
+    education: 'پەروەردە',
+    basicEducation: 'پەروەردەی بنەڕەتی',
+    languages: 'زمانەکان',
+    islamicStudies: 'زانستە ئیسلامیەکان',
+    
+    // Business and Management
+    businessAdministration: 'بەڕێوەبردنی بازرگانی',
+    economics: 'زانستە ئابووری و کارگێڕیەکان',
+    commerce: 'بازرگانی',
+    
+    // Agriculture and Environment
+    agriculture: 'کشتوکاڵ',
+    agriculturalEngineering: 'ئەندازیاری کشتوکاڵی',
+    
+    // Arts and Sports
+    fineArts: 'هونەرە جوانەکان',
+    physicalEducation: 'پەروەردەی جەستەیی و زانستە وەرزشیەکان',
+    media: 'میدیا',
+    
+    // Other Specializations
+    archaeology: 'شوێنەوارناسی',
+    tourism: 'زانستی گەشتیاری',
+    geography: 'جوگرافیا',
+  },
+  
+  // Academic Stages
+  stages: {
+    firstYear: 'ساڵی یەکەم',
+    secondYear: 'ساڵی دووەم',
+    thirdYear: 'ساڵی سێیەم',
+    fourthYear: 'ساڵی چوارەم',
+    fifthYear: 'ساڵی پێنجەم',
+    sixthYear: 'ساڵی شەشەم',
+  },
+
+  // Departments
+  departments: {
+    // Engineering Departments
+    civil: 'ئەندازیاری تەلارسازی',
+    mechanical: 'ئەندازیاری میکانیک',
+    electrical: 'ئەندازیاری کارەبا',
+    computerEngineering: 'ئەندازیاری کۆمپیوتەر',
+    chemical: 'ئەندازیاری کیمیایی',
+    architecture: 'ئەندازیاری بیناسازی',
+    petroleum: 'ئەندازیاری نەوت',
+    aerospace: 'ئەندازیاری فڕۆکەوانی',
+    biomedical: 'ئەندازیاری پزیشکی ژینگەیی',
+    industrial: 'ئەندازیاری پیشەسازی',
+    environmental: 'ئەندازیاری ژینگە',
+    telecommunications: 'ئەندازیاری پەیوەندی',
+    electronics: 'ئەندازیاری ئەلیکترۆنی',
+    surveying: 'ئەندازیاری نەخشەسازی',
+    construction: 'ئەندازیاری بیناسازی و دروستکردن',
+    
+    // Medicine Departments
+    surgery: 'نەشتەرگەری',
+    internalMedicine: 'نەشتەری ناوەوە',
+    pediatrics: 'پزیشکی منداڵان',
+    obstetrics: 'منداڵبوون و نەخۆشیەکانی ژنان',
+    pathology: 'زانستی نەخۆشی',
+    radiology: 'تیشکەکان',
+    anesthesia: 'بێهۆشکردن',
+    familyMedicine: 'پزیشکی خێزان',
+    communityMedicine: 'پزیشکی کۆمەڵایەتی',
+    anatomy: 'ئاناتۆمی',
+    physiology: 'فیزیۆلۆجی',
+    biochemistry: 'کیمیای ژینگەیی',
+    
+    // Dentistry Departments
+    oralSurgery: 'نەشتەرگەری دەم و ڕووخسار و چەناگە',
+    orthodontics: 'ڕێکخستنی ددان',
+    periodontics: 'نەخۆشیەکانی پەڕی ددان',
+    prosthodontics: 'جێگرەوەی ددان',
+    pediatricDentistry: 'ددانی منداڵان',
+    oralPathology: 'نەخۆشیەکانی دەم',
+    
+    // Pharmacy Departments
+    pharmaceuticalChemistry: 'کیمیای دەرمان',
+    pharmacology: 'زانستی دەرمان',
+    pharmaceutics: 'دەرمانسازی',
+    clinicalPharmacy: 'دەرمانی کلینیکی',
+    pharmacognosy: 'زانستی دەرمانە سروشتیەکان',
+    
+    // Nursing Departments
+    adultNursing: 'پەرستاری گەورەسالان',
+    pediatricNursing: 'پەرستاری منداڵان',
+    mentalHealth: 'پەرستاری تەندروستی دەروونی',
+    communityHealth: 'پەرستاری تەندروستی کۆمەڵگە',
+    maternalHealth: 'پەرستاری تەندروستی دایک',
+    criticalCare: 'پەرستاری چاودێری توند',
+    
+    // Science Departments
+    mathematics: 'ماتماتیک',
+    physics: 'فیزیا',
+    chemistry: 'کیمیا',
+    biology: 'بایۆلۆجی',
+    computerScience: 'زانستی کۆمپیوتەر',
+    statistics: 'ئامار',
+    geology: 'جیۆلۆجی',
+    biotechnology: 'تەکنەلۆجیای ژینگەیی',
+    
+    // Computer Science & IT Departments
+    softwareEngineering: 'ئەندازیاری نەرمەکاڵا',
+    artificialIntelligence: 'زیرەکی دەستکرد',
+    cybersecurity: 'پاراستنی سایبەری',
+    dataScience: 'زانستی داتا',
+    networkEngineering: 'ئەندازیاری تۆڕ',
+    informationSystems: 'سیستەمی زانیاری',
+    networkManagement: 'بەڕێوەبردنی تۆڕ',
+    webDevelopment: 'گەشەپێدانی وێب',
+    systemsAnalysis: 'شیکاری سیستەمەکان',
+    softwareDevelopment: 'گەشەپێدانی نەرمەکاڵا',
+    systemsAdministration: 'بەڕێوەبردنی سیستەمەکان',
+    webDesign: 'دیزاینی وێب',
+    databaseManagement: 'بەڕێوەبردنی بنکەی داتا',
+    
+    // Arts & Humanities Departments
+    english: 'زمانی ئینگلیزی',
+    arabic: 'زمانی عەرەبی',
+    history: 'مێژوو',
+    geography: 'جوگرافیا',
+    sociology: 'کۆمەڵناسی',
+    psychology: 'دەروونناسی',
+    philosophy: 'فەلسەفە',
+    translation: 'وەرگێڕان',
+    journalism: 'ڕۆژنامەنووسی',
+    french: 'زمانی فەرەنسی',
+    german: 'زمانی ئەڵمانی',
+    spanish: 'زمانی ئیسپانی',
+    turkish: 'زمانی تورکی',
+    persian: 'زمانی فارسی',
+    
+    // Law Departments
+    publicLaw: 'یاسای گشتی',
+    privateLaw: 'یاسای تایبەت',
+    criminalLaw: 'یاسای تاوان',
+    internationalLaw: 'یاسای نێودەوڵەتی',
+    commercialLaw: 'یاسای بازرگانی',
+    islamicLaw: 'شەریعەتی ئیسلامی',
+    
+    // Education Departments
+    educationalPsychology: 'دەروونناسی پەروەردە',
+    curriculumInstruction: 'مەنهەج و ڕێگەکانی فێرکردن',
+    educationalAdministration: 'بەڕێوەبردنی پەروەردەیی',
+    guidance: 'ڕێنمایی و ئامۆژگاری',
+    specialEducation: 'پەروەردەی تایبەت',
+    earlyChildhood: 'پەروەردەی منداڵی پێش قوتابخانە',
+    arabicLanguage: 'فێرکردنی زمانی عەرەبی',
+    science: 'فێرکردنی زانست',
+    socialStudies: 'لێکۆڵینەوەی کۆمەڵایەتی',
+    islamicStudies: 'لێکۆڵینەوەی ئیسلامی',
+    
+    // Business Administration Departments
+    accounting: 'ژمێریاری',
+    finance: 'دارایی',
+    marketing: 'بازاڕگەری',
+    management: 'بەڕێوەبردن',
+    economics: 'ئابووری',
+    businessStatistics: 'ئاماری بازرگانی',
+    humanResources: 'سەرچاوە مرۆییەکان',
+    businessManagement: 'بەڕێوەبردنی بازرگانی',
+    hotelManagement: 'بەڕێوەبردنی هوتێل',
+    tourism: 'بەڕێوەبردنی گەشتیاری',
+    
+    // Economics & Political Science
+    microeconomics: 'ئابووری بچووک',
+    macroeconomics: 'ئابووری گەورە',
+    developmentEconomics: 'ئابووری گەشەسەندن',
+    internationalEconomics: 'ئابووری نێودەوڵەتی',
+    publicFinance: 'داراییی گشتی',
+    internationalRelations: 'پەیوەندییە نێودەوڵەتیەکان',
+    publicPolicy: 'سیاسەتی گشتی',
+    politicalTheory: 'تیۆری سیاسی',
+    comparativePolitics: 'سیاسەتی بەراوردکاری',
+    publicAdministration: 'بەڕێوەبردنی گشتی',
+    
+    // Fine Arts Departments
+    painting: 'وێنەکێشان',
+    sculpture: 'پەیکەرتاشی',
+    music: 'مۆسیقا',
+    theater: 'شانۆ',
+    photography: 'وێنەگرتن',
+    graphicDesign: 'دیزاینی گرافیک',
+    
+    // Agriculture Departments
+    cropScience: 'زانستی بەروبووم',
+    animalScience: 'زانستی ئاژەڵ',
+    soilScience: 'زانستی خاک',
+    horticulture: 'باخچەداری',
+    agriculturalEconomics: 'ئابووری کشتوکاڵی',
+    foodScience: 'زانستی خواردن',
+    
+    // Veterinary Departments
+    animalSurgery: 'نەشتەرگەری ئاژەڵ',
+    internalMedicine: 'نەشتەری ناوەوە',
+    pathology: 'زانستی نەخۆشی',
+    publicHealth: 'تەندروستی گشتی',
+    pharmacology: 'زانستی دەرمان',
+    
+    // Physical Education Departments
+    sportsTraining: 'ڕاهێنانی وەرزشی',
+    sportsManagement: 'بەڕێوەبردنی وەرزشی',
+    physicalTherapy: 'چارەسەری فیزیایی',
+    sportsScience: 'زانستی وەرزش',
+    recreation: 'کاتی بەسەربردن',
+    
+    // Islamic Studies Departments
+    quran: 'قورئان و زانستەکانی',
+    hadith: 'زانستی حەدیس',
+    fiqh: 'فیقه و بنەماکانی',
+    islamicHistory: 'مێژووی ئیسلامی',
+    comparativeReligion: 'ئاینە بەراوردکراوەکان',
+    islamicPhilosophy: 'فەلسەفەی ئیسلامی',
+    
+    // Technical Health Departments
+    medicalLaboratory: 'تاقیگەی پزیشکی',
+    dentalHealth: 'تەندروستی ددان',
+    
+    // Applied Sciences
+    appliedPhysics: 'فیزیای کاربەردی',
+    appliedChemistry: 'کیمیای کاربەردی',
+    appliedMathematics: 'ماتماتیکی کاربەردی',
+    environmentalScience: 'زانستی ژینگە',
+    
+    // Archaeology & Tourism
+    ancientCivilizations: 'شارستانییەتە کۆنەکان',
+    islamicArchaeology: 'شوێنەوارە ئیسلامیەکان',
+    restoration: 'نۆژەنکردنەوە و پاراستن',
+    museology: 'زانستی مۆزەخانە',
+    tourismManagement: 'بەڕێوەبردنی گەشتیاری',
+    tourGuiding: 'ڕێنمایی گەشتیاری',
+    culturalHeritage: 'میراتی کلتووری',
+    
+    // Media Departments
+    broadcasting: 'ڕادیۆ و تەلەفزیۆن',
+    publicRelations: 'پەیوەندییە گشتیەکان',
+    advertising: 'ڕیکلامکردن',
+    filmProduction: 'بەرهەمهێنانی فیلم',
+    
+    // General
+    general: 'گشتی',
+  },
+  
+  // Tab Navigation
+  tabs: {
+    home: 'سەرەکی',
+    chats: 'گفتوگۆکان',
+    post: 'پۆست',
+    lecture: 'وانەکان',
+    profile: 'پرۆفایل',
+  },
+  
+  // Home Screen
+  home: {
+    welcome: 'بەخێربێیتەوە',
+    subtitle: 'کۆمەڵگای کۆلێژەکەت بگەڕێ',
+    quickActions: 'کردارە خێراکان',
+    askQuestion: 'پرسیار بکە',
+    shareNotes: 'تێبینی هاوبەش بکە',
+    findStudyGroup: 'گروپی خوێندن',
+    pastPapers: 'کاغەزە پێشووکان',
+    recentActivity: 'چالاکی تازە',
+    recentPosts: 'پۆستە تازەکان',
+    popularTopics: 'بابەتە بەناوبانگەکان',
+    emptyTitle: 'بەخێربێیت',
+    emptyMessage: 'پۆستەکانت لێرە دەردەکەون کاتێک دەست دەکەیت بە پەیوەندیکردن لەگەڵ کۆمەڵگای کۆلێژەکەت',
+  },
+  
+  // Chats Screen
+  chats: {
+    conversations: 'گفتوگۆکان',
+    newMessage: 'پەیامی نوێ',
+    search: 'گەڕان لە گفتوگۆکان...',
+    emptyTitle: 'هێشتا هیچ گفتوگۆیەک نییە',
+    emptyMessage: 'دەست بکە بە گفتوگۆکردن لەگەڵ هاوپۆلەکانت و گروپە خوێندنەکانت',
+  },
+  
+  // Post Screen
+  post: {
+    createPost: 'دروستکردنی پۆست',
+    whatsOnMind: 'چی لە مێشکتدایە؟',
+    postQuestion: 'پۆستکردنی پرسیار',
+    shareKnowledge: 'هاوبەشکردنی زانیاری',
+    emptyTitle: 'پۆستێک دروست بکە',
+    emptyMessage: 'پرسیار، تێبینی هاوبەش بکە یان گفتوگۆیەک دەست پێبکە لەگەڵ هاوتەمەنەکانت',
+  },
+  
+  // Lecture Screen
+  lecture: {
+    myLectures: 'وانەکانم',
+    notes: 'تێبینیەکان',
+    pastPapers: 'کاغەزە پێشووکان',
+    resources: 'سەرچاوەکان',
+    uploadResource: 'بارکردنی سەرچاوە',
+    emptyTitle: 'هێشتا هیچ سەرچاوەیەک نییە',
+    emptyMessage: 'تێبینی و کەرەستەی خوێندنەکانت لێرە دەردەکەون',
+  },
+  
+  // Profile Screen
+  profile: {
+    myProfile: 'پرۆفایلم',
+    editProfile: 'دەستکاریکردنی پرۆفایل',
+    settings: 'ڕێکخستنەکان',
+    language: 'زمان',
+    logout: 'چوونەدەرەوە',
+    about: 'دەربارە',
+    posts: 'پۆستەکان',
+    myPosts: 'پۆستەکانم',
+    activity: 'چالاکی',
+    followers: 'شوێنکەوتووان',
+    following: 'شوێنکەوتن',
+    noSavedPosts: 'هیچ پۆستێکی پاشەکەوتکراو نییە',
+    noTaggedPosts: 'هیچ پۆستێکی تاگکراو نییە',
+    noPosts: 'هێشتا هیچ پۆستێک نییە',
+    noActivity: 'هێشتا هیچ چالاکیەک نییە',
+    defaultBio: 'خوێندکار',
+    email: 'ئیمەیڵ',
+    university: 'زانکۆ',
+    college: 'کۆلێژ',
+    stage: 'قۆناغ',
+    notSignedIn: 'چوونەژوورەوە نەکراوە',
+    pleaseSignIn: 'تکایە بچۆژوورەوە بۆ بینینی پرۆفایلەکەت',
+  },
+  
+  // Settings Screen
+  settings: {
+    title: 'ڕێکخستنەکان',
+    subtitle: 'ئەزموونەکەت دڵخواز بکە',
+    profileSettings: 'ڕێکخستنەکانی پرۆفایل',
+    profileDesc: 'بەڕێوەبردنی زانیاریەکانی پرۆفایلەکەت',
+    editProfile: 'دەستکاری پرۆفایل',
+    personalInfo: 'زانیاری کەسی',
+    academicInfo: 'زانیاری ئەکادیمی',
+    bio: 'دەربارە',
+    bioPlaceholder: 'باسی خۆت بکە...',
+    updateProfile: 'نوێکردنەوەی پرۆفایل',
+    profileUpdated: 'پرۆفایل بە سەرکەوتوویی نوێکرایەوە!',
+    profileUpdateError: 'نوێکردنەوەی پرۆفایل سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+    profilePictureUploaded: 'وێنەی پرۆفایل بە سەرکەوتوویی بارکرا!',
+    profilePictureUploadError: 'بارکردنی وێنەی پرۆفایل سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+    cameraPermissionRequired: 'مۆڵەتی دەستگەیشتن بە ئەلبومی وێنە پێویستە بۆ بارکردنی وێنەکان.',
+    tapToUpload: 'دەستی لێ بدە بۆ بارکردنی وێنەی پرۆفایل',
+    personalization: 'کەسیکردن',
+    personalizationDesc: 'ڕووکار، زمان و پیشاندان دڵخواز بکە',
+    appearance: 'ڕواڵەت',
+    darkMode: 'دۆخی تاریک',
+    lightMode: 'دۆخی ڕووناک',
+    systemDefault: 'بنەڕەتی سیستەم',
+    language: 'زمان',
+    selectLanguage: 'زمان هەڵبژێرە',
+    fontSize: 'قەبارەی فۆنت',
+    fontSizeDesc: 'گۆڕانکاریەکان لە تەواوی بەرنامەکەدا جێبەجێ دەکرێن',
+    small: 'بچووک',
+    medium: 'مامناوەند',
+    large: 'گەورە',
+    notifications: 'ئاگادارکردنەوەکان',
+    enableNotifications: 'چالاککردنی ئاگادارکردنەوەکان',
+    notificationDesc: 'ئاگادارکردنەوە دەربارەی نامە و نوێکردنەوە نوێیەکان وەربگرە',
+    generalNotifications: 'گشتی',
+    notificationInfo: 'هەڵبژاردەی زیاتری ئاگادارکردنەوە لە نوێکردنەوە داهاتووەکاندا بەردەست دەبن',
+    general: 'گشتی',
+    resetSettings: 'ڕێکخستنەکان ڕێک بخەوە',
+    resetDesc: 'هەموو ڕێکخستنەکان بۆ بنەڕەتەکان بگەڕێنەوە',
+    resetConfirm: 'دڵنیایت لە ڕێکخستنەوەی هەموو ڕێکخستنەکان؟',
+    version: 'وەشان',
+    changePassword: 'گۆڕینی وشەی نهێنی',
+    changePasswordDesc: 'نوێکردنەوەی وشەی نهێنی ئەکاونتەکەت',
+    currentPassword: 'وشەی نهێنی ئێستا',
+    newPassword: 'وشەی نهێنی نوێ',
+    updatePassword: 'نوێکردنەوەی وشەی نهێنی',
+    fillAllPasswordFields: 'تکایە هەموو خانەکانی وشەی نهێنی بە دروستی پڕ بکەرەوە',
+    passwordChanged: 'وشەی نهێنی بە سەرکەوتوویی گۆڕدرا!',
+    changePasswordError: 'گۆڕینی وشەی نهێنی سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+    currentPasswordIncorrect: 'وشەی نهێنی ئێستا هەڵەیە',
+    accountSettings: 'ڕێکخستنەکانی ئەکاونت',
+    accountDesc: 'وشەی نهێنی، پاراستن و کردارەکانی ئەکاونت',
+    security: 'پاراستن',
+    dangerZone: 'ناوچەی مەترسی',
+    warningText: 'ڕێکخستنەوەی ڕێکخستنەکان هەموو هەڵبژاردەکان بۆ بنەڕەتی دەگەڕێنێتەوە. چوونەدەرەوە لە ئەکاونتەکەت دەردەچیت.',
+    logout: 'چوونەدەرەوە',
+    logoutDesc: 'چوونەدەرەوە لە ئەکاونتەکەت',
+    logoutConfirm: 'دڵنیایت لە چوونەدەرەوە؟',
+    logoutError: 'چوونەدەرەوە سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.',
+  },
+  
+  // Common
+  common: {
+    save: 'پاشەکەوتکردن',
+    cancel: 'پاشگەزبوونەوە',
+    delete: 'سڕینەوە',
+    edit: 'دەستکاریکردن',
+    share: 'هاوبەشکردن',
+    search: 'گەڕان',
+    loading: 'بارکردن...',
+    error: 'هەڵە',
+    success: 'سەرکەوتوو',
+    yes: 'بەڵێ',
+    no: 'نەخێر',
+    ok: 'باشە',
+    retry: 'دووبارە هەوڵ بدەرەوە',
+    noResults: 'هیچ ئەنجامێک نەدۆزرایەوە',
+    networkError: 'هەڵەی تۆڕ. تکایە پەیوەندی ئینتەرنێتەکەت پشکنین بکەرەوە.',
+  },
+};
