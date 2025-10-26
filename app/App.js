@@ -176,10 +176,7 @@ const MainStack = () => {
       <Stack.Screen 
         name="Settings" 
         component={Settings}
-        options={{ 
-          headerShown: true,
-          title: 'Settings' 
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="ProfileSettings" 

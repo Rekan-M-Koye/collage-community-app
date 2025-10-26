@@ -30,15 +30,17 @@ export const UserProvider = ({ children }) => {
             $id: completeUserData.$id,
             email: completeUserData.email,
             fullName: completeUserData.name,
-            bio: completeUserData.bio || cached?.bio || '',
-            profilePicture: cached?.profilePicture || completeUserData.profilePicture || '',
+            bio: completeUserData.bio || '',
+            profilePicture: completeUserData.profilePicture || '',
             university: completeUserData.university || '',
             college: completeUserData.major || '',
-            stage: completeUserData.year || '',
+            department: completeUserData.department || '',
+            stage: yearToStage(completeUserData.year),
             postsCount: completeUserData.postsCount || 0,
             followersCount: completeUserData.followersCount || 0,
             followingCount: completeUserData.followingCount || 0,
             isEmailVerified: completeUserData.emailVerification || false,
+            lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
           };
           
           await AsyncStorage.setItem('userData', JSON.stringify(userData));
@@ -84,15 +86,17 @@ export const UserProvider = ({ children }) => {
             $id: completeUserData.$id,
             email: completeUserData.email,
             fullName: completeUserData.name,
-            bio: completeUserData.bio || cached?.bio || '',
-            profilePicture: cached?.profilePicture || completeUserData.profilePicture || '',
+            bio: completeUserData.bio || '',
+            profilePicture: completeUserData.profilePicture || '',
             university: completeUserData.university || '',
             college: completeUserData.major || '',
-            stage: completeUserData.year || '',
+            department: completeUserData.department || '',
+            stage: yearToStage(completeUserData.year),
             postsCount: completeUserData.postsCount || 0,
             followersCount: completeUserData.followersCount || 0,
             followingCount: completeUserData.followingCount || 0,
             isEmailVerified: completeUserData.emailVerification || false,
+            lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
           };
           
           await AsyncStorage.setItem('userData', JSON.stringify(userData));
@@ -112,6 +116,36 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const stageToYear = (stage) => {
+    const stageMap = {
+      'firstYear': 1,
+      'secondYear': 2,
+      'thirdYear': 3,
+      'fourthYear': 4,
+      'fifthYear': 5,
+      'sixthYear': 6,
+      'First Year': 1,
+      'Second Year': 2,
+      'Third Year': 3,
+      'Fourth Year': 4,
+      'Fifth Year': 5,
+      'Sixth Year': 6
+    };
+    return stageMap[stage] || parseInt(stage) || null;
+  };
+
+  const yearToStage = (year) => {
+    const yearMap = {
+      1: 'firstYear',
+      2: 'secondYear',
+      3: 'thirdYear',
+      4: 'fourthYear',
+      5: 'fifthYear',
+      6: 'sixthYear'
+    };
+    return yearMap[year] || year?.toString() || '';
+  };
+
   const updateUser = async (updates) => {
     try {
       const currentData = await AsyncStorage.getItem('userData');
@@ -124,6 +158,26 @@ export const UserProvider = ({ children }) => {
       
       await AsyncStorage.setItem('userData', JSON.stringify(updatedData));
       setUser(updatedData);
+      
+      const appwriteUser = await getCurrentUser();
+      if (appwriteUser) {
+        const { updateUserDocument } = require('../../database/auth');
+        
+        const appwriteUpdates = {};
+        if (updates.fullName !== undefined) appwriteUpdates.name = updates.fullName;
+        if (updates.bio !== undefined) appwriteUpdates.bio = updates.bio;
+        if (updates.profilePicture !== undefined) appwriteUpdates.profilePicture = updates.profilePicture;
+        if (updates.university !== undefined) appwriteUpdates.university = updates.university;
+        if (updates.college !== undefined) appwriteUpdates.major = updates.college;
+        if (updates.department !== undefined) appwriteUpdates.department = updates.department;
+        if (updates.stage !== undefined) {
+          appwriteUpdates.year = stageToYear(updates.stage);
+        }
+        if (updates.lastAcademicUpdate !== undefined) appwriteUpdates.lastAcademicUpdate = updates.lastAcademicUpdate;
+        
+        await updateUserDocument(appwriteUser.$id, appwriteUpdates);
+      }
+      
       return true;
     } catch (error) {
       console.error('Error updating user data:', error);
@@ -132,7 +186,17 @@ export const UserProvider = ({ children }) => {
   };
 
   const updateProfilePicture = async (imageUrl) => {
-    return await updateUser({ profilePicture: imageUrl });
+    try {
+      const appwriteUser = await getCurrentUser();
+      if (appwriteUser) {
+        const { updateUserDocument } = require('../../database/auth');
+        await updateUserDocument(appwriteUser.$id, { profilePicture: imageUrl });
+      }
+      return await updateUser({ profilePicture: imageUrl });
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      return false;
+    }
   };
 
   const clearUser = async () => {

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import LanguageDropdown from '../components/LanguageDropdown';
+import AnimatedBackground from '../components/AnimatedBackground';
 import { GlassContainer, GlassInput } from '../components/GlassComponents';
 import { signIn, getCurrentUser, signOut, getCompleteUserData } from '../../database/auth';
 import { 
@@ -89,11 +90,13 @@ const SignIn = ({ navigation }) => {
               profilePicture: completeUserData.profilePicture || '',
               university: completeUserData.university || '',
               college: completeUserData.major || '',
+              department: completeUserData.department || '',
               stage: completeUserData.year || '',
               postsCount: completeUserData.postsCount || 0,
               followersCount: completeUserData.followersCount || 0,
               followingCount: completeUserData.followingCount || 0,
               isEmailVerified: completeUserData.emailVerification || false,
+              lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
             };
             
             await setUserData(userData);
@@ -118,11 +121,13 @@ const SignIn = ({ navigation }) => {
           profilePicture: completeUserData.profilePicture || '',
           university: completeUserData.university || '',
           college: completeUserData.major || '',
+          department: completeUserData.department || '',
           stage: completeUserData.year || '',
           postsCount: completeUserData.postsCount || 0,
           followersCount: completeUserData.followersCount || 0,
           followingCount: completeUserData.followingCount || 0,
           isEmailVerified: completeUserData.emailVerification || false,
+          lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
         };
         
         await setUserData(userData);
@@ -171,6 +176,8 @@ const SignIn = ({ navigation }) => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
         
+        <AnimatedBackground particleCount={35} />
+        
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}>
@@ -204,10 +211,10 @@ const SignIn = ({ navigation }) => {
             </View>
 
             <View style={styles.headerContainer}>
-              <Text style={[styles.headerText, { fontSize: fontSize(isTablet() ? 42 : 34) }]}>
+              <Text style={[styles.headerText, { fontSize: fontSize(isTablet() ? 32 : 24) }]}>
                 {t('auth.welcomeBack')}
               </Text>
-              <Text style={[styles.subHeaderText, { fontSize: fontSize(16) }]}>
+              <Text style={[styles.subHeaderText, { fontSize: fontSize(14) }]}>
                 {t('auth.signInToAccount')}
               </Text>
             </View>
@@ -228,7 +235,7 @@ const SignIn = ({ navigation }) => {
                   <TextInput
                     style={[styles.input, { 
                       color: theme.text,
-                      fontSize: fontSize(16),
+                      fontSize: fontSize(14),
                     }]}
                     placeholder={t('auth.collegeEmail')}
                     placeholderTextColor={theme.input.placeholder}
@@ -254,7 +261,7 @@ const SignIn = ({ navigation }) => {
                   <TextInput
                     style={[styles.input, { 
                       color: theme.text,
-                      fontSize: fontSize(16),
+                      fontSize: fontSize(14),
                     }]}
                     placeholder={t('auth.password')}
                     placeholderTextColor={theme.input.placeholder}
@@ -290,7 +297,7 @@ const SignIn = ({ navigation }) => {
                 )}>
                 <Text style={[styles.forgotPasswordText, { 
                   color: theme.primary,
-                  fontSize: fontSize(14),
+                  fontSize: fontSize(13),
                 }]}>
                   {t('auth.forgotPassword')}
                 </Text>
@@ -310,7 +317,7 @@ const SignIn = ({ navigation }) => {
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
                     <>
-                      <Text style={[styles.signInButtonText, { fontSize: fontSize(17) }]}>
+                      <Text style={[styles.signInButtonText, { fontSize: fontSize(15) }]}>
                         {t('auth.signIn')}
                       </Text>
                       <Ionicons 
@@ -326,11 +333,11 @@ const SignIn = ({ navigation }) => {
             </GlassContainer>
 
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { fontSize: fontSize(15) }]}>
+              <Text style={[styles.footerText, { fontSize: fontSize(13) }]}>
                 {t('auth.dontHaveAccount')}
               </Text>
               <TouchableOpacity onPress={() => navigation.navigate('SignUp')} activeOpacity={0.7}>
-                <Text style={[styles.footerText, styles.signUpText, { fontSize: fontSize(15) }]}>
+                <Text style={[styles.footerText, styles.signUpText, { fontSize: fontSize(13) }]}>
                   {t('auth.signUp')}
                 </Text>
               </TouchableOpacity>

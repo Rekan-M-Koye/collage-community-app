@@ -86,11 +86,12 @@ const Profile = ({ navigation }) => {
   const userProfile = {
     name: user.fullName || 'User',
     email: user.email || '',
-    bio: user.bio || t('profile.defaultBio') || 'College Student',
+    bio: user.bio || t('profile.defaultBio'),
     avatar: avatarUri,
-    university: user.university || '',
-    college: user.college || '',
-    stage: user.stage || '',
+    university: user.university ? t(`universities.${user.university}`) : '',
+    college: user.college ? t(`colleges.${user.college}`) : '',
+    stage: user.stage ? t(`stages.${user.stage}`) : '',
+    department: user.department ? t(`departments.${user.department}`) : '',
     stats: {
       posts: user.postsCount || 0,
       followers: user.followersCount || 0,
@@ -147,6 +148,19 @@ const Profile = ({ navigation }) => {
             </View>
           </>
         )}
+        
+        {userProfile.department && (
+          <>
+            <View style={[styles.infoDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.infoRow}>
+              <Ionicons name="briefcase-outline" size={moderateScale(20)} color={theme.primary} />
+              <View style={styles.infoTextContainer}>
+                <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary }]}>{t('auth.selectDepartment')}</Text>
+                <Text style={[styles.infoValue, { fontSize: fontSize(13), color: theme.text }]} numberOfLines={1}>{userProfile.department}</Text>
+              </View>
+            </View>
+          </>
+        )}
       </GlassContainer>
     </View>
   );
@@ -174,14 +188,12 @@ const Profile = ({ navigation }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <LinearGradient colors={isDarkMode ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#e3f2fd', '#bbdefb', '#90caf9']} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
+          <View style={styles.profileHeader}>
             <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
               <GlassContainer borderRadius={borderRadius.round} style={styles.settingsButtonInner}>
                 <Ionicons name="settings-outline" size={moderateScale(24)} color="#FFFFFF" />
               </GlassContainer>
             </TouchableOpacity>
-          </View>
-          <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               <LinearGradient colors={theme.gradient} style={styles.avatarBorder} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={[styles.avatarInner, { backgroundColor: theme.background }]}>
@@ -294,10 +306,9 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 }, 
   scrollView: { flex: 1 }, 
   scrollContent: { paddingTop: Platform.OS === 'ios' ? hp(5) : hp(3), paddingBottom: hp(10) }, 
-  header: { paddingHorizontal: wp(5), alignItems: 'flex-end', marginBottom: spacing.xs }, 
-  settingsButton: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }, 
+  profileHeader: { alignItems: 'center', paddingHorizontal: wp(5), marginBottom: spacing.md, position: 'relative' }, 
+  settingsButton: { position: 'absolute', top: spacing.md, right: wp(5), zIndex: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }, 
   settingsButtonInner: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
-  profileHeader: { alignItems: 'center', paddingHorizontal: wp(5), marginBottom: spacing.md }, 
   avatarContainer: { marginBottom: spacing.sm }, 
   avatarBorder: { width: moderateScale(110), height: moderateScale(110), borderRadius: moderateScale(55), padding: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }, 
   avatarInner: { width: moderateScale(104), height: moderateScale(104), borderRadius: moderateScale(52), padding: 3 }, 

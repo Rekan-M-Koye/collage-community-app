@@ -95,19 +95,22 @@ const Settings = ({ navigation }) => {
         style={styles.headerGradient}
       />
 
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          {t('settings.title')}
+        </Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>
-            {t('settings.title')}
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-            {t('settings.subtitle')}
-          </Text>
-        </View>
 
         <View style={styles.cardsContainer}>
           {settingsSections.map((section) => (
@@ -140,20 +143,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(2),
+    paddingTop: spacing.md,
     paddingHorizontal: wp(5),
     paddingBottom: hp(3),
   },
   header: {
-    marginBottom: spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? hp(7) : hp(3.5),
+    paddingHorizontal: wp(5),
+    paddingBottom: spacing.md,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: responsiveFontSize(32),
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
+    flex: 1,
+    fontSize: responsiveFontSize(20),
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  headerSubtitle: {
-    fontSize: responsiveFontSize(15),
+  placeholder: {
+    width: 40,
   },
   cardsContainer: {
     gap: spacing.md,

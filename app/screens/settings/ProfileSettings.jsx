@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,29 +21,75 @@ import { useUser } from '../../context/UserContext';
 import { borderRadius, shadows } from '../../theme/designTokens';
 import { wp, hp, fontSize as responsiveFontSize, spacing } from '../../utils/responsive';
 import { uploadProfilePicture } from '../../../services/imgbbService';
+import SearchableDropdownNew from '../../components/SearchableDropdownNew';
+import { getUniversityKeys, getCollegesForUniversity, getDepartmentsForCollege } from '../../data/universitiesData';
+
+const COOLDOWN_DAYS = 30;
 
 const ProfileSettings = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user, updateUser, updateProfilePicture, refreshUser } = useUser();
 
+  const bioInputRef = useRef(null);
+  
   const [editMode, setEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [canEditAcademic, setCanEditAcademic] = useState(true);
+  const [cooldownInfo, setCooldownInfo] = useState(null);
   
   const [profileData, setProfileData] = useState({
     fullName: '',
     email: '',
     university: '',
     college: '',
+    department: '',
     stage: '',
     bio: '',
     profilePicture: '',
+    lastAcademicUpdate: null,
   });
 
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  const checkAcademicCooldown = useCallback(() => {
+    if (!profileData.lastAcademicUpdate) {
+      setCanEditAcademic(true);
+      setCooldownInfo(null);
+      return;
+    }
+
+    const lastUpdate = new Date(profileData.lastAcademicUpdate);
+    const now = new Date();
+    const diffTime = now - lastUpdate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays >= COOLDOWN_DAYS) {
+      setCanEditAcademic(true);
+      setCooldownInfo(null);
+    } else {
+      setCanEditAcademic(false);
+      const remainingDays = COOLDOWN_DAYS - diffDays;
+      const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      setCooldownInfo({
+        remainingDays,
+        remainingHours,
+        lastUpdate: lastUpdate.toLocaleDateString(),
+      });
+    }
+  }, [profileData.lastAcademicUpdate]);
+
   useEffect(() => {
-    loadUserProfile();
-  }, [user]);
+    if (!initialLoadDone) {
+      loadUserProfile();
+      setInitialLoadDone(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAcademicCooldown();
+  }, [checkAcademicCooldown]);
 
   const loadUserProfile = async () => {
     setIsLoading(true);
@@ -54,9 +100,11 @@ const ProfileSettings = ({ navigation }) => {
           email: user.email || '',
           university: user.university || '',
           college: user.college || '',
+          department: user.department || '',
           stage: user.stage || '',
           bio: user.bio || '',
           profilePicture: user.profilePicture || '',
+          lastAcademicUpdate: user.lastAcademicUpdate || null,
         });
       } else {
         const userData = await AsyncStorage.getItem('userData');
@@ -67,9 +115,11 @@ const ProfileSettings = ({ navigation }) => {
             email: parsedData.email || '',
             university: parsedData.university || '',
             college: parsedData.college || '',
+            department: parsedData.department || '',
             stage: parsedData.stage || '',
             bio: parsedData.bio || '',
             profilePicture: parsedData.profilePicture || '',
+            lastAcademicUpdate: parsedData.lastAcademicUpdate || null,
           });
         }
       }
@@ -83,12 +133,37 @@ const ProfileSettings = ({ navigation }) => {
   const saveProfileChanges = async () => {
     setIsSaving(true);
     try {
-      const success = await updateUser(profileData);
+      const hasAcademicChanges = 
+        profileData.university !== user.university ||
+        profileData.college !== user.college ||
+        profileData.department !== user.department ||
+        profileData.stage !== user.stage;
+
+      if (hasAcademicChanges && !canEditAcademic) {
+        Alert.alert(
+          t('common.error'),
+          t('settings.academicUpdateRestriction')
+        );
+        setIsSaving(false);
+        return;
+      }
+
+      const updatedData = { ...profileData };
+      if (hasAcademicChanges) {
+        updatedData.lastAcademicUpdate = new Date().toISOString();
+      }
+
+      const success = await updateUser(updatedData);
       
       if (success) {
+        await refreshUser();
+        setProfileData({
+          ...updatedData,
+          lastAcademicUpdate: hasAcademicChanges ? updatedData.lastAcademicUpdate : profileData.lastAcademicUpdate
+        });
         Alert.alert(
           t('common.success'),
-          t('settings.profileUpdated')
+          hasAcademicChanges ? t('settings.academicInfoUpdated') : t('settings.profileUpdated')
         );
         setEditMode(false);
       } else {
@@ -135,6 +210,83 @@ const ProfileSettings = ({ navigation }) => {
     }
   };
 
+  const handleUniversityChange = useCallback((value) => {
+    setProfileData(prev => ({
+      ...prev,
+      university: value,
+      college: '',
+      department: '',
+      stage: '',
+    }));
+  }, []);
+
+  const handleCollegeChange = useCallback((value) => {
+    setProfileData(prev => ({
+      ...prev,
+      college: value,
+      department: '',
+    }));
+  }, []);
+
+  const handleDepartmentChange = useCallback((value) => {
+    setProfileData(prev => ({
+      ...prev,
+      department: value,
+    }));
+  }, []);
+
+  const handleStageChange = useCallback((value) => {
+    setProfileData(prev => ({
+      ...prev,
+      stage: value,
+    }));
+  }, []);
+
+  const handleBioChange = useCallback((text) => {
+    setProfileData(prev => ({ ...prev, bio: text }));
+  }, []);
+
+  const handleFullNameChange = useCallback((text) => {
+    setProfileData(prev => ({ ...prev, fullName: text }));
+  }, []);
+
+  const getUniversityOptions = useCallback(() => {
+    const keys = getUniversityKeys();
+    return keys.map(key => ({
+      key,
+      label: t(`universities.${key}`)
+    }));
+  }, [t]);
+
+  const getCollegeOptions = useCallback(() => {
+    if (!profileData.university) return [];
+    const keys = getCollegesForUniversity(profileData.university);
+    return keys.map(key => ({
+      key,
+      label: t(`colleges.${key}`)
+    }));
+  }, [profileData.university, t]);
+
+  const getStageOptions = useCallback(() => {
+    return [
+      { key: 'firstYear', label: t('stages.firstYear') },
+      { key: 'secondYear', label: t('stages.secondYear') },
+      { key: 'thirdYear', label: t('stages.thirdYear') },
+      { key: 'fourthYear', label: t('stages.fourthYear') },
+      { key: 'fifthYear', label: t('stages.fifthYear') },
+      { key: 'sixthYear', label: t('stages.sixthYear') },
+    ];
+  }, [t]);
+
+  const getDepartmentOptions = useCallback(() => {
+    if (!profileData.university || !profileData.college) return [];
+    const keys = getDepartmentsForCollege(profileData.university, profileData.college);
+    return keys.map(key => ({
+      key,
+      label: t(`departments.${key}`)
+    }));
+  }, [profileData.university, profileData.college, t]);
+
   const GlassCard = ({ children, style }) => (
     <BlurView
       intensity={isDarkMode ? 30 : 50}
@@ -170,8 +322,9 @@ const ProfileSettings = ({ navigation }) => {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         
         <View style={styles.header}>
           <TouchableOpacity
@@ -198,7 +351,10 @@ const ProfileSettings = ({ navigation }) => {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+          nestedScrollEnabled={true}>
 
           <View style={styles.profilePictureContainer}>
             <View style={styles.profilePictureWrapper}>
@@ -247,7 +403,7 @@ const ProfileSettings = ({ navigation }) => {
                     },
                   ]}
                   value={profileData.fullName}
-                  onChangeText={(text) => setProfileData({ ...profileData, fullName: text })}
+                  onChangeText={handleFullNameChange}
                   editable={editMode}
                   placeholderTextColor={theme.textSecondary}
                 />
@@ -277,6 +433,7 @@ const ProfileSettings = ({ navigation }) => {
                   {t('settings.bio')}
                 </Text>
                 <TextInput
+                  ref={bioInputRef}
                   style={[
                     styles.input,
                     styles.bioInput,
@@ -287,12 +444,14 @@ const ProfileSettings = ({ navigation }) => {
                     },
                   ]}
                   value={profileData.bio}
-                  onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
+                  onChangeText={handleBioChange}
                   editable={editMode}
-                  multiline
+                  multiline={true}
                   numberOfLines={4}
                   placeholder={t('settings.bioPlaceholder')}
                   placeholderTextColor={theme.textSecondary}
+                  autoCorrect={false}
+                  scrollEnabled={false}
                 />
               </View>
 
@@ -302,22 +461,48 @@ const ProfileSettings = ({ navigation }) => {
                 {t('settings.academicInfo') || 'Academic Information'}
               </Text>
 
+              {!canEditAcademic && cooldownInfo && (
+                <View style={[styles.cooldownBanner, { 
+                  backgroundColor: isDarkMode ? 'rgba(255, 149, 0, 0.15)' : 'rgba(255, 149, 0, 0.1)',
+                  borderColor: isDarkMode ? 'rgba(255, 149, 0, 0.3)' : 'rgba(255, 149, 0, 0.2)',
+                }]}>
+                  <Ionicons name="time-outline" size={20} color="#FF9500" />
+                  <View style={styles.cooldownTextContainer}>
+                    <Text style={[styles.cooldownTitle, { color: theme.text }]}>
+                      {t('settings.academicCooldown')} {cooldownInfo.remainingDays} {cooldownInfo.remainingDays === 1 ? t('settings.dayRemaining') : t('settings.daysRemaining')}
+                    </Text>
+                    <Text style={[styles.cooldownSubtitle, { color: theme.textSecondary }]}>
+                      {t('settings.lastUpdated')}: {cooldownInfo.lastUpdate}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {canEditAcademic && editMode && (
+                <View style={[styles.cooldownBanner, { 
+                  backgroundColor: isDarkMode ? 'rgba(52, 199, 89, 0.15)' : 'rgba(52, 199, 89, 0.1)',
+                  borderColor: isDarkMode ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)',
+                }]}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#34C759" />
+                  <View style={styles.cooldownTextContainer}>
+                    <Text style={[styles.cooldownTitle, { color: theme.text }]}>
+                      {t('settings.canUpdateNow')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
                   {t('auth.selectUniversity')}
                 </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.textSecondary,
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.01)',
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                    },
-                  ]}
+                <SearchableDropdownNew
+                  items={getUniversityOptions()}
                   value={profileData.university}
-                  editable={false}
-                  placeholderTextColor={theme.textSecondary}
+                  onSelect={handleUniversityChange}
+                  placeholder={t('auth.selectUniversity')}
+                  icon="school-outline"
+                  disabled={!editMode || !canEditAcademic}
                 />
               </View>
 
@@ -325,18 +510,27 @@ const ProfileSettings = ({ navigation }) => {
                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
                   {t('auth.selectCollege')}
                 </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.textSecondary,
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.01)',
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                    },
-                  ]}
+                <SearchableDropdownNew
+                  items={getCollegeOptions()}
                   value={profileData.college}
-                  editable={false}
-                  placeholderTextColor={theme.textSecondary}
+                  onSelect={handleCollegeChange}
+                  placeholder={t('auth.selectCollege')}
+                  icon="library-outline"
+                  disabled={!editMode || !canEditAcademic || !profileData.university}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                  {t('auth.selectDepartment')}
+                </Text>
+                <SearchableDropdownNew
+                  items={getDepartmentOptions()}
+                  value={profileData.department}
+                  onSelect={handleDepartmentChange}
+                  placeholder={t('auth.selectDepartment')}
+                  icon="briefcase-outline"
+                  disabled={!editMode || !canEditAcademic || !profileData.college}
                 />
               </View>
 
@@ -344,18 +538,13 @@ const ProfileSettings = ({ navigation }) => {
                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
                   {t('auth.selectStage')}
                 </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.textSecondary,
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.01)',
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                    },
-                  ]}
+                <SearchableDropdownNew
+                  items={getStageOptions()}
                   value={profileData.stage}
-                  editable={false}
-                  placeholderTextColor={theme.textSecondary}
+                  onSelect={handleStageChange}
+                  placeholder={t('auth.selectStage')}
+                  icon="stats-chart-outline"
+                  disabled={!editMode || !canEditAcademic}
                 />
               </View>
             </View>
@@ -418,7 +607,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(2),
+    paddingTop: Platform.OS === 'ios' ? hp(7) : hp(3.5),
     paddingHorizontal: wp(5),
     paddingBottom: spacing.md,
   },
@@ -541,6 +730,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  cooldownBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  cooldownTextContainer: {
+    flex: 1,
+  },
+  cooldownTitle: {
+    fontSize: responsiveFontSize(14),
+    fontWeight: '600',
+    marginBottom: spacing.xs / 2,
+  },
+  cooldownSubtitle: {
+    fontSize: responsiveFontSize(12),
   },
   actions: {
     flexDirection: 'row',

@@ -19,7 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import LanguageDropdown from '../components/LanguageDropdown';
-import SearchableDropdown from '../components/SearchableDropdown';
+import SearchableDropdown from '../components/SearchableDropdownNew';
+import AnimatedBackground from '../components/AnimatedBackground';
 import { GlassContainer, GlassInput } from '../components/GlassComponents';
 import { getUniversityKeys, getCollegesForUniversity, getDepartmentsForCollege } from '../data/universitiesData';
 import { signUp, getCompleteUserData } from '../../database/auth';
@@ -50,7 +51,6 @@ const SignUp = ({ navigation }) => {
   
   const [nameFocused, setNameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
-  const [ageFocused, setAgeFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
   
@@ -209,11 +209,13 @@ const SignUp = ({ navigation }) => {
           profilePicture: completeUserData.profilePicture || '',
           university: completeUserData.university || '',
           college: completeUserData.major || '',
+          department: completeUserData.department || '',
           stage: completeUserData.year || '',
           postsCount: completeUserData.postsCount || 0,
           followersCount: completeUserData.followersCount || 0,
           followingCount: completeUserData.followingCount || 0,
           isEmailVerified: completeUserData.emailVerification || false,
+          lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
         };
         
         await setUserData(userData);
@@ -266,9 +268,9 @@ const SignUp = ({ navigation }) => {
   const colleges = getAvailableColleges();
 
   const getAvailableDepartments = () => {
-    if (!college) return [];
+    if (!college || !university) return [];
     
-    const departmentKeys = getDepartmentsForCollege(college);
+    const departmentKeys = getDepartmentsForCollege(university, college);
     return departmentKeys.map(key => ({
       key,
       label: t(`departments.${key}`)
@@ -285,6 +287,11 @@ const SignUp = ({ navigation }) => {
     { key: 'fifthYear', label: t('stages.fifthYear') },
     { key: 'sixthYear', label: t('stages.sixthYear') },
   ];
+
+  const ageOptions = Array.from({ length: 28 }, (_, i) => ({
+    key: String(17 + i),
+    label: String(17 + i),
+  }));
 
   const renderInput = (props) => {
     const { icon, placeholder, value, onChangeText, field, keyboardType, secureTextEntry, showToggle } = props;
@@ -360,6 +367,8 @@ const SignUp = ({ navigation }) => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
       
+      <AnimatedBackground particleCount={35} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoidingView}>
@@ -380,10 +389,10 @@ const SignUp = ({ navigation }) => {
             }}>
             
             <View style={styles.headerContainer}>
-              <Text style={[styles.headerText, { fontSize: fontSize(isTabletDevice ? 42 : 32) }]}>
+              <Text style={[styles.headerText, { fontSize: fontSize(isTabletDevice ? 32 : 24) }]}>
                 {t('auth.createAccount')}
               </Text>
-              <Text style={[styles.subHeaderText, { fontSize: fontSize(16) }]}>
+              <Text style={[styles.subHeaderText, { fontSize: fontSize(14) }]}>
                 {t('auth.joinCommunity')}
               </Text>
             </View>
@@ -443,29 +452,14 @@ const SignUp = ({ navigation }) => {
                 </View>
               </GlassInput>
 
-              <GlassInput focused={ageFocused} style={{ marginTop: spacing.md }}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons 
-                    name="calendar-outline" 
-                    size={moderateScale(20)} 
-                    color={ageFocused ? theme.primary : theme.textSecondary} 
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, { 
-                      color: theme.text,
-                      fontSize: fontSize(15),
-                    }]}
-                    placeholder={t('auth.age')}
-                    placeholderTextColor={theme.input.placeholder}
-                    value={age}
-                    onChangeText={setAge}
-                    onFocus={() => setAgeFocused(true)}
-                    onBlur={() => setAgeFocused(false)}
-                    keyboardType="numeric"
-                  />
-                </View>
-              </GlassInput>
+              <SearchableDropdown
+                items={ageOptions}
+                value={age}
+                onSelect={setAge}
+                placeholder={t('auth.age')}
+                icon="calendar-outline"
+                style={{ marginTop: spacing.md }}
+              />
 
               <SearchableDropdown
                 items={universities}
@@ -709,20 +703,20 @@ const styles = StyleSheet.create({
   },
   languageContainer: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? hp(6) : hp(5),
+    top: Platform.OS === 'ios' ? hp(5.5) : hp(4.5),
     right: wp(5),
     zIndex: 1000,
   },
   headerContainer: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     maxWidth: isTablet() ? 700 : '100%',
     alignSelf: 'center',
     width: '100%',
   },
   headerText: {
     fontWeight: 'bold',
-    marginBottom: spacing.sm,
-    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+    letterSpacing: 0.3,
     color: '#FFFFFF',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
