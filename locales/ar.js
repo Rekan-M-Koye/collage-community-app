@@ -111,6 +111,7 @@ export default {
   // Colleges/Departments
   colleges: {
     // Erbil Polytechnic University - Technical Colleges
+    Enformatic: 'الكلية التقنية للمعلوماتية والحاسوب',
     technicalEngineering: 'كلية الهندسة التقنية',
     technicalAdministration: 'كلية الإدارة التقنية',
     technicalHealth: 'كلية التقنيات الصحية والطبية',
@@ -246,6 +247,9 @@ export default {
     biotechnology: 'التقنية الحيوية',
     
     // Computer Science & IT Departments
+    ICTE: 'هندسة تكنولوجيا المعلومات والاتصالات',
+    ISE: 'هندسة نظم المعلومات',
+    AIE: 'هندسة الذكاء الاصطناعي',
     softwareEngineering: 'هندسة البرمجيات',
     artificialIntelligence: 'الذكاء الاصطناعي',
     cybersecurity: 'الأمن السيبراني',
@@ -551,6 +555,7 @@ export default {
     selectDepartment: 'اختر القسم',
     stage: 'المرحلة',
     selectStage: 'اختر المرحلة',
+    public: 'عام',
     tags: 'الوسوم',
     tagsPlaceholder: 'وسم1، وسم2، وسم3',
     tagsHelper: 'افصل الوسوم بفواصل',
@@ -589,6 +594,13 @@ export default {
     resolved: 'محلول',
     unanswered: 'غير مجاب',
     reply: 'رد',
+    report: 'إبلاغ',
+    reportPost: 'الإبلاغ عن المنشور',
+    reportReason: 'سبب الإبلاغ',
+    reportSuccess: 'تم الإبلاغ عن المنشور بنجاح',
+    reportError: 'فشل الإبلاغ عن المنشور',
+    hidden: 'مخفي',
+    hiddenByReports: 'تم إخفاء هذا المنشور بسبب عدة تقارير',
     posts: 'المنشورات',
     global: 'عام',
     myDepartment: 'قسمي',
@@ -596,45 +608,6 @@ export default {
     allStages: 'جميع المراحل',
     noPosts: 'لا توجد منشورات بعد',
     noPostsMessage: 'كن أول من ينشئ منشور!',
-  },
-  
-  // Departments
-  departments: {
-    computer_science: 'علوم الحاسوب',
-    software_engineering: 'هندسة البرمجيات',
-    information_technology: 'تكنولوجيا المعلومات',
-    civil_engineering: 'الهندسة المدنية',
-    electrical_engineering: 'الهندسة الكهربائية',
-    mechanical_engineering: 'الهندسة الميكانيكية',
-    medicine: 'الطب',
-    dentistry: 'طب الأسنان',
-    pharmacy: 'الصيدلة',
-    nursing: 'التمريض',
-    law: 'القانون',
-    business: 'إدارة الأعمال',
-    accounting: 'المحاسبة',
-    economics: 'الاقتصاد',
-    english: 'اللغة الإنجليزية',
-    arabic: 'اللغة العربية',
-    kurdish: 'اللغة الكردية',
-    mathematics: 'الرياضيات',
-    physics: 'الفيزياء',
-    chemistry: 'الكيمياء',
-    biology: 'الأحياء',
-    architecture: 'الهندسة المعمارية',
-    other: 'أخرى',
-  },
-  
-  // Stages
-  stages: {
-    stage_1: 'المرحلة الأولى',
-    stage_2: 'المرحلة الثانية',
-    stage_3: 'المرحلة الثالثة',
-    stage_4: 'المرحلة الرابعة',
-    stage_5: 'المرحلة الخامسة',
-    stage_6: 'المرحلة السادسة',
-    graduate: 'خريج',
-    all: 'جميع المراحل',
   },
   
   // Common

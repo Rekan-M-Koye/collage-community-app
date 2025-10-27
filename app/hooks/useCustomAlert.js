@@ -1,13 +1,35 @@
 import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
 
 export const useCustomAlert = () => {
-  const showAlert = useCallback((title, message, type = 'info') => {
-    Alert.alert(title, message);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    buttons: [],
+  });
+
+  const showAlert = useCallback((config) => {
+    setAlertConfig({
+      visible: true,
+      type: config.type || 'info',
+      title: config.title || '',
+      message: config.message || '',
+      buttons: config.buttons || [],
+    });
+  }, []);
+
+  const hideAlert = useCallback(() => {
+    setAlertConfig(prev => ({
+      ...prev,
+      visible: false,
+    }));
   }, []);
 
   return {
+    alertConfig,
     showAlert,
+    hideAlert,
   };
 };
 

@@ -111,6 +111,7 @@ export default {
   // Colleges/Departments
   colleges: {
     // Erbil Polytechnic University - Technical Colleges
+    Enformatic: 'کۆلێژی تەکنیکی زانیاری و کۆمپیوتەر',
     technicalEngineering: 'کۆلێژی ئەندازیاری تەکنیکی',
     technicalAdministration: 'کۆلێژی بەڕێوەبردنی تەکنیکی',
     technicalHealth: 'کۆلێژی تەندروستی و تەکنیکی پزیشکی',
@@ -246,6 +247,9 @@ export default {
     biotechnology: 'تەکنەلۆجیای ژینگەیی',
     
     // Computer Science & IT Departments
+    ICTE: 'ئەندازیاری تەکنەلۆژیای زانیاری و پەیوەندی',
+    ISE: 'ئەندازیاری سیستەمی زانیاری',
+    AIE: 'ئەندازیاری زیرەکی دەستکرد',
     softwareEngineering: 'ئەندازیاری نەرمەکاڵا',
     artificialIntelligence: 'زیرەکی دەستکرد',
     cybersecurity: 'پاراستنی سایبەری',
@@ -551,6 +555,7 @@ export default {
     selectDepartment: 'بەش هەڵبژێرە',
     stage: 'قۆناغ',
     selectStage: 'قۆناغ هەڵبژێرە',
+    public: 'گشتی',
     tags: 'تاگەکان',
     tagsPlaceholder: 'تاگ١، تاگ٢، تاگ٣',
     tagsHelper: 'تاگەکان بە کۆما جیا بکەرەوە',
@@ -589,6 +594,13 @@ export default {
     resolved: 'چارەسەرکراوە',
     unanswered: 'وەڵام نەدراوە',
     reply: 'وەڵام',
+    report: 'گوزارشت',
+    reportPost: 'گوزارشتکردنی پۆست',
+    reportReason: 'هۆکاری گوزارشتکردن',
+    reportSuccess: 'پۆستەکە بە سەرکەوتوویی گوزارشت کرا',
+    reportError: 'گوزارشتکردنی پۆست سەرکەوتوو نەبوو',
+    hidden: 'شاراوە',
+    hiddenByReports: 'ئەم پۆستە بەهۆی چەند گوزارشتێکەوە شاردراوەتەوە',
     posts: 'پۆستەکان',
     global: 'گشتی',
     myDepartment: 'بەشەکەم',
@@ -596,45 +608,6 @@ export default {
     allStages: 'هەموو قۆناغەکان',
     noPosts: 'هێشتا پۆست نییە',
     noPostsMessage: 'یەکەم کەس بە بۆ دروستکردنی پۆست!',
-  },
-  
-  // Departments
-  departments: {
-    computer_science: 'زانستی کۆمپیوتەر',
-    software_engineering: 'ئەندازیاری نەرمەکاڵا',
-    information_technology: 'تەکنەلۆژیای زانیاری',
-    civil_engineering: 'ئەندازیاری تەلارسازی',
-    electrical_engineering: 'ئەندازیاری کارەبا',
-    mechanical_engineering: 'ئەندازیاری مەکانیک',
-    medicine: 'پزیشکی',
-    dentistry: 'پزیشکی ددان',
-    pharmacy: 'دەرمانسازی',
-    nursing: 'پەرستاری',
-    law: 'یاسا',
-    business: 'بەڕێوەبردنی بازرگانی',
-    accounting: 'ژمێریاری',
-    economics: 'ئابووری',
-    english: 'زمانی ئینگلیزی',
-    arabic: 'زمانی عەرەبی',
-    kurdish: 'زمانی کوردی',
-    mathematics: 'بیرکاری',
-    physics: 'فیزیا',
-    chemistry: 'کیمیا',
-    biology: 'بایۆلۆژی',
-    architecture: 'تەلارسازی',
-    other: 'هیتر',
-  },
-  
-  // Stages
-  stages: {
-    stage_1: 'قۆناغی یەکەم',
-    stage_2: 'قۆناغی دووەم',
-    stage_3: 'قۆناغی سێیەم',
-    stage_4: 'قۆناغی چوارەم',
-    stage_5: 'قۆناغی پێنجەم',
-    stage_6: 'قۆناغی شەشەم',
-    graduate: 'دەرچوو',
-    all: 'هەموو قۆناغەکان',
   },
   
   // Common

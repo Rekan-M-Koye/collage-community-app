@@ -2,6 +2,15 @@ export const universitiesData = {
   erbilPolytechnic: {
     key: 'erbilPolytechnic',
     colleges: {
+      
+      Enformatic : {
+        key: 'Enformatic',
+        departments: [
+          'ICTE',
+          'ISE',
+          'AIE',
+        ]
+      },
       technicalEngineering: {
         key: 'technicalEngineering',
         departments: [

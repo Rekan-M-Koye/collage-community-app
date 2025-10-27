@@ -136,6 +136,8 @@ const CreatePost = ({ navigation, route }) => {
 
       const postData = {
         userId: user.$id,
+        userName: user.fullName,
+        userProfilePicture: user.profilePicture || null,
         postType,
         topic: topic.trim(),
         text: text.trim(),

@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { GlassContainer } from '../components/GlassComponents';
+import AnimatedBackground from '../components/AnimatedBackground';
 import { 
   wp, 
   hp, 
@@ -38,6 +39,8 @@ const Home = () => {
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
+        
+        <AnimatedBackground particleCount={18} />
         
         <View style={styles.content}>
           <GlassContainer 

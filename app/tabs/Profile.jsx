@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassContainer } from '../components/GlassComponents';
+import PostCard from '../components/PostCard';
 import { getCompleteUserData } from '../../database/auth';
+import { getPostsByUser } from '../../database/posts';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
@@ -14,14 +16,42 @@ const Profile = ({ navigation }) => {
   const { user, isLoading, refreshUser } = useUser();
   const [activeTab, setActiveTab] = useState('about');
   const [imageKey, setImageKey] = useState(Date.now());
+  const [userPosts, setUserPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postsError, setPostsError] = useState(null);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       refreshUser();
       setImageKey(Date.now());
+      if (user) {
+        loadUserPosts();
+      }
     });
     return unsubscribe;
-  }, [navigation, refreshUser]);
+  }, [navigation, refreshUser, user]);
+
+  useEffect(() => {
+    if (user && activeTab === 'posts') {
+      loadUserPosts();
+    }
+  }, [user, activeTab]);
+
+  const loadUserPosts = async () => {
+    if (!user?.$id) return;
+    
+    setLoadingPosts(true);
+    setPostsError(null);
+    try {
+      const posts = await getPostsByUser(user.$id, 20, 0);
+      setUserPosts(posts);
+    } catch (error) {
+      console.error('Error loading user posts:', error);
+      setPostsError(error.message);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -79,9 +109,35 @@ const Profile = ({ navigation }) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const getStageKey = (stageValue) => {
+    if (!stageValue) return '';
+    
+    const stageMap = {
+      1: 'firstYear',
+      2: 'secondYear',
+      3: 'thirdYear',
+      4: 'fourthYear',
+      5: 'fifthYear',
+      6: 'sixthYear',
+      'first year': 'firstYear',
+      'second year': 'secondYear',
+      'third year': 'thirdYear',
+      'fourth year': 'fourthYear',
+      'fifth year': 'fifthYear',
+      'sixth year': 'sixthYear',
+    };
+    
+    const normalized = typeof stageValue === 'string' ? stageValue.toLowerCase() : stageValue;
+    return stageMap[normalized] || stageValue;
+  };
+
   const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.fullName || 'User') + '&size=400&background=667eea&color=fff&bold=true';
   
   const avatarUri = user.profilePicture ? user.profilePicture : defaultAvatar;
+  
+  const stageKey = getStageKey(user.stage);
+  const stageTranslation = user.stage ? t(`stages.${stageKey}`) : '';
+  const departmentTranslation = user.department ? t(`departments.${user.department}`) : '';
   
   const userProfile = {
     name: user.fullName || 'User',
@@ -90,8 +146,8 @@ const Profile = ({ navigation }) => {
     avatar: avatarUri,
     university: user.university ? t(`universities.${user.university}`) : '',
     college: user.college ? t(`colleges.${user.college}`) : '',
-    stage: user.stage ? t(`stages.${user.stage}`) : '',
-    department: user.department ? t(`departments.${user.department}`) : '',
+    stage: stageTranslation,
+    department: departmentTranslation,
     stats: {
       posts: user.postsCount || 0,
       followers: user.followersCount || 0,
@@ -165,14 +221,68 @@ const Profile = ({ navigation }) => {
     </View>
   );
 
-  const renderPostsTab = () => (
-    <View style={styles.tabContent}>
-      <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
-        <Ionicons name="document-text-outline" size={moderateScale(40)} color={theme.textSecondary} />
-        <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>{t('profile.noPosts')}</Text>
-      </GlassContainer>
-    </View>
-  );
+  const renderPostsTab = () => {
+    if (loadingPosts) {
+      return (
+        <View style={styles.tabContent}>
+          <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
+              {t('common.loading')}
+            </Text>
+          </GlassContainer>
+        </View>
+      );
+    }
+
+    if (postsError) {
+      return (
+        <View style={styles.tabContent}>
+          <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+            <Ionicons name="alert-circle-outline" size={moderateScale(40)} color={theme.error} />
+            <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
+              {t('common.error')}
+            </Text>
+            <TouchableOpacity onPress={loadUserPosts} style={styles.retryButton}>
+              <Text style={[styles.retryButtonText, { color: theme.primary }]}>{t('common.retry')}</Text>
+            </TouchableOpacity>
+          </GlassContainer>
+        </View>
+      );
+    }
+
+    if (!userPosts || userPosts.length === 0) {
+      return (
+        <View style={styles.tabContent}>
+          <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+            <Ionicons name="document-text-outline" size={moderateScale(40)} color={theme.textSecondary} />
+            <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
+              {t('profile.noPosts')}
+            </Text>
+          </GlassContainer>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.tabContent}>
+        {userPosts.map((post, index) => (
+          <PostCard
+            key={post.$id || index}
+            post={{
+              ...post,
+              userName: user.fullName,
+              userProfilePicture: user.profilePicture,
+            }}
+            onPress={() => navigation.navigate('PostDetails', { postId: post.$id })}
+            onUserPress={() => {}}
+            isOwner={true}
+            showImages={true}
+          />
+        ))}
+      </View>
+    );
+  };
 
   const renderActivityTab = () => (
     <View style={styles.tabContent}>

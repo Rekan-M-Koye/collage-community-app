@@ -29,4 +29,7 @@ i18n.locale = getDeviceLocale();
 i18n.enableFallback = true;
 i18n.defaultLocale = 'en';
 
+// Configure missing translation behavior
+i18n.missingBehavior = 'guess';
+
 export default i18n;

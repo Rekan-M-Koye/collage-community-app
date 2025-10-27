@@ -143,3 +143,39 @@ export const uploadPostImage = async () => {
     throw error;
   }
 };
+
+export const uploadImage = async (imageUri) => {
+  try {
+    const compressedImage = await manipulateAsync(
+      imageUri,
+      [
+        { resize: { width: 1200 } }
+      ],
+      {
+        compress: 0.75,
+        format: SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+
+    if (!compressedImage.base64) {
+      throw new Error('Failed to get base64 data');
+    }
+
+    const uploadResult = await uploadToImgbb(compressedImage.base64);
+    
+    return {
+      success: true,
+      url: uploadResult.url,
+      deleteUrl: uploadResult.deleteUrl,
+      displayUrl: uploadResult.displayUrl,
+      thumbnailUrl: uploadResult.thumbnailUrl,
+    };
+  } catch (error) {
+    console.error('Error in uploadImage:', error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};

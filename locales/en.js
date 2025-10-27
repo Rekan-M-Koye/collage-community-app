@@ -111,6 +111,7 @@ export default {
   // Colleges/Departments
   colleges: {
     // Erbil Polytechnic University - Technical Colleges
+    Enformatic: 'Technical College of Informatics and Computer',
     technicalEngineering: 'Technical Engineering College',
     technicalAdministration: 'Technical Administration College',
     technicalHealth: 'Technical Health and Medical College',
@@ -246,6 +247,9 @@ export default {
     biotechnology: 'Biotechnology',
     
     // Computer Science & IT Departments
+    ICTE: 'Information and Communication Technology Engineering',
+    ISE: 'Information System Engineering',
+    AIE: 'Artificial Intelligence Engineering',
     softwareEngineering: 'Software Engineering',
     artificialIntelligence: 'Artificial Intelligence',
     cybersecurity: 'Cybersecurity',
@@ -552,6 +556,7 @@ export default {
     selectDepartment: 'Select Department',
     stage: 'Stage',
     selectStage: 'Select Stage',
+    public: 'Public',
     tags: 'Tags',
     tagsPlaceholder: 'tag1, tag2, tag3',
     tagsHelper: 'Separate tags with commas',
@@ -590,6 +595,13 @@ export default {
     resolved: 'Resolved',
     unanswered: 'Unanswered',
     reply: 'Reply',
+    report: 'Report',
+    reportPost: 'Report Post',
+    reportReason: 'Reason for reporting',
+    reportSuccess: 'Post reported successfully',
+    reportError: 'Failed to report post',
+    hidden: 'Hidden',
+    hiddenByReports: 'This post has been hidden due to multiple reports',
     posts: 'Posts',
     global: 'Global',
     myDepartment: 'My Department',
@@ -597,45 +609,6 @@ export default {
     allStages: 'All Stages',
     noPosts: 'No Posts Yet',
     noPostsMessage: 'Be the first to create a post!',
-  },
-  
-  // Departments
-  departments: {
-    computer_science: 'Computer Science',
-    software_engineering: 'Software Engineering',
-    information_technology: 'Information Technology',
-    civil_engineering: 'Civil Engineering',
-    electrical_engineering: 'Electrical Engineering',
-    mechanical_engineering: 'Mechanical Engineering',
-    medicine: 'Medicine',
-    dentistry: 'Dentistry',
-    pharmacy: 'Pharmacy',
-    nursing: 'Nursing',
-    law: 'Law',
-    business: 'Business Administration',
-    accounting: 'Accounting',
-    economics: 'Economics',
-    english: 'English Language',
-    arabic: 'Arabic Language',
-    kurdish: 'Kurdish Language',
-    mathematics: 'Mathematics',
-    physics: 'Physics',
-    chemistry: 'Chemistry',
-    biology: 'Biology',
-    architecture: 'Architecture',
-    other: 'Other',
-  },
-  
-  // Stages
-  stages: {
-    stage_1: 'Stage 1',
-    stage_2: 'Stage 2',
-    stage_3: 'Stage 3',
-    stage_4: 'Stage 4',
-    stage_5: 'Stage 5',
-    stage_6: 'Stage 6',
-    graduate: 'Graduate',
-    all: 'All Stages',
   },
   
   // Common
