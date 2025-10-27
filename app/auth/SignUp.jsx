@@ -370,8 +370,9 @@ const SignUp = ({ navigation }) => {
       <AnimatedBackground particleCount={35} />
       
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardAvoidingView}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}

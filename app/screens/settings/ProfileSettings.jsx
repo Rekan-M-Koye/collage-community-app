@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,13 +21,32 @@ import { borderRadius, shadows } from '../../theme/designTokens';
 import { wp, hp, fontSize as responsiveFontSize, spacing } from '../../utils/responsive';
 import { uploadProfilePicture } from '../../../services/imgbbService';
 import SearchableDropdownNew from '../../components/SearchableDropdownNew';
+import CustomAlert from '../../components/CustomAlert';
+import { useCustomAlert } from '../../hooks/useCustomAlert';
 import { getUniversityKeys, getCollegesForUniversity, getDepartmentsForCollege } from '../../data/universitiesData';
 
 const COOLDOWN_DAYS = 30;
 
+const GlassCard = memo(({ children, style, isDarkMode }) => (
+  <BlurView
+    intensity={isDarkMode ? 30 : 50}
+    tint={isDarkMode ? 'dark' : 'light'}
+    style={[
+      styles.glassCard,
+      {
+        backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.7)',
+        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+      },
+      style,
+    ]}>
+    {children}
+  </BlurView>
+));
+
 const ProfileSettings = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user, updateUser, updateProfilePicture, refreshUser } = useUser();
+  const { alertConfig, showAlert, hideAlert } = useCustomAlert();
 
   const bioInputRef = useRef(null);
   
@@ -53,7 +71,7 @@ const ProfileSettings = ({ navigation }) => {
 
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  const checkAcademicCooldown = useCallback(() => {
+  const checkAcademicCooldown = () => {
     if (!profileData.lastAcademicUpdate) {
       setCanEditAcademic(true);
       setCooldownInfo(null);
@@ -78,7 +96,7 @@ const ProfileSettings = ({ navigation }) => {
         lastUpdate: lastUpdate.toLocaleDateString(),
       });
     }
-  }, [profileData.lastAcademicUpdate]);
+  };
 
   useEffect(() => {
     if (!initialLoadDone) {
@@ -88,8 +106,10 @@ const ProfileSettings = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    checkAcademicCooldown();
-  }, [checkAcademicCooldown]);
+    if (initialLoadDone) {
+      checkAcademicCooldown();
+    }
+  }, [profileData.lastAcademicUpdate]);
 
   const loadUserProfile = async () => {
     setIsLoading(true);
@@ -140,10 +160,11 @@ const ProfileSettings = ({ navigation }) => {
         profileData.stage !== user.stage;
 
       if (hasAcademicChanges && !canEditAcademic) {
-        Alert.alert(
-          t('common.error'),
-          t('settings.academicUpdateRestriction')
-        );
+        showAlert({
+          type: 'error',
+          title: t('common.error'),
+          message: t('settings.academicUpdateRestriction'),
+        });
         setIsSaving(false);
         return;
       }
@@ -161,20 +182,22 @@ const ProfileSettings = ({ navigation }) => {
           ...updatedData,
           lastAcademicUpdate: hasAcademicChanges ? updatedData.lastAcademicUpdate : profileData.lastAcademicUpdate
         });
-        Alert.alert(
-          t('common.success'),
-          hasAcademicChanges ? t('settings.academicInfoUpdated') : t('settings.profileUpdated')
-        );
+        showAlert({
+          type: 'success',
+          title: t('common.success'),
+          message: hasAcademicChanges ? t('settings.academicInfoUpdated') : t('settings.profileUpdated'),
+        });
         setEditMode(false);
       } else {
         throw new Error('Update failed');
       }
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert(
-        t('common.error'),
-        t('settings.profileUpdateError')
-      );
+      showAlert({
+        type: 'error',
+        title: t('common.error'),
+        message: t('settings.profileUpdateError'),
+      });
     } finally {
       setIsSaving(false);
     }
@@ -191,26 +214,28 @@ const ProfileSettings = ({ navigation }) => {
         if (success) {
           setProfileData({ ...profileData, profilePicture: result.displayUrl });
           await refreshUser();
-          Alert.alert(
-            t('common.success'),
-            t('settings.profilePictureUploaded')
-          );
+          showAlert({
+            type: 'success',
+            title: t('common.success'),
+            message: t('settings.profilePictureUploaded'),
+          });
         }
       }
     } catch (error) {
       console.error('Error uploading profile picture:', error);
-      Alert.alert(
-        t('common.error'),
-        error.message === 'Permission to access camera roll is required!' 
+      showAlert({
+        type: 'error',
+        title: t('common.error'),
+        message: error.message === 'Permission to access camera roll is required!' 
           ? t('settings.cameraPermissionRequired')
-          : t('settings.profilePictureUploadError')
-      );
+          : t('settings.profilePictureUploadError'),
+      });
     } finally {
       setIsUploadingImage(false);
     }
   };
 
-  const handleUniversityChange = useCallback((value) => {
+  const handleUniversityChange = (value) => {
     setProfileData(prev => ({
       ...prev,
       university: value,
@@ -218,39 +243,39 @@ const ProfileSettings = ({ navigation }) => {
       department: '',
       stage: '',
     }));
-  }, []);
+  };
 
-  const handleCollegeChange = useCallback((value) => {
+  const handleCollegeChange = (value) => {
     setProfileData(prev => ({
       ...prev,
       college: value,
       department: '',
     }));
-  }, []);
+  };
 
-  const handleDepartmentChange = useCallback((value) => {
+  const handleDepartmentChange = (value) => {
     setProfileData(prev => ({
       ...prev,
       department: value,
     }));
-  }, []);
+  };
 
-  const handleStageChange = useCallback((value) => {
+  const handleStageChange = (value) => {
     setProfileData(prev => ({
       ...prev,
       stage: value,
     }));
-  }, []);
+  };
 
-  const handleBioChange = useCallback((text) => {
+  const handleBioChange = (text) => {
     setProfileData(prev => ({ ...prev, bio: text }));
-  }, []);
+  };
 
-  const handleFullNameChange = useCallback((text) => {
+  const handleFullNameChange = (text) => {
     setProfileData(prev => ({ ...prev, fullName: text }));
-  }, []);
+  };
 
-  const getUniversityOptions = useCallback(() => {
+  const universityOptions = useMemo(() => {
     const keys = getUniversityKeys();
     return keys.map(key => ({
       key,
@@ -258,7 +283,7 @@ const ProfileSettings = ({ navigation }) => {
     }));
   }, [t]);
 
-  const getCollegeOptions = useCallback(() => {
+  const collegeOptions = useMemo(() => {
     if (!profileData.university) return [];
     const keys = getCollegesForUniversity(profileData.university);
     return keys.map(key => ({
@@ -267,7 +292,7 @@ const ProfileSettings = ({ navigation }) => {
     }));
   }, [profileData.university, t]);
 
-  const getStageOptions = useCallback(() => {
+  const stageOptions = useMemo(() => {
     return [
       { key: 'firstYear', label: t('stages.firstYear') },
       { key: 'secondYear', label: t('stages.secondYear') },
@@ -278,7 +303,7 @@ const ProfileSettings = ({ navigation }) => {
     ];
   }, [t]);
 
-  const getDepartmentOptions = useCallback(() => {
+  const departmentOptions = useMemo(() => {
     if (!profileData.university || !profileData.college) return [];
     const keys = getDepartmentsForCollege(profileData.university, profileData.college);
     return keys.map(key => ({
@@ -286,22 +311,6 @@ const ProfileSettings = ({ navigation }) => {
       label: t(`departments.${key}`)
     }));
   }, [profileData.university, profileData.college, t]);
-
-  const GlassCard = ({ children, style }) => (
-    <BlurView
-      intensity={isDarkMode ? 30 : 50}
-      tint={isDarkMode ? 'dark' : 'light'}
-      style={[
-        styles.glassCard,
-        {
-          backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.7)',
-          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-        },
-        style,
-      ]}>
-      {children}
-    </BlurView>
-  );
 
   if (isLoading) {
     return (
@@ -313,6 +322,15 @@ const ProfileSettings = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <CustomAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onDismiss={hideAlert}
+      />
+
       <LinearGradient
         colors={isDarkMode
           ? ['rgba(10, 132, 255, 0.15)', 'transparent']
@@ -322,9 +340,9 @@ const ProfileSettings = ({ navigation }) => {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         
         <View style={styles.header}>
           <TouchableOpacity
@@ -387,7 +405,7 @@ const ProfileSettings = ({ navigation }) => {
             </Text>
           </View>
 
-          <GlassCard>
+          <GlassCard isDarkMode={isDarkMode}>
             <View style={styles.profileCard}>
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
@@ -497,7 +515,7 @@ const ProfileSettings = ({ navigation }) => {
                   {t('auth.selectUniversity')}
                 </Text>
                 <SearchableDropdownNew
-                  items={getUniversityOptions()}
+                  items={universityOptions}
                   value={profileData.university}
                   onSelect={handleUniversityChange}
                   placeholder={t('auth.selectUniversity')}
@@ -511,7 +529,7 @@ const ProfileSettings = ({ navigation }) => {
                   {t('auth.selectCollege')}
                 </Text>
                 <SearchableDropdownNew
-                  items={getCollegeOptions()}
+                  items={collegeOptions}
                   value={profileData.college}
                   onSelect={handleCollegeChange}
                   placeholder={t('auth.selectCollege')}
@@ -525,7 +543,7 @@ const ProfileSettings = ({ navigation }) => {
                   {t('auth.selectDepartment')}
                 </Text>
                 <SearchableDropdownNew
-                  items={getDepartmentOptions()}
+                  items={departmentOptions}
                   value={profileData.department}
                   onSelect={handleDepartmentChange}
                   placeholder={t('auth.selectDepartment')}
@@ -539,7 +557,7 @@ const ProfileSettings = ({ navigation }) => {
                   {t('auth.selectStage')}
                 </Text>
                 <SearchableDropdownNew
-                  items={getStageOptions()}
+                  items={stageOptions}
                   value={profileData.stage}
                   onSelect={handleStageChange}
                   placeholder={t('auth.selectStage')}

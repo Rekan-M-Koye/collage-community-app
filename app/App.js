@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Platform, ActivityIndicator, View, Animated } from 'react-native';
 import { AppSettingsProvider, useAppSettings } from './context/AppSettingsContext';
 import { UserProvider } from './context/UserContext';
+import { LanguageProvider } from './context/LanguageContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getCurrentUser } from '../database/auth';
 
@@ -210,13 +211,15 @@ const MainStack = () => {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppSettingsProvider>
-        <UserProvider>
-          <NavigationContainer>
-            <MainStack />
-          </NavigationContainer>
-        </UserProvider>
-      </AppSettingsProvider>
+      <LanguageProvider>
+        <AppSettingsProvider>
+          <UserProvider>
+            <NavigationContainer>
+              <MainStack />
+            </NavigationContainer>
+          </UserProvider>
+        </AppSettingsProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }
