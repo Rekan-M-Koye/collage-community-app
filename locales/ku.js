@@ -433,6 +433,9 @@ export default {
     shareKnowledge: 'هاوبەشکردنی زانیاری',
     emptyTitle: 'پۆستێک دروست بکە',
     emptyMessage: 'پرسیار، تێبینی هاوبەش بکە یان گفتوگۆیەک دەست پێبکە لەگەڵ هاوتەمەنەکانت',
+    details: 'وردەکارییەکانی پۆست',
+    comingSoon: 'بەم زووانە',
+    detailsComingSoon: 'بینینی وردەکارییەکانی پۆست بەردەست دەبێت کاتێک بنکەی زانیاری ئامادە بێت.',
   },
   
   // Lecture Screen
@@ -608,6 +611,24 @@ export default {
     allStages: 'هەموو قۆناغەکان',
     noPosts: 'هێشتا پۆست نییە',
     noPostsMessage: 'یەکەم کەس بە بۆ دروستکردنی پۆست!',
+    replies: 'وەڵامەکان',
+    repliesCount: '{count} وەڵام',
+    noReplies: 'هێشتا وەڵام نییە',
+    beFirstToReply: 'یەکەم کەس بە بۆ وەڵامدانەوە!',
+    writeReply: 'وەڵامەکەت بنووسە...',
+    addReply: 'زیادکردنی وەڵام',
+    replyAdded: 'وەڵام بە سەرکەوتوویی زیادکرا!',
+    replyError: 'زیادکردنی وەڵام سەرکەوتوو نەبوو',
+    replyDeleted: 'وەڵام بە سەرکەوتوویی سڕایەوە!',
+    deleteReply: 'سڕینەوەی وەڵام',
+    editReply: 'دەستکاریکردنی وەڵام',
+    replyUpdated: 'وەڵام بە سەرکەوتوویی نوێکرایەوە!',
+    accepted: 'وەرگیراوە',
+    markAsAccepted: 'نیشانکردن وەک وەرگیراو',
+    unmarkAsAccepted: 'لابردنی نیشانەی وەرگیراو',
+    bestAnswer: 'باشترین وەڵام',
+    alreadyUpvoted: 'تۆ پێشتر دەنگت بەرز کردووەتەوە بۆ ئەم وەڵامە',
+    alreadyDownvoted: 'تۆ پێشتر دەنگت نزم کردووەتەوە بۆ ئەم وەڵامە',
   },
   
   // Common
@@ -628,5 +649,6 @@ export default {
     noResults: 'هیچ ئەنجامێک نەدۆزرایەوە',
     networkError: 'هەڵەی تۆڕ. تکایە پەیوەندی ئینتەرنێتەکەت پشکنین بکەرەوە.',
     optional: '(ئارەزوومەندانە)',
+    hide: 'شاردنەوە',
   },
 };

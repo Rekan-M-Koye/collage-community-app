@@ -300,11 +300,11 @@ const PostCard = ({
 
           <TouchableOpacity 
             style={styles.actionButton}
+            onPress={onReply}
             activeOpacity={0.7}
-            disabled
           >
-            <Ionicons name="chatbubble-outline" size={20} color={theme.textTertiary} />
-            <Text style={[styles.actionText, { color: theme.textTertiary }]}>
+            <Ionicons name="chatbubble-outline" size={20} color={theme.textSecondary} />
+            <Text style={[styles.actionText, { color: theme.textSecondary }]}>
               {t('post.reply')} ({post.replyCount || 0})
             </Text>
           </TouchableOpacity>

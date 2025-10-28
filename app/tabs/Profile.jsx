@@ -274,7 +274,8 @@ const Profile = ({ navigation }) => {
               userName: user.fullName,
               userProfilePicture: user.profilePicture,
             }}
-            onPress={() => navigation.navigate('PostDetails', { postId: post.$id })}
+            onPress={() => navigation.navigate('PostDetails', { post })}
+            onReply={() => navigation.navigate('PostDetails', { post })}
             onUserPress={() => {}}
             isOwner={true}
             showImages={true}

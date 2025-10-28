@@ -433,6 +433,9 @@ export default {
     shareKnowledge: 'مشاركة المعرفة',
     emptyTitle: 'إنشاء منشور',
     emptyMessage: 'شارك الأسئلة أو الملاحظات أو ابدأ نقاشاً مع أقرانك',
+    details: 'تفاصيل المنشور',
+    comingSoon: 'قريباً',
+    detailsComingSoon: 'سيكون عرض تفاصيل المنشور متاحاً بمجرد أن تكون قاعدة البيانات جاهزة.',
   },
   
   // Lecture Screen
@@ -608,6 +611,24 @@ export default {
     allStages: 'جميع المراحل',
     noPosts: 'لا توجد منشورات بعد',
     noPostsMessage: 'كن أول من ينشئ منشور!',
+    replies: 'الردود',
+    repliesCount: '{count} ردود',
+    noReplies: 'لا توجد ردود بعد',
+    beFirstToReply: 'كن أول من يرد!',
+    writeReply: 'اكتب ردك...',
+    addReply: 'إضافة رد',
+    replyAdded: 'تم إضافة الرد بنجاح!',
+    replyError: 'فشل إضافة الرد',
+    replyDeleted: 'تم حذف الرد بنجاح!',
+    deleteReply: 'حذف الرد',
+    editReply: 'تعديل الرد',
+    replyUpdated: 'تم تحديث الرد بنجاح!',
+    accepted: 'مقبول',
+    markAsAccepted: 'وضع علامة كمقبول',
+    unmarkAsAccepted: 'إزالة علامة المقبول',
+    bestAnswer: 'أفضل إجابة',
+    alreadyUpvoted: 'لقد صوت بالفعل لصالح هذا الرد',
+    alreadyDownvoted: 'لقد صوت بالفعل ضد هذا الرد',
   },
   
   // Common
@@ -628,5 +649,6 @@ export default {
     noResults: 'لا توجد نتائج',
     networkError: 'خطأ في الشبكة. تحقق من اتصالك بالإنترنت.',
     optional: '(اختياري)',
+    hide: 'إخفاء',
   },
 };

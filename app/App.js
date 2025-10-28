@@ -26,6 +26,7 @@ import ProfileSettings from './screens/settings/ProfileSettings';
 import PersonalizationSettings from './screens/settings/PersonalizationSettings';
 import NotificationSettings from './screens/settings/NotificationSettings';
 import AccountSettings from './screens/settings/AccountSettings';
+import PostDetails from './screens/PostDetails';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -202,6 +203,11 @@ const MainStack = () => {
       <Stack.Screen 
         name="ChangePassword" 
         component={ChangePassword}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="PostDetails" 
+        component={PostDetails}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

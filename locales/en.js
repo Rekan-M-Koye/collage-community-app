@@ -434,6 +434,9 @@ export default {
     shareKnowledge: 'Share Knowledge',
     emptyTitle: 'Create a Post',
     emptyMessage: 'Share questions, notes, or start a discussion with your peers',
+    details: 'Post Details',
+    comingSoon: 'Coming Soon',
+    detailsComingSoon: 'Post details view will be available once the database is ready.',
   },
   
   // Lecture Screen
@@ -609,6 +612,24 @@ export default {
     allStages: 'All Stages',
     noPosts: 'No Posts Yet',
     noPostsMessage: 'Be the first to create a post!',
+    replies: 'Replies',
+    repliesCount: '{count} Replies',
+    noReplies: 'No replies yet',
+    beFirstToReply: 'Be the first to reply!',
+    writeReply: 'Write your reply...',
+    addReply: 'Add Reply',
+    replyAdded: 'Reply added successfully!',
+    replyError: 'Failed to add reply',
+    replyDeleted: 'Reply deleted successfully!',
+    deleteReply: 'Delete Reply',
+    editReply: 'Edit Reply',
+    replyUpdated: 'Reply updated successfully!',
+    accepted: 'Accepted',
+    markAsAccepted: 'Mark as Accepted',
+    unmarkAsAccepted: 'Unmark as Accepted',
+    bestAnswer: 'Best Answer',
+    alreadyUpvoted: 'You already upvoted this reply',
+    alreadyDownvoted: 'You already downvoted this reply',
   },
   
   // Common
@@ -629,5 +650,6 @@ export default {
     noResults: 'No results found',
     networkError: 'Network error. Please check your connection.',
     optional: '(optional)',
+    hide: 'Hide',
   },
 };

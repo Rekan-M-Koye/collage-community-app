@@ -40,7 +40,7 @@ export const getRepliesByPost = async (postId, limit = 50, offset = 0) => {
             config.repliesCollectionId,
             [
                 Query.equal('postId', postId),
-                Query.orderAsc('$createdAt'),
+                Query.orderDesc('upCount'),
                 Query.limit(limit),
                 Query.offset(offset)
             ]
