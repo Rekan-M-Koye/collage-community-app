@@ -414,6 +414,9 @@ export default {
     popularTopics: 'المواضيع الشائعة',
     emptyTitle: 'مرحباً بك',
     emptyMessage: 'ستظهر منشوراتك هنا بمجرد البدء في التواصل مع مجتمع كليتك',
+    departmentFeedEmpty: 'لا توجد منشورات من قسمك حتى الآن. كن أول من يشارك!',
+    majorFeedEmpty: 'لا توجد منشورات من تخصصك حتى الآن. ابدأ المحادثة!',
+    publicFeedEmpty: 'لا توجد منشورات عامة حتى الآن. شارك شيئاً مع الجميع!',
   },
   
   // Chats Screen
@@ -462,6 +465,8 @@ export default {
     activity: 'النشاط',
     followers: 'المتابعون',
     following: 'المتابَعون',
+    follow: 'متابعة',
+    unfollow: 'إلغاء المتابعة',
     noSavedPosts: 'لا توجد منشورات محفوظة بعد',
     noTaggedPosts: 'لا توجد منشورات موسومة بعد',
     noPosts: 'لا توجد منشورات بعد',
@@ -632,6 +637,37 @@ export default {
     alreadyDownvoted: 'لقد صوت بالفعل ضد هذا الرد',
   },
   
+  // Search
+  search: {
+    placeholder: 'البحث عن مستخدمين، منشورات...',
+    searching: 'جاري البحث...',
+    noResults: 'لا توجد نتائج',
+    users: 'المستخدمون',
+    posts: 'المنشورات',
+  },
+
+  // Feed
+  feed: {
+    department: 'القسم',
+    major: 'التخصص',
+    public: 'عام',
+    noPosts: 'لا توجد منشورات بعد',
+    loadingPosts: 'جاري تحميل المنشورات...',
+  },
+
+  // Filter
+  filter: {
+    selectStage: 'اختر المرحلة',
+    allStages: 'جميع المراحل',
+    stage1: 'المرحلة الأولى',
+    stage2: 'المرحلة الثانية',
+    stage3: 'المرحلة الثالثة',
+    stage4: 'المرحلة الرابعة',
+    stage5: 'المرحلة الخامسة',
+    stage6: 'المرحلة السادسة',
+    graduate: 'خريج',
+  },
+
   // Common
   common: {
     save: 'حفظ',
@@ -651,5 +687,11 @@ export default {
     networkError: 'خطأ في الشبكة. تحقق من اتصالك بالإنترنت.',
     optional: '(اختياري)',
     hide: 'إخفاء',
+  },
+
+  error: {
+    title: 'خطأ',
+    noInternet: 'لا يوجد اتصال بالإنترنت',
+    tryAgain: 'يرجى المحاولة مرة أخرى',
   },
 };

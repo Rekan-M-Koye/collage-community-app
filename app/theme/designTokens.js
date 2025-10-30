@@ -8,7 +8,8 @@ export const lightTheme = {
   background: '#F2F2F7',
   backgroundSecondary: '#FFFFFF',
   
-  text: '#000000',
+  text: '#1C1C1E',
+  subText: '#6B7280',
   textSecondary: '#8E8E93',
   textTertiary: '#C7C7CC',
   
@@ -21,21 +22,21 @@ export const lightTheme = {
   gradientLight: ['rgba(0, 122, 255, 0.1)', 'rgba(88, 86, 214, 0.1)'],
   
   glass: {
-    background: 'rgba(248, 250, 255, 0.85)',
-    border: 'rgba(200, 210, 225, 0.4)',
+    background: 'rgba(255, 255, 255, 0.9)',
+    border: 'rgba(0, 0, 0, 0.08)',
     tint: 'light',
     intensity: 20,
   },
   
   card: {
-    background: 'rgba(255, 255, 255, 0.95)',
-    border: 'rgba(200, 210, 225, 0.3)',
+    background: 'rgba(255, 255, 255, 0.98)',
+    border: 'rgba(0, 0, 0, 0.06)',
   },
   
   input: {
     background: 'rgba(255, 255, 255, 0.95)',
     border: 'rgba(0, 0, 0, 0.08)',
-    placeholder: '#8E8E93',
+    placeholder: '#9CA3AF',
   },
   
   overlay: 'rgba(0, 0, 0, 0.4)',
@@ -52,6 +53,7 @@ export const darkTheme = {
   backgroundSecondary: '#1C1C1E',
   
   text: '#FFFFFF',
+  subText: '#9CA3AF',
   textSecondary: '#8E8E93',
   textTertiary: '#48484A',
   

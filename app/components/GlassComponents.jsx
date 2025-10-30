@@ -19,7 +19,7 @@ export const GlassContainer = ({
   const glassBackground = theme.glass?.background || (
     isDarkMode 
       ? (isAndroid ? 'rgba(28, 28, 30, 0.92)' : 'rgba(28, 28, 30, 0.6)') 
-      : (isAndroid ? 'rgba(240, 245, 255, 0.75)' : 'rgba(255, 255, 255, 0.6)')
+      : (isAndroid ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.85)')
   );
   const glassIntensity = intensity || (isAndroid ? 80 : 25);
   const glassTint = theme.glass?.tint || (isDarkMode ? 'dark' : 'light');

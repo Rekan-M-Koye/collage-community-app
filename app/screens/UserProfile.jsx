@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,28 +7,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import PostCard from '../components/PostCard';
-import { getCompleteUserData } from '../../database/auth';
-import { getPostsByUser, togglePostLike, markQuestionAsResolved } from '../../database/posts';
+import { getPostsByUser, togglePostLike } from '../../database/posts';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
-const Profile = ({ navigation }) => {
+const UserProfile = ({ route, navigation }) => {
+  const { userId, userData } = route.params;
   const { t, theme, isDarkMode } = useAppSettings();
-  const { user, isLoading, refreshUser } = useUser();
+  const { user: currentUser } = useUser();
   const [activeTab, setActiveTab] = useState('about');
-  const [imageKey, setImageKey] = useState(Date.now());
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState(null);
   const [postsLoaded, setPostsLoaded] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const loadUserPosts = useCallback(async () => {
-    if (!user?.$id) return;
+    if (!userId) return;
     
     setLoadingPosts(true);
     setPostsError(null);
     try {
-      const posts = await getPostsByUser(user.$id, 20, 0);
+      const posts = await getPostsByUser(userId, 20, 0);
       setUserPosts(posts);
       setPostsLoaded(true);
     } catch (error) {
@@ -37,34 +38,39 @@ const Profile = ({ navigation }) => {
     } finally {
       setLoadingPosts(false);
     }
-  }, [user?.$id]);
+  }, [userId]);
 
   useEffect(() => {
-    if (user?.$id && !postsLoaded) {
+    if (userId && !postsLoaded) {
       loadUserPosts();
     }
-  }, [user?.$id, loadUserPosts, postsLoaded]);
+  }, [userId, loadUserPosts, postsLoaded]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      refreshUser();
-      setImageKey(Date.now());
-      setPostsLoaded(false);
-    });
-    return unsubscribe;
-  }, [navigation, refreshUser]);
-
-  useEffect(() => {
-    if (activeTab === 'posts' && !postsLoaded && user?.$id) {
+    if (activeTab === 'posts' && !postsLoaded && userId) {
       loadUserPosts();
     }
-  }, [activeTab, postsLoaded, user?.$id, loadUserPosts]);
+  }, [activeTab, postsLoaded, userId, loadUserPosts]);
+
+  const handleFollowToggle = async () => {
+    if (followLoading) return;
+    
+    setFollowLoading(true);
+    try {
+      setIsFollowing(!isFollowing);
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      setIsFollowing(!isFollowing);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const handleLike = async (postId) => {
-    if (!user?.$id) return;
+    if (!currentUser?.$id) return;
     
     try {
-      const result = await togglePostLike(postId, user.$id);
+      const result = await togglePostLike(postId, currentUser.$id);
       
       setUserPosts(prevPosts => 
         prevPosts.map(post => 
@@ -72,8 +78,8 @@ const Profile = ({ navigation }) => {
             ? { 
                 ...post, 
                 likedBy: result.isLiked 
-                  ? [...(post.likedBy || []), user.$id]
-                  : (post.likedBy || []).filter(id => id !== user.$id),
+                  ? [...(post.likedBy || []), currentUser.$id]
+                  : (post.likedBy || []).filter(id => id !== currentUser.$id),
                 likeCount: result.likeCount 
               }
             : post
@@ -82,78 +88,6 @@ const Profile = ({ navigation }) => {
     } catch (error) {
       console.error('Error toggling like:', error);
     }
-  };
-
-  const handleMarkResolved = async (postId) => {
-    try {
-      await markQuestionAsResolved(postId);
-      
-      setUserPosts(prevPosts => 
-        prevPosts.map(post => 
-          post.$id === postId 
-            ? { ...post, isResolved: true }
-            : post
-        )
-      );
-    } catch (error) {
-      console.error('Error marking as resolved:', error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing.md }]}>
-            {t('common.loading')}
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (!user) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <LinearGradient 
-          colors={isDarkMode ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#e3f2fd', '#bbdefb', '#90caf9']} 
-          style={styles.gradient}
-        >
-          <View style={styles.loadingContainer}>
-            <GlassContainer borderRadius={borderRadius.xl} style={styles.notSignedInCard}>
-              <Ionicons name="person-circle-outline" size={moderateScale(60)} color={theme.primary} />
-              <Text style={[styles.notSignedInTitle, { color: theme.text, marginTop: spacing.md }]}>
-                {t('profile.notSignedIn') || 'Not Signed In'}
-              </Text>
-              <Text style={[styles.notSignedInText, { color: theme.textSecondary, marginTop: spacing.xs }]}>
-                {t('profile.pleaseSignIn') || 'Please sign in to view your profile'}
-              </Text>
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('SignIn')}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={theme.gradient}
-                  style={styles.signInButton}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.signInButtonText}>{t('auth.signIn')}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </GlassContainer>
-          </View>
-        </LinearGradient>
-      </View>
-    );
-  }
-
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   const getStageKey = (stageValue) => {
@@ -178,27 +112,40 @@ const Profile = ({ navigation }) => {
     return stageMap[normalized] || stageValue;
   };
 
-  const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.fullName || 'User') + '&size=400&background=667eea&color=fff&bold=true';
+  if (!userData) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing.md }]}>
+            {t('common.loading')}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.fullName || 'User') + '&size=400&background=667eea&color=fff&bold=true';
+  const avatarUri = userData.profilePicture ? userData.profilePicture : defaultAvatar;
   
-  const avatarUri = user.profilePicture ? user.profilePicture : defaultAvatar;
-  
-  const stageKey = getStageKey(user.stage);
-  const stageTranslation = user.stage ? t(`stages.${stageKey}`) : '';
-  const departmentTranslation = user.department ? t(`departments.${user.department}`) : '';
+  const stageKey = getStageKey(userData.stage);
+  const stageTranslation = userData.stage ? t(`stages.${stageKey}`) : '';
+  const departmentTranslation = userData.department ? t(`departments.${userData.department}`) : '';
   
   const userProfile = {
-    name: user.fullName || 'User',
-    email: user.email || '',
-    bio: user.bio || t('profile.defaultBio'),
+    name: userData.fullName || 'User',
+    email: userData.email || '',
+    bio: userData.bio || t('profile.defaultBio'),
     avatar: avatarUri,
-    university: user.university ? t(`universities.${user.university}`) : '',
-    college: user.college ? t(`colleges.${user.college}`) : '',
+    university: userData.university ? t(`universities.${userData.university}`) : '',
+    college: userData.college ? t(`colleges.${userData.college}`) : '',
     stage: stageTranslation,
     department: departmentTranslation,
     stats: {
-      posts: userPosts.length || user.postsCount || 0,
-      followers: user.followersCount || 0,
-      following: user.followingCount || 0
+      posts: userPosts.length || userData.postsCount || 0,
+      followers: userData.followersCount || 0,
+      following: userData.followingCount || 0
     }
   };
 
@@ -318,15 +265,14 @@ const Profile = ({ navigation }) => {
             key={post.$id || index}
             post={{
               ...post,
-              userName: user.fullName,
-              userProfilePicture: user.profilePicture,
+              userName: userData.fullName,
+              userProfilePicture: userData.profilePicture,
             }}
             onReply={() => navigation.navigate('PostDetails', { post })}
             onLike={() => handleLike(post.$id)}
-            onMarkResolved={() => handleMarkResolved(post.$id)}
             onUserPress={() => {}}
-            isOwner={true}
-            isLiked={post.likedBy?.includes(user.$id)}
+            isOwner={false}
+            isLiked={post.likedBy?.includes(currentUser?.$id)}
             showImages={true}
           />
         ))}
@@ -350,24 +296,55 @@ const Profile = ({ navigation }) => {
       <LinearGradient colors={isDarkMode ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#e3f2fd', '#bbdefb', '#90caf9']} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.profileHeader}>
-            <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
-              <GlassContainer borderRadius={borderRadius.round} style={styles.settingsButtonInner}>
-                <Ionicons name="settings-outline" size={moderateScale(24)} color="#FFFFFF" />
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+              <GlassContainer borderRadius={borderRadius.round} style={styles.backButtonInner}>
+                <Ionicons name="arrow-back" size={moderateScale(24)} color="#FFFFFF" />
               </GlassContainer>
             </TouchableOpacity>
+            
             <View style={styles.avatarContainer}>
               <LinearGradient colors={theme.gradient} style={styles.avatarBorder} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={[styles.avatarInner, { backgroundColor: theme.background }]}>
                   <Image 
                     source={{ uri: userProfile.avatar, cache: 'reload' }} 
                     style={styles.avatar}
-                    key={`${userProfile.avatar}-${imageKey}`}
                   />
                 </View>
               </LinearGradient>
             </View>
+            
             <Text style={[styles.name, { fontSize: fontSize(22), color: '#FFFFFF' }]}>{userProfile.name}</Text>
             {userProfile.bio && <Text style={[styles.bio, { fontSize: fontSize(13), color: 'rgba(255,255,255,0.8)' }]} numberOfLines={2}>{userProfile.bio}</Text>}
+            
+            <TouchableOpacity 
+              onPress={handleFollowToggle} 
+              activeOpacity={0.8}
+              disabled={followLoading}
+              style={styles.followButtonContainer}
+            >
+              <LinearGradient
+                colors={isFollowing ? ['#64748b', '#475569'] : theme.gradient}
+                style={styles.followButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {followLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={isFollowing ? 'person-remove-outline' : 'person-add-outline'} 
+                      size={moderateScale(18)} 
+                      color="#FFFFFF" 
+                    />
+                    <Text style={[styles.followButtonText, { fontSize: fontSize(14) }]}>
+                      {isFollowing ? t('profile.unfollow') : t('profile.follow')}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+            
             <View style={[styles.statsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)' }]}>
               <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.posts}</Text>
@@ -385,6 +362,7 @@ const Profile = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
+          
           <View style={styles.tabsSection}>
             <View style={[styles.tabsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)' }]}>
               <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('about')} activeOpacity={0.7}>
@@ -392,7 +370,7 @@ const Profile = ({ navigation }) => {
                 {activeTab === 'about' && <LinearGradient colors={theme.gradient} style={styles.tabIndicator} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />}
               </TouchableOpacity>
               <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('posts')} activeOpacity={0.7}>
-                <Text style={[styles.tabText, { fontSize: fontSize(13), color: activeTab === 'posts' ? theme.primary : theme.textSecondary, fontWeight: activeTab === 'posts' ? '700' : '500' }]}>{t('profile.myPosts')}</Text>
+                <Text style={[styles.tabText, { fontSize: fontSize(13), color: activeTab === 'posts' ? theme.primary : theme.textSecondary, fontWeight: activeTab === 'posts' ? '700' : '500' }]}>{t('profile.posts')}</Text>
                 {activeTab === 'posts' && <LinearGradient colors={theme.gradient} style={styles.tabIndicator} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />}
               </TouchableOpacity>
               <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('activity')} activeOpacity={0.7}>
@@ -422,11 +400,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize(16),
     fontWeight: '500',
   },
-  errorText: { 
-    fontSize: fontSize(18), 
-    fontWeight: '600',
-    textAlign: 'center',
-  },
   retryButton: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -437,45 +410,40 @@ const styles = StyleSheet.create({
     fontSize: fontSize(16),
     fontWeight: '600',
   },
-  notSignedInCard: {
-    padding: spacing.xl,
-    alignItems: 'center',
-    marginHorizontal: wp(8),
-    maxWidth: wp(85),
-  },
-  notSignedInTitle: {
-    fontSize: fontSize(18),
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  notSignedInText: {
-    fontSize: fontSize(14),
-    textAlign: 'center',
-    lineHeight: fontSize(20),
-  },
-  signInButton: {
-    paddingHorizontal: spacing.xl * 1.5,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginTop: spacing.lg,
-  },
-  signInButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize(15),
-    fontWeight: '700',
-  },
   gradient: { flex: 1 }, 
   scrollView: { flex: 1 }, 
   scrollContent: { paddingTop: Platform.OS === 'ios' ? hp(5) : hp(3), paddingBottom: hp(10) }, 
   profileHeader: { alignItems: 'center', paddingHorizontal: wp(5), marginBottom: spacing.md, position: 'relative' }, 
-  settingsButton: { position: 'absolute', top: spacing.md, right: wp(5), zIndex: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }, 
-  settingsButtonInner: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
+  backButton: { position: 'absolute', top: spacing.md, left: wp(5), zIndex: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }, 
+  backButtonInner: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
   avatarContainer: { marginBottom: spacing.sm }, 
   avatarBorder: { width: moderateScale(110), height: moderateScale(110), borderRadius: moderateScale(55), padding: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }, 
   avatarInner: { width: moderateScale(104), height: moderateScale(104), borderRadius: moderateScale(52), padding: 3 }, 
   avatar: { width: moderateScale(98), height: moderateScale(98), borderRadius: moderateScale(49) }, 
   name: { fontWeight: '700', marginBottom: spacing.xs / 2, textAlign: 'center', textShadowColor: 'rgba(0, 0, 0, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }, 
   bio: { textAlign: 'center', marginBottom: spacing.md, lineHeight: fontSize(18), paddingHorizontal: wp(5) }, 
+  followButtonContainer: {
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  followButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl * 1.5,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+    minWidth: wp(35),
+  },
+  followButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   statsContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -494,6 +462,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     padding: 3, 
     marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
   }, 
   tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, position: 'relative' }, 
@@ -517,4 +486,4 @@ const styles = StyleSheet.create({
   emptyText: { fontWeight: '500', textAlign: 'center' },
 });
 
-export default Profile;
+export default UserProfile;

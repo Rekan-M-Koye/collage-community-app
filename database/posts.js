@@ -1,5 +1,6 @@
 import { databases, storage, config } from './config';
 import { ID, Query } from 'appwrite';
+import { handleNetworkError } from '../app/utils/networkErrorHandler';
 
 export const createPost = async (postData) => {
     try {
@@ -33,15 +34,15 @@ export const getPost = async (postId) => {
 export const getPosts = async (filters = {}, limit = 20, offset = 0) => {
     try {
         const queries = [
-            Query.orderDesc('$createdAt'),
             Query.limit(limit),
-            Query.offset(offset)
+            Query.offset(offset),
+            Query.orderDesc('$createdAt')
         ];
 
         if (filters.department) {
             queries.push(Query.equal('department', filters.department));
         }
-        if (filters.stage) {
+        if (filters.stage && filters.stage !== 'all') {
             queries.push(Query.equal('stage', filters.stage));
         }
         if (filters.postType) {
@@ -56,9 +57,64 @@ export const getPosts = async (filters = {}, limit = 20, offset = 0) => {
             config.postsCollectionId,
             queries
         );
+        
         return posts.documents;
     } catch (error) {
-        console.error('Get posts error:', error);
+        const errorInfo = handleNetworkError(error);
+        console.error('Get posts error:', errorInfo.message);
+        throw error;
+    }
+};
+
+export const getPostsByDepartments = async (departments = [], stage = 'all', limit = 20, offset = 0) => {
+    try {
+        if (!departments || departments.length === 0) {
+            return [];
+        }
+
+        const queries = [
+            Query.equal('department', departments),
+            Query.limit(limit),
+            Query.offset(offset),
+            Query.orderDesc('$createdAt')
+        ];
+
+        if (stage && stage !== 'all') {
+            queries.push(Query.equal('stage', stage));
+        }
+
+        const posts = await databases.listDocuments(
+            config.databaseId,
+            config.postsCollectionId,
+            queries
+        );
+        
+        return posts.documents;
+    } catch (error) {
+        const errorInfo = handleNetworkError(error);
+        console.error('Get posts by departments error:', errorInfo.message);
+        throw error;
+    }
+};
+
+export const getAllPublicPosts = async (limit = 20, offset = 0) => {
+    try {
+        const queries = [
+            Query.limit(limit),
+            Query.offset(offset),
+            Query.orderDesc('$createdAt')
+        ];
+
+        const posts = await databases.listDocuments(
+            config.databaseId,
+            config.postsCollectionId,
+            queries
+        );
+        
+        return posts.documents;
+    } catch (error) {
+        const errorInfo = handleNetworkError(error);
+        console.error('Get all public posts error:', errorInfo.message);
         throw error;
     }
 };
@@ -71,32 +127,39 @@ export const getPostsByUser = async (userId, limit = 20, offset = 0) => {
     return getPosts({ userId }, limit, offset);
 };
 
-export const searchPosts = async (searchQuery, filters = {}, limit = 20) => {
+export const searchPosts = async (searchQuery, userDepartment = null, userMajor = null, limit = 20) => {
     try {
-        const queries = [
-            Query.search('text', searchQuery),
-            Query.limit(limit)
-        ];
+        if (!searchQuery || searchQuery.trim().length === 0) {
+            return [];
+        }
 
-        if (filters.department) {
-            queries.push(Query.equal('department', filters.department));
-        }
-        if (filters.stage) {
-            queries.push(Query.equal('stage', filters.stage));
-        }
-        if (filters.postType) {
-            queries.push(Query.equal('postType', filters.postType));
-        }
+        const queries = [
+            Query.limit(500),
+            Query.orderDesc('$createdAt')
+        ];
 
         const posts = await databases.listDocuments(
             config.databaseId,
             config.postsCollectionId,
             queries
         );
-        return posts.documents;
+        
+        const searchLower = searchQuery.toLowerCase();
+        const filtered = posts.documents.filter(post => {
+            const matchesSearch = 
+                post.title?.toLowerCase().includes(searchLower) ||
+                post.topic?.toLowerCase().includes(searchLower) ||
+                post.content?.toLowerCase().includes(searchLower) ||
+                post.text?.toLowerCase().includes(searchLower) ||
+                post.description?.toLowerCase().includes(searchLower) ||
+                post.userName?.toLowerCase().includes(searchLower);
+            
+            return matchesSearch;
+        }).slice(0, limit);
+        
+        return filtered;
     } catch (error) {
-        console.error('Search posts error:', error);
-        throw error;
+        return [];
     }
 };
 
@@ -130,7 +193,6 @@ export const deletePost = async (postId, imageDeleteUrls = []) => {
 
         if (imageDeleteUrls && imageDeleteUrls.length > 0) {
             const { deleteMultipleImages } = require('../services/imgbbService');
-            console.log('Deleting images from imgBB:', imageDeleteUrls.length);
             await deleteMultipleImages(imageDeleteUrls);
         }
         

@@ -231,15 +231,20 @@ const PostCard = ({
   };
 
   return (
-    <View 
-      style={[
-        styles.card, 
-        { 
-          backgroundColor: theme.card || theme.cardBackground,
-          borderColor: theme.border,
-        }
-      ]}
+    <TouchableOpacity 
+      onPress={onPress}
+      activeOpacity={0.95}
+      disabled={!onPress}
     >
+      <View 
+        style={[
+          styles.card, 
+          { 
+            backgroundColor: theme.card || theme.cardBackground,
+            borderColor: theme.border,
+          }
+        ]}
+      >
       <View style={styles.header}>
         <TouchableOpacity onPress={onUserPress} activeOpacity={0.8}>
           <Image 
@@ -491,6 +496,7 @@ const PostCard = ({
         </View>
       </Modal>
     </View>
+    </TouchableOpacity>
   );
 };
 

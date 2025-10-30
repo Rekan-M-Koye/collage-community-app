@@ -414,6 +414,9 @@ export default {
     popularTopics: 'بابەتە بەناوبانگەکان',
     emptyTitle: 'بەخێربێیت',
     emptyMessage: 'پۆستەکانت لێرە دەردەکەون کاتێک دەست دەکەیت بە پەیوەندیکردن لەگەڵ کۆمەڵگای کۆلێژەکەت',
+    departmentFeedEmpty: 'هێشتا هیچ پۆستێک لە بەشەکەت نییە. یەکەم کەس بە بۆ هاوبەشکردن!',
+    majorFeedEmpty: 'هێشتا هیچ پۆستێک لە پسپۆڕیەکەت نییە. گفتوگۆکە دەست پێ بکە!',
+    publicFeedEmpty: 'هێشتا هیچ پۆستێکی گشتی نییە. شتێک لەگەڵ هەموان هاوبەش بکە!',
   },
   
   // Chats Screen
@@ -462,6 +465,8 @@ export default {
     activity: 'چالاکی',
     followers: 'شوێنکەوتووان',
     following: 'شوێنکەوتن',
+    follow: 'شوێنکەوتن',
+    unfollow: 'شوێنکەوتن لابردن',
     noSavedPosts: 'هیچ پۆستێکی پاشەکەوتکراو نییە',
     noTaggedPosts: 'هیچ پۆستێکی تاگکراو نییە',
     noPosts: 'هێشتا هیچ پۆستێک نییە',
@@ -632,6 +637,37 @@ export default {
     alreadyDownvoted: 'تۆ پێشتر دەنگت نزم کردووەتەوە بۆ ئەم وەڵامە',
   },
   
+  // Search
+  search: {
+    placeholder: 'گەڕان بە بەکارهێنەران، پۆستەکان...',
+    searching: 'گەڕان...',
+    noResults: 'هیچ ئەنجامێک نەدۆزرایەوە',
+    users: 'بەکارهێنەران',
+    posts: 'پۆستەکان',
+  },
+
+  // Feed
+  feed: {
+    department: 'بەش',
+    major: 'پسپۆڕی',
+    public: 'گشتی',
+    noPosts: 'هێشتا هیچ پۆستێک نییە',
+    loadingPosts: 'بارکردنی پۆستەکان...',
+  },
+
+  // Filter
+  filter: {
+    selectStage: 'قۆناغێک هەڵبژێرە',
+    allStages: 'هەموو قۆناغەکان',
+    stage1: 'قۆناغی یەکەم',
+    stage2: 'قۆناغی دووەم',
+    stage3: 'قۆناغی سێیەم',
+    stage4: 'قۆناغی چوارەم',
+    stage5: 'قۆناغی پێنجەم',
+    stage6: 'قۆناغی شەشەم',
+    graduate: 'دەرچوو',
+  },
+
   // Common
   common: {
     save: 'پاشەکەوتکردن',
@@ -651,5 +687,11 @@ export default {
     networkError: 'هەڵەی تۆڕ. تکایە پەیوەندی ئینتەرنێتەکەت پشکنین بکەرەوە.',
     optional: '(ئارەزوومەندانە)',
     hide: 'شاردنەوە',
+  },
+
+  error: {
+    title: 'هەڵە',
+    noInternet: 'هیچ پەیوەندییەکی ئینتەرنێت نییە',
+    tryAgain: 'تکایە دووبارە هەوڵ بدەرەوە',
   },
 };

@@ -415,6 +415,9 @@ export default {
     popularTopics: 'Popular Topics',
     emptyTitle: 'Welcome Home',
     emptyMessage: 'Your feed will appear here once you start connecting with your college community',
+    departmentFeedEmpty: 'No posts from your department yet. Be the first to share!',
+    majorFeedEmpty: 'No posts from your major yet. Start the conversation!',
+    publicFeedEmpty: 'No public posts yet. Share something with everyone!',
   },
   
   // Chats Screen
@@ -463,6 +466,8 @@ export default {
     activity: 'Activity',
     followers: 'Followers',
     following: 'Following',
+    follow: 'Follow',
+    unfollow: 'Unfollow',
     noSavedPosts: 'No saved posts yet',
     noTaggedPosts: 'No tagged posts yet',
     noPosts: 'No posts yet',
@@ -633,6 +638,37 @@ export default {
     alreadyDownvoted: 'You already downvoted this reply',
   },
   
+  // Search
+  search: {
+    placeholder: 'Search users, posts...',
+    searching: 'Searching...',
+    noResults: 'No results found',
+    users: 'Users',
+    posts: 'Posts',
+  },
+
+  // Feed
+  feed: {
+    department: 'Department',
+    major: 'Major',
+    public: 'Public',
+    noPosts: 'No posts yet',
+    loadingPosts: 'Loading posts...',
+  },
+
+  // Filter
+  filter: {
+    selectStage: 'Select Stage',
+    allStages: 'All Stages',
+    stage1: 'Stage 1',
+    stage2: 'Stage 2',
+    stage3: 'Stage 3',
+    stage4: 'Stage 4',
+    stage5: 'Stage 5',
+    stage6: 'Stage 6',
+    graduate: 'Graduate',
+  },
+
   // Common
   common: {
     save: 'Save',
@@ -652,5 +688,11 @@ export default {
     networkError: 'Network error. Please check your connection.',
     optional: '(optional)',
     hide: 'Hide',
+  },
+
+  error: {
+    title: 'Error',
+    noInternet: 'No Internet Connection',
+    tryAgain: 'Please try again',
   },
 };
