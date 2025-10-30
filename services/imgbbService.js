@@ -179,3 +179,50 @@ export const uploadImage = async (imageUri) => {
     };
   }
 };
+
+export const deleteImageFromImgbb = async (deleteUrl) => {
+  try {
+    if (!deleteUrl) {
+      console.log('No delete URL provided');
+      return { success: false, error: 'No delete URL provided' };
+    }
+
+    const response = await fetch(deleteUrl, {
+      method: 'GET',
+    });
+
+    if (response.ok) {
+      console.log('Image deleted from imgbb successfully');
+      return { success: true };
+    } else {
+      console.log('Failed to delete image from imgbb');
+      return { success: false, error: 'Delete request failed' };
+    }
+  } catch (error) {
+    console.error('Error deleting image from imgbb:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteMultipleImages = async (deleteUrls) => {
+  try {
+    if (!deleteUrls || deleteUrls.length === 0) {
+      return { success: true, message: 'No images to delete' };
+    }
+
+    const deletePromises = deleteUrls.map(url => deleteImageFromImgbb(url));
+    const results = await Promise.allSettled(deletePromises);
+    
+    const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    console.log(`Deleted ${successCount}/${deleteUrls.length} images from imgbb`);
+    
+    return { 
+      success: true, 
+      deletedCount: successCount,
+      totalCount: deleteUrls.length 
+    };
+  } catch (error) {
+    console.error('Error deleting multiple images:', error);
+    return { success: false, error: error.message };
+  }
+};

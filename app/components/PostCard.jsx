@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,7 @@ const PostCard = ({
   onEdit,
   onDelete,
   onReport,
+  onMarkResolved,
   showImages = true,
   isLiked = false,
   isOwner = false,
@@ -47,6 +48,10 @@ const PostCard = ({
   const [showMenu, setShowMenu] = useState(false);
   const [imageGalleryVisible, setImageGalleryVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [liked, setLiked] = useState(isLiked);
+  const [likeCount, setLikeCount] = useState(post.likeCount || 0);
+  const [isLiking, setIsLiking] = useState(false);
+  const [resolved, setResolved] = useState(post.isResolved || false);
 
   const postColor = POST_COLORS[post.postType] || '#6B7280';
   const postIcon = POST_ICONS[post.postType] || 'document-outline';
@@ -54,6 +59,34 @@ const PostCard = ({
 
   const postOwnerName = user && post.userId === user.$id ? user.fullName : (post.userName || 'Anonymous');
   const postOwnerAvatar = user && post.userId === user.$id ? user.profilePicture : post.userProfilePicture;
+
+  useEffect(() => {
+    setLiked(isLiked);
+    setLikeCount(post.likeCount || 0);
+  }, [isLiked, post.likeCount]);
+
+  const handleLike = async () => {
+    if (isLiking) return;
+    
+    setIsLiking(true);
+    const previousLiked = liked;
+    const previousCount = likeCount;
+    
+    setLiked(!liked);
+    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+    
+    try {
+      if (onLike) {
+        await onLike();
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      setLiked(previousLiked);
+      setLikeCount(previousCount);
+    } finally {
+      setIsLiking(false);
+    }
+  };
 
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return '';
@@ -90,6 +123,10 @@ const PostCard = ({
     if (action === 'edit' && onEdit) onEdit();
     if (action === 'delete' && onDelete) onDelete();
     if (action === 'report' && onReport) onReport();
+    if (action === 'markResolved' && onMarkResolved) {
+      onMarkResolved();
+      setResolved(true);
+    }
   };
 
   const handleShare = async () => {
@@ -194,73 +231,67 @@ const PostCard = ({
   };
 
   return (
-    <TouchableOpacity 
+    <View 
       style={[
         styles.card, 
         { 
-          backgroundColor: theme.cardBackground,
+          backgroundColor: theme.card || theme.cardBackground,
           borderColor: theme.border,
         }
-      ]} 
-      onPress={onPress}
-      activeOpacity={0.7}
+      ]}
     >
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={onUserPress} activeOpacity={0.8}>
-            <Image 
-              source={{ uri: postOwnerAvatar || getDefaultAvatar(postOwnerName) }} 
-              style={styles.userAvatar}
-            />
-          </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <TouchableOpacity onPress={onUserPress}>
-              <Text style={[styles.userName, { color: theme.text }]}>
+        <TouchableOpacity onPress={onUserPress} activeOpacity={0.8}>
+          <Image 
+            source={{ uri: postOwnerAvatar || getDefaultAvatar(postOwnerName) }} 
+            style={styles.userAvatar}
+          />
+        </TouchableOpacity>
+        <View style={styles.headerInfo}>
+          <View style={styles.topRow}>
+            <TouchableOpacity onPress={onUserPress} style={styles.userNameContainer}>
+              <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
                 {postOwnerName}
               </Text>
             </TouchableOpacity>
-            <View style={styles.metaRow}>
-              <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-                {formatTimeAgo(post.$createdAt)}
+            <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+              {formatTimeAgo(post.$createdAt)}
+            </Text>
+            {post.isEdited && (
+              <Text style={[styles.editedText, { color: theme.textTertiary }]}>
+                ({t('post.edited')})
               </Text>
-              {post.isEdited && (
-                <>
-                  <Text style={[styles.dotSeparator, { color: theme.textTertiary }]}> • </Text>
-                  <Text style={[styles.editedText, { color: theme.textTertiary }]}>{t('post.edited')}</Text>
-                </>
-              )}
+            )}
+          </View>
+          <View style={styles.badgesRow}>
+            <View style={[styles.stageBadge, { backgroundColor: `${stageColor}15`, borderColor: stageColor }]}>
+              <Text style={[styles.stageText, { color: stageColor }]}>
+                {t(`stages.${post.stage}`)}
+              </Text>
+            </View>
+            <View style={[styles.typeBadgeInline, { backgroundColor: `${postColor}10` }]}>
+              <Ionicons name={postIcon} size={10} color={postColor} />
+              <Text style={[styles.typeTextInline, { color: postColor }]}>
+                {t(`post.types.${post.postType}`)}
+              </Text>
             </View>
           </View>
         </View>
-        <View style={styles.headerRight}>
-          <View style={[styles.stageBadge, { backgroundColor: `${stageColor}15`, borderColor: stageColor }]}>
-            <Text style={[styles.stageText, { color: stageColor }]}>
-              {t(`stages.${post.stage}`)}
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.menuButton}
-            onPress={() => setShowMenu(true)}
-            activeOpacity={0.6}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color={theme.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={[styles.typeBadge, { backgroundColor: `${postColor}15`, borderLeftColor: postColor }]}>
-        <Ionicons name={postIcon} size={14} color={postColor} />
-        <Text style={[styles.typeText, { color: postColor }]}>
-          {t(`post.types.${post.postType}`)}
-        </Text>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setShowMenu(true)}
+          activeOpacity={0.6}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
-        <Text style={[styles.topic, { color: theme.text }]} numberOfLines={2}>
+        <Text style={[styles.topic, { color: theme.text }]} numberOfLines={2} selectable>
           {post.topic}
         </Text>
         {post.text && (
-          <Text style={[styles.text, { color: theme.textSecondary }]} numberOfLines={4}>
+          <Text style={[styles.text, { color: theme.textSecondary }]} numberOfLines={4} selectable>
             {post.text}
           </Text>
         )}
@@ -285,16 +316,17 @@ const PostCard = ({
         <View style={styles.footerLeft}>
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={onLike}
+            onPress={handleLike}
             activeOpacity={0.7}
+            disabled={isLiking}
           >
             <Ionicons 
-              name={isLiked ? "heart" : "heart-outline"} 
+              name={liked ? "heart" : "heart-outline"} 
               size={20} 
-              color={isLiked ? "#EF4444" : theme.textSecondary} 
+              color={liked ? "#EF4444" : theme.textSecondary} 
             />
-            <Text style={[styles.actionText, { color: isLiked ? "#EF4444" : theme.textSecondary }]}>
-              {post.likeCount || 0}
+            <Text style={[styles.actionText, { color: liked ? "#EF4444" : theme.textSecondary }]}>
+              {likeCount}
             </Text>
           </TouchableOpacity>
 
@@ -325,7 +357,7 @@ const PostCard = ({
           </View>
           {post.postType === 'question' && (
             <View style={styles.statsItem}>
-              {post.isResolved ? (
+              {resolved ? (
                 <>
                   <Ionicons name="checkmark-circle" size={14} color="#10B981" />
                   <Text style={[styles.statsText, { color: '#10B981' }]}>
@@ -356,9 +388,23 @@ const PostCard = ({
           activeOpacity={1} 
           onPress={() => setShowMenu(false)}
         >
-          <View style={[styles.menuModal, { backgroundColor: theme.cardBackground }]}>
+          <View style={[styles.menuModal, { backgroundColor: theme.card || theme.cardBackground }]}>
             {isOwner ? (
               <>
+                {post.postType === 'question' && !resolved && (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.menuItem} 
+                      onPress={() => handleMenuAction('markResolved')}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={22} color="#10B981" />
+                      <Text style={[styles.menuText, { color: '#10B981' }]}>
+                        {t('post.markAsAnswered')}
+                      </Text>
+                    </TouchableOpacity>
+                    <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+                  </>
+                )}
                 <TouchableOpacity 
                   style={styles.menuItem} 
                   onPress={() => handleMenuAction('edit')}
@@ -444,7 +490,7 @@ const PostCard = ({
           )}
         </View>
       </Modal>
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -466,78 +512,73 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-    marginRight: 8,
-  },
-  headerRight: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    marginBottom: 12,
   },
   userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   headerInfo: {
     flex: 1,
     justifyContent: 'center',
   },
-  userName: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  metaRow: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  userNameContainer: {
+    flex: 1,
+    marginRight: 5,
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     flexWrap: 'wrap',
   },
   timeText: {
-    fontSize: 13,
-  },
-  dotSeparator: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '500',
   },
   editedText: {
-    fontSize: 13,
+    fontSize: 10,
     fontStyle: 'italic',
   },
   stageBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
   },
   stageText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+  },
+  typeBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+    gap: 2,
+  },
+  typeTextInline: {
+    fontSize: 8,
+    fontWeight: '600',
   },
   menuButton: {
     padding: 6,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 14,
-    borderLeftWidth: 4,
-    gap: 8,
-  },
-  typeText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
   content: {
     marginBottom: 14,

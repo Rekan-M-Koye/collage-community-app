@@ -24,6 +24,7 @@ import { useCustomAlert } from '../hooks/useCustomAlert';
 import { uploadImage } from '../../services/imgbbService';
 import { createReply, getRepliesByPost, updateReply, deleteReply, markReplyAsAccepted, unmarkReplyAsAccepted } from '../../database/replies';
 import { getUserDocument } from '../../database/auth';
+import { incrementPostViewCount } from '../../database/posts';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
@@ -45,8 +46,21 @@ const PostDetails = ({ navigation, route }) => {
   useEffect(() => {
     if (post?.$id) {
       loadReplies();
+      trackView();
     }
   }, [post?.$id]);
+
+  const trackView = async () => {
+    if (!post?.$id || !user?.$id) return;
+    
+    if (post.userId === user.$id) return;
+    
+    try {
+      await incrementPostViewCount(post.$id, user.$id);
+    } catch (error) {
+      console.error('Error tracking view:', error);
+    }
+  };
 
   const loadReplies = async () => {
     if (!post?.$id) return;

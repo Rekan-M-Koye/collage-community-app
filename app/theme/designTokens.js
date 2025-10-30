@@ -21,15 +21,15 @@ export const lightTheme = {
   gradientLight: ['rgba(0, 122, 255, 0.1)', 'rgba(88, 86, 214, 0.1)'],
   
   glass: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    border: 'rgba(255, 255, 255, 0.8)',
+    background: 'rgba(248, 250, 255, 0.85)',
+    border: 'rgba(200, 210, 225, 0.4)',
     tint: 'light',
     intensity: 20,
   },
   
   card: {
-    background: 'rgba(255, 255, 255, 0.9)',
-    border: 'rgba(0, 0, 0, 0.05)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    border: 'rgba(200, 210, 225, 0.3)',
   },
   
   input: {

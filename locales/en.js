@@ -597,6 +597,7 @@ export default {
     edited: 'Edited',
     resolved: 'Resolved',
     unanswered: 'Unanswered',
+    markAsAnswered: 'Mark as Answered',
     reply: 'Reply',
     report: 'Report',
     reportPost: 'Report Post',

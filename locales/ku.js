@@ -596,6 +596,7 @@ export default {
     edited: 'دەستکاریکراوە',
     resolved: 'چارەسەرکراوە',
     unanswered: 'وەڵام نەدراوە',
+    markAsAnswered: 'نیشانکردن وەک وەڵامدراو',
     reply: 'وەڵام',
     report: 'گوزارشت',
     reportPost: 'گوزارشتکردنی پۆست',

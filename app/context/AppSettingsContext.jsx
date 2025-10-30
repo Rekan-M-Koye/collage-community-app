@@ -41,8 +41,8 @@ export const lightTheme = {
   gradient: ['#007AFF', '#5856D6'],
   gradientLight: ['rgba(0, 122, 255, 0.1)', 'rgba(88, 86, 214, 0.1)'],
   glass: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    border: 'rgba(255, 255, 255, 0.8)',
+    background: 'rgba(248, 250, 255, 0.85)',
+    border: 'rgba(200, 210, 225, 0.4)',
     tint: 'light',
     intensity: 20,
   },

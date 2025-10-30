@@ -129,23 +129,42 @@ export const deletePost = async (postId, imageDeleteUrls = []) => {
         );
 
         if (imageDeleteUrls && imageDeleteUrls.length > 0) {
-            console.log('Deleting images from imgBB:', imageDeleteUrls);
+            const { deleteMultipleImages } = require('../services/imgbbService');
+            console.log('Deleting images from imgBB:', imageDeleteUrls.length);
+            await deleteMultipleImages(imageDeleteUrls);
         }
+        
+        return { success: true };
     } catch (error) {
         console.error('Delete post error:', error);
         throw error;
     }
 };
 
-export const incrementPostViewCount = async (postId) => {
+export const incrementPostViewCount = async (postId, userId = null) => {
     try {
         const post = await getPost(postId);
-        await databases.updateDocument(
-            config.databaseId,
-            config.postsCollectionId,
-            postId,
-            { viewCount: (post.viewCount || 0) + 1 }
-        );
+        const viewedBy = post.viewedBy || [];
+        
+        if (userId && !viewedBy.includes(userId)) {
+            viewedBy.push(userId);
+            await databases.updateDocument(
+                config.databaseId,
+                config.postsCollectionId,
+                postId,
+                { 
+                    viewedBy: viewedBy,
+                    viewCount: viewedBy.length 
+                }
+            );
+        } else if (!userId) {
+            await databases.updateDocument(
+                config.databaseId,
+                config.postsCollectionId,
+                postId,
+                { viewCount: (post.viewCount || 0) + 1 }
+            );
+        }
     } catch (error) {
         console.error('Increment view count error:', error);
         throw error;
@@ -154,8 +173,28 @@ export const incrementPostViewCount = async (postId) => {
 
 export const togglePostLike = async (postId, userId) => {
     try {
-        console.log('Toggle like for post:', postId, userId);
+        const post = await getPost(postId);
+        const likedBy = post.likedBy || [];
+        const isLiked = likedBy.includes(userId);
         
+        let updatedLikedBy;
+        if (isLiked) {
+            updatedLikedBy = likedBy.filter(id => id !== userId);
+        } else {
+            updatedLikedBy = [...likedBy, userId];
+        }
+        
+        await databases.updateDocument(
+            config.databaseId,
+            config.postsCollectionId,
+            postId,
+            { 
+                likedBy: updatedLikedBy,
+                likeCount: updatedLikedBy.length 
+            }
+        );
+        
+        return { isLiked: !isLiked, likeCount: updatedLikedBy.length };
     } catch (error) {
         console.error('Toggle like error:', error);
         throw error;

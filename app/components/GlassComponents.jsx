@@ -18,8 +18,8 @@ export const GlassContainer = ({
   
   const glassBackground = theme.glass?.background || (
     isDarkMode 
-      ? (isAndroid ? 'rgba(28, 28, 30, 0.85)' : 'rgba(28, 28, 30, 0.6)') 
-      : (isAndroid ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.6)')
+      ? (isAndroid ? 'rgba(28, 28, 30, 0.92)' : 'rgba(28, 28, 30, 0.6)') 
+      : (isAndroid ? 'rgba(240, 245, 255, 0.75)' : 'rgba(255, 255, 255, 0.6)')
   );
   const glassIntensity = intensity || (isAndroid ? 80 : 25);
   const glassTint = theme.glass?.tint || (isDarkMode ? 'dark' : 'light');
@@ -56,11 +56,11 @@ export const GlassContainer = ({
           { 
             backgroundColor: glassBackground,
             borderRadius,
-            shadowColor: isDarkMode ? '#000' : '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: isDarkMode ? 0.4 : 0.15,
-            shadowRadius: 16,
-            elevation: isAndroid ? 8 : 0,
+            shadowColor: isDarkMode ? '#000' : '#999',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0.4 : 0.08,
+            shadowRadius: 8,
+            elevation: isAndroid ? 3 : 0,
           }
         ]} 
       />
@@ -69,8 +69,10 @@ export const GlassContainer = ({
           StyleSheet.absoluteFill,
           { 
             borderRadius,
-            borderWidth: borderWidth * 0.5,
-            borderColor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+            borderWidth: isAndroid && !isDarkMode ? borderWidth * 0.8 : borderWidth * 0.5,
+            borderColor: isDarkMode 
+              ? 'rgba(0, 0, 0, 0.2)' 
+              : (isAndroid ? 'rgba(200, 210, 225, 0.4)' : 'rgba(0, 0, 0, 0.08)'),
           }
         ]} 
       />
@@ -81,8 +83,12 @@ export const GlassContainer = ({
             borderRadius,
             borderTopWidth: borderWidth * 0.5,
             borderLeftWidth: borderWidth * 0.5,
-            borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.9)',
-            borderLeftColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.9)',
+            borderTopColor: isDarkMode 
+              ? 'rgba(255, 255, 255, 0.3)' 
+              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
+            borderLeftColor: isDarkMode 
+              ? 'rgba(255, 255, 255, 0.3)' 
+              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
           }
         ]} 
       />
@@ -93,8 +99,12 @@ export const GlassContainer = ({
             borderRadius,
             borderBottomWidth: borderWidth * 0.5,
             borderRightWidth: borderWidth * 0.5,
-            borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.9)',
-            borderRightColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.9)',
+            borderBottomColor: isDarkMode 
+              ? 'rgba(255, 255, 255, 0.3)' 
+              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
+            borderRightColor: isDarkMode 
+              ? 'rgba(255, 255, 255, 0.3)' 
+              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
           }
         ]} 
       />
@@ -201,7 +211,7 @@ export const GlassButton = ({
   const getBackgroundColor = () => {
     switch (variant) {
       case 'primary':
-        return theme.primary || '#007AFF';
+        return theme.primary || '#007bff';
       case 'secondary':
         return isDarkMode 
           ? (isAndroid ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.15)') 

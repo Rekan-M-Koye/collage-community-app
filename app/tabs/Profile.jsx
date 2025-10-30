@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassContainer } from '../components/GlassComponents';
 import PostCard from '../components/PostCard';
 import { getCompleteUserData } from '../../database/auth';
-import { getPostsByUser } from '../../database/posts';
+import { getPostsByUser, togglePostLike, markQuestionAsResolved } from '../../database/posts';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
@@ -19,25 +19,9 @@ const Profile = ({ navigation }) => {
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState(null);
+  const [postsLoaded, setPostsLoaded] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      refreshUser();
-      setImageKey(Date.now());
-      if (user) {
-        loadUserPosts();
-      }
-    });
-    return unsubscribe;
-  }, [navigation, refreshUser, user]);
-
-  useEffect(() => {
-    if (user && activeTab === 'posts') {
-      loadUserPosts();
-    }
-  }, [user, activeTab]);
-
-  const loadUserPosts = async () => {
+  const loadUserPosts = useCallback(async () => {
     if (!user?.$id) return;
     
     setLoadingPosts(true);
@@ -45,11 +29,73 @@ const Profile = ({ navigation }) => {
     try {
       const posts = await getPostsByUser(user.$id, 20, 0);
       setUserPosts(posts);
+      setPostsLoaded(true);
     } catch (error) {
       console.error('Error loading user posts:', error);
       setPostsError(error.message);
     } finally {
       setLoadingPosts(false);
+    }
+  }, [user?.$id]);
+
+  useEffect(() => {
+    if (user?.$id && !postsLoaded) {
+      loadUserPosts();
+    }
+  }, [user?.$id, loadUserPosts, postsLoaded]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      refreshUser();
+      setImageKey(Date.now());
+      setPostsLoaded(false);
+    });
+    return unsubscribe;
+  }, [navigation, refreshUser]);
+
+  useEffect(() => {
+    if (activeTab === 'posts' && !postsLoaded && user?.$id) {
+      loadUserPosts();
+    }
+  }, [activeTab, postsLoaded, user?.$id, loadUserPosts]);
+
+  const handleLike = async (postId) => {
+    if (!user?.$id) return;
+    
+    try {
+      const result = await togglePostLike(postId, user.$id);
+      
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.$id === postId 
+            ? { 
+                ...post, 
+                likedBy: result.isLiked 
+                  ? [...(post.likedBy || []), user.$id]
+                  : (post.likedBy || []).filter(id => id !== user.$id),
+                likeCount: result.likeCount 
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleMarkResolved = async (postId) => {
+    try {
+      await markQuestionAsResolved(postId);
+      
+      setUserPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.$id === postId 
+            ? { ...post, isResolved: true }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Error marking as resolved:', error);
     }
   };
 
@@ -149,7 +195,7 @@ const Profile = ({ navigation }) => {
     stage: stageTranslation,
     department: departmentTranslation,
     stats: {
-      posts: user.postsCount || 0,
+      posts: userPosts.length || user.postsCount || 0,
       followers: user.followersCount || 0,
       following: user.followingCount || 0
     }
@@ -274,10 +320,12 @@ const Profile = ({ navigation }) => {
               userName: user.fullName,
               userProfilePicture: user.profilePicture,
             }}
-            onPress={() => navigation.navigate('PostDetails', { post })}
             onReply={() => navigation.navigate('PostDetails', { post })}
+            onLike={() => handleLike(post.$id)}
+            onMarkResolved={() => handleMarkResolved(post.$id)}
             onUserPress={() => {}}
             isOwner={true}
+            isLiked={post.likedBy?.includes(user.$id)}
             showImages={true}
           />
         ))}

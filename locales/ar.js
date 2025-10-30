@@ -596,6 +596,7 @@ export default {
     edited: 'معدّل',
     resolved: 'محلول',
     unanswered: 'غير مجاب',
+    markAsAnswered: 'تحديد كمجاب',
     reply: 'رد',
     report: 'إبلاغ',
     reportPost: 'الإبلاغ عن المنشور',
