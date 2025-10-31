@@ -97,13 +97,17 @@ export const getPostsByDepartments = async (departments = [], stage = 'all', lim
     }
 };
 
-export const getAllPublicPosts = async (limit = 20, offset = 0) => {
+export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0) => {
     try {
         const queries = [
             Query.limit(limit),
             Query.offset(offset),
             Query.orderDesc('$createdAt')
         ];
+
+        if (stage && stage !== 'all') {
+            queries.push(Query.equal('stage', stage));
+        }
 
         const posts = await databases.listDocuments(
             config.databaseId,

@@ -30,11 +30,17 @@ const SearchableDropdownNew = ({
   const { t, theme, isDarkMode } = useAppSettings();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const filteredItems = searchText.trim() === '' 
-    ? items 
-    : items.filter(item => item.label.toLowerCase().includes(searchText.toLowerCase()));
+  const normalizedItems = items.map(item => ({
+    key: item.key || item.value,
+    label: item.label || (item.labelKey ? t(item.labelKey) : item.value),
+    originalItem: item
+  }));
 
-  const selectedItem = items.find(item => item.key === value);
+  const filteredItems = searchText.trim() === '' 
+    ? normalizedItems 
+    : normalizedItems.filter(item => item.label.toLowerCase().includes(searchText.toLowerCase()));
+
+  const selectedItem = normalizedItems.find(item => item.key === value);
 
   const openModal = () => {
     if (disabled) return;

@@ -136,12 +136,12 @@ const Home = ({ navigation }) => {
         const relatedDepartments = getDepartmentsInSameMajor(user.department);
         fetchedPosts = await getPostsByDepartments(
           relatedDepartments,
-          'all',
+          selectedStage,
           POSTS_PER_PAGE,
           offset
         );
       } else if (selectedFeed === FEED_TYPES.PUBLIC) {
-        fetchedPosts = await getAllPublicPosts(POSTS_PER_PAGE, offset);
+        fetchedPosts = await getAllPublicPosts(selectedStage, POSTS_PER_PAGE, offset);
       }
 
       if (reset) {
@@ -187,13 +187,15 @@ const Home = ({ navigation }) => {
   };
 
   const handleFeedChange = (feedType) => {
-    setSelectedFeed(feedType);
-    if (feedType !== FEED_TYPES.DEPARTMENT) {
-      setSelectedStage('all');
+    if (feedType === selectedFeed) {
+      return;
     }
+    
+    setSelectedFeed(feedType);
     setPosts([]);
     setPage(0);
     setHasMore(true);
+    setIsLoadingPosts(true);
   };
 
   const handleStageChange = (stage) => {
@@ -201,6 +203,7 @@ const Home = ({ navigation }) => {
     setPosts([]);
     setPage(0);
     setHasMore(true);
+    setIsLoadingPosts(true);
   };
 
   const getStagePreviewText = () => {
@@ -256,7 +259,7 @@ const Home = ({ navigation }) => {
   };
 
   const renderFeedContent = () => {
-    if (isLoadingPosts && posts.length === 0) {
+    if (isLoadingPosts) {
       return (
         <View style={styles.feedContent}>
           <View style={styles.postContainer}>
@@ -272,7 +275,7 @@ const Home = ({ navigation }) => {
       );
     }
 
-    if (posts.length === 0 && !isLoadingPosts) {
+    if (posts.length === 0) {
       return (
         <View style={styles.centerContainer}>
           <GlassContainer 
@@ -406,33 +409,31 @@ const Home = ({ navigation }) => {
               />
             </View>
 
-            {selectedFeed === FEED_TYPES.DEPARTMENT && (
-              <TouchableOpacity 
-                style={styles.stageButton}
-                onPress={() => setShowStageModal(true)}
-                activeOpacity={0.7}
+            <TouchableOpacity 
+              style={styles.stageButton}
+              onPress={() => setShowStageModal(true)}
+              activeOpacity={0.7}
+            >
+              <View 
+                style={[
+                  styles.stageContainer,
+                  {
+                    backgroundColor: isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.1)' 
+                      : 'rgba(0, 0, 0, 0.04)',
+                    borderWidth: 0.5,
+                    borderColor: isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.15)' 
+                      : 'rgba(0, 0, 0, 0.08)',
+                  }
+                ]}
               >
-                <View 
-                  style={[
-                    styles.stageContainer,
-                    {
-                      backgroundColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.1)' 
-                        : 'rgba(0, 0, 0, 0.04)',
-                      borderWidth: 0.5,
-                      borderColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.15)' 
-                        : 'rgba(0, 0, 0, 0.08)',
-                    }
-                  ]}
-                >
-                  <Ionicons name="filter-outline" size={moderateScale(18)} color={theme.primary} />
-                  <Text style={[styles.stageText, { color: theme.text, fontSize: fontSize(12) }]}>
-                    {getStagePreviewText()}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
+                <Ionicons name="filter-outline" size={moderateScale(18)} color={theme.primary} />
+                <Text style={[styles.stageText, { color: theme.text, fontSize: fontSize(12) }]}>
+                  {getStagePreviewText()}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </Animated.View>
 
           <View style={styles.feedContent}>

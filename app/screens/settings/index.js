@@ -58,12 +58,12 @@ const Settings = ({ navigation }) => {
       activeOpacity={0.7}
       style={styles.cardWrapper}>
       <BlurView
-        intensity={isDarkMode ? 30 : 50}
+        intensity={isDarkMode ? 30 : 0}
         tint={isDarkMode ? 'dark' : 'light'}
         style={[
           styles.card,
           {
-            backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.85)',
+            backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : '#FFFFFF',
             borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
           },
         ]}>

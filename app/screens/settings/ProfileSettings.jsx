@@ -29,12 +29,12 @@ const COOLDOWN_DAYS = 30;
 
 const GlassCard = memo(({ children, style, isDarkMode }) => (
   <BlurView
-    intensity={isDarkMode ? 30 : 50}
+    intensity={isDarkMode ? 30 : 0}
     tint={isDarkMode ? 'dark' : 'light'}
     style={[
       styles.glassCard,
       {
-        backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.85)',
+        backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : '#FFFFFF',
         borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
       },
       style,

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,37 @@ const CreatePost = ({ navigation, route }) => {
   const [tags, setTags] = useState('');
   const [links, setLinks] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const convertUserStageToStageValue = (userStage) => {
+    const stageMap = {
+      'firstYear': 'stage_1',
+      'secondYear': 'stage_2',
+      'thirdYear': 'stage_3',
+      'fourthYear': 'stage_4',
+      'fifthYear': 'stage_5',
+      'sixthYear': 'stage_6',
+      'graduate': 'graduate',
+      '1': 'stage_1',
+      '2': 'stage_2',
+      '3': 'stage_3',
+      '4': 'stage_4',
+      '5': 'stage_5',
+      '6': 'stage_6',
+    };
+    return stageMap[userStage] || userStage;
+  };
+
+  useEffect(() => {
+    if (user) {
+      if (user.stage) {
+        const mappedStage = convertUserStageToStageValue(user.stage);
+        setStage(mappedStage);
+      }
+      if (user.department) {
+        setDepartment(user.department);
+      }
+    }
+  }, [user]);
 
   const validateForm = () => {
     if (!topic.trim()) {
