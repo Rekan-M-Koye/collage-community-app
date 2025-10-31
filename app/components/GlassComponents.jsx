@@ -19,7 +19,7 @@ export const GlassContainer = ({
   const glassBackground = theme.glass?.background || (
     isDarkMode 
       ? (isAndroid ? 'rgba(28, 28, 30, 0.92)' : 'rgba(28, 28, 30, 0.6)') 
-      : (isAndroid ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.85)')
+      : (isAndroid ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 1)')
   );
   const glassIntensity = intensity || (isAndroid ? 80 : 25);
   const glassTint = theme.glass?.tint || (isDarkMode ? 'dark' : 'light');
@@ -56,11 +56,11 @@ export const GlassContainer = ({
           { 
             backgroundColor: glassBackground,
             borderRadius,
-            shadowColor: isDarkMode ? '#000' : '#999',
+            shadowColor: isDarkMode ? '#000' : '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDarkMode ? 0.4 : 0.08,
-            shadowRadius: 8,
-            elevation: isAndroid ? 3 : 0,
+            shadowOpacity: isDarkMode ? 0.4 : 0.12,
+            shadowRadius: isDarkMode ? 8 : 4,
+            elevation: isAndroid ? (isDarkMode ? 4 : 3) : 0,
           }
         ]} 
       />
@@ -69,10 +69,10 @@ export const GlassContainer = ({
           StyleSheet.absoluteFill,
           { 
             borderRadius,
-            borderWidth: isAndroid && !isDarkMode ? borderWidth * 0.8 : borderWidth * 0.5,
+            borderWidth: isDarkMode ? borderWidth * 0.5 : borderWidth,
             borderColor: isDarkMode 
               ? 'rgba(0, 0, 0, 0.2)' 
-              : (isAndroid ? 'rgba(200, 210, 225, 0.4)' : 'rgba(0, 0, 0, 0.08)'),
+              : 'rgba(0, 0, 0, 0.12)',
           }
         ]} 
       />
@@ -81,14 +81,14 @@ export const GlassContainer = ({
           StyleSheet.absoluteFill,
           { 
             borderRadius,
-            borderTopWidth: borderWidth * 0.5,
-            borderLeftWidth: borderWidth * 0.5,
+            borderTopWidth: isDarkMode ? borderWidth * 0.5 : 0,
+            borderLeftWidth: isDarkMode ? borderWidth * 0.5 : 0,
             borderTopColor: isDarkMode 
               ? 'rgba(255, 255, 255, 0.3)' 
-              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
+              : 'transparent',
             borderLeftColor: isDarkMode 
               ? 'rgba(255, 255, 255, 0.3)' 
-              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
+              : 'transparent',
           }
         ]} 
       />
@@ -97,14 +97,14 @@ export const GlassContainer = ({
           StyleSheet.absoluteFill,
           { 
             borderRadius,
-            borderBottomWidth: borderWidth * 0.5,
-            borderRightWidth: borderWidth * 0.5,
+            borderBottomWidth: isDarkMode ? borderWidth * 0.5 : 0,
+            borderRightWidth: isDarkMode ? borderWidth * 0.5 : 0,
             borderBottomColor: isDarkMode 
-              ? 'rgba(255, 255, 255, 0.3)' 
-              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
+              ? 'rgba(0, 0, 0, 0.3)' 
+              : 'transparent',
             borderRightColor: isDarkMode 
-              ? 'rgba(255, 255, 255, 0.3)' 
-              : (isAndroid ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
+              ? 'rgba(0, 0, 0, 0.3)' 
+              : 'transparent',
           }
         ]} 
       />

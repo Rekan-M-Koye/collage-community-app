@@ -563,6 +563,13 @@ export default {
     selectDepartment: 'بەش هەڵبژێرە',
     stage: 'قۆناغ',
     selectStage: 'قۆناغ هەڵبژێرە',
+    visibility: 'کێ دەتوانێت ئەمە ببینێت؟',
+    departmentOnly: 'بەش',
+    departmentOnlyHelper: 'تەنها قوتابیانی بەشەکەت دەتوانن ئەم پۆستە ببینن',
+    majorOnly: 'بواری تایبەتمەندی',
+    majorOnlyHelper: 'قوتابیانی بواری تایبەتمەندیەکەت (بەشە پەیوەندیدارەکان) دەتوانن ئەم پۆستە ببینن',
+    publicPost: 'گشتی',
+    publicPostHelper: 'هەموو کەسێک لە کۆمەڵگادا دەتوانێت ئەم پۆستە ببینێت',
     public: 'گشتی',
     tags: 'تاگەکان',
     tagsPlaceholder: 'تاگ١، تاگ٢، تاگ٣',
@@ -658,6 +665,7 @@ export default {
   // Filter
   filter: {
     selectStage: 'قۆناغێک هەڵبژێرە',
+    all: 'هەموو',
     allStages: 'هەموو قۆناغەکان',
     stage1: 'قۆناغی یەکەم',
     stage2: 'قۆناغی دووەم',

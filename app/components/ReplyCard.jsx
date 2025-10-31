@@ -56,11 +56,11 @@ const ReplyCard = ({
     if (!reply.links || reply.links.length === 0) return null;
 
     return (
-      <View style={[styles.linksContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+      <View style={[styles.linksContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
         {reply.links.map((link, index) => (
           <TouchableOpacity
             key={index}
-            style={[styles.linkItem, { backgroundColor: isDarkMode ? 'rgba(66,135,245,0.1)' : 'rgba(66,135,245,0.05)' }]}
+            style={[styles.linkItem, { backgroundColor: isDarkMode ? 'rgba(66,135,245,0.1)' : 'rgba(66,135,245,0.1)' }]}
             activeOpacity={0.7}>
             <Ionicons name="link-outline" size={moderateScale(16)} color="#4287f5" />
             <Text 
@@ -124,7 +124,7 @@ const ReplyCard = ({
                 style={styles.avatarImage}
               />
             ) : (
-              <View style={[styles.avatar, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
+              <View style={[styles.avatar, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.15)' }]}>
                 <Text style={[styles.avatarText, { fontSize: fontSize(14), color: theme.text }]}>
                   {reply.userData?.fullName?.charAt(0).toUpperCase() || 'U'}
                 </Text>
@@ -164,7 +164,7 @@ const ReplyCard = ({
               styles.voteButton, 
               { backgroundColor: (reply.upvotedBy || []).includes(user?.$id)
                 ? '#4CAF50'
-                : isDarkMode ? 'rgba(76,175,80,0.1)' : 'rgba(76,175,80,0.05)' 
+                : isDarkMode ? 'rgba(76,175,80,0.1)' : 'rgba(76,175,80,0.12)' 
               }
             ]}
             onPress={() => onUpvote && onUpvote(reply)}
@@ -190,7 +190,7 @@ const ReplyCard = ({
               styles.voteButton, 
               { backgroundColor: (reply.downvotedBy || []).includes(user?.$id)
                 ? '#F44336'
-                : isDarkMode ? 'rgba(244,67,54,0.1)' : 'rgba(244,67,54,0.05)' 
+                : isDarkMode ? 'rgba(244,67,54,0.1)' : 'rgba(244,67,54,0.12)' 
               }
             ]}
             onPress={() => onDownvote && onDownvote(reply)}

@@ -46,13 +46,13 @@ const Chats = () => {
           <GlassContainer 
             borderRadius={borderRadius.xl}
             style={styles.emptyStateCard}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <Ionicons name="chatbubbles-outline" size={moderateScale(64)} color="rgba(255,255,255,0.6)" />
+            <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0, 122, 255, 0.15)' }]}>
+              <Ionicons name="chatbubbles-outline" size={moderateScale(64)} color={isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary} />
             </View>
-            <Text style={[styles.emptyTitle, { fontSize: fontSize(24), color: '#FFFFFF' }]}>
+            <Text style={[styles.emptyTitle, { fontSize: fontSize(24), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>
               {t('chats.emptyTitle')}
             </Text>
-            <Text style={[styles.emptyMessage, { fontSize: fontSize(15), color: 'rgba(255,255,255,0.7)' }]}>
+            <Text style={[styles.emptyMessage, { fontSize: fontSize(15), color: isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
               {t('chats.emptyMessage')}
             </Text>
           </GlassContainer>

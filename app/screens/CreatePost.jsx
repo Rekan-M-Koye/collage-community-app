@@ -40,6 +40,7 @@ const CreatePost = ({ navigation, route }) => {
   const [text, setText] = useState('');
   const [department, setDepartment] = useState('');
   const [stage, setStage] = useState('');
+  const [visibility, setVisibility] = useState('department');
   const [images, setImages] = useState([]);
   const [tags, setTags] = useState('');
   const [links, setLinks] = useState('');
@@ -151,6 +152,10 @@ const CreatePost = ({ navigation, route }) => {
         replyCount: 0,
         isEdited: false,
       };
+
+      if (visibility) {
+        postData.visibility = visibility;
+      }
 
       const createdPost = await createPost(postData);
       console.log('Post created successfully:', createdPost);
@@ -314,6 +319,90 @@ const CreatePost = ({ navigation, route }) => {
 
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>
+              {t('post.visibility')} *
+            </Text>
+            <View style={styles.visibilityContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  visibility === 'department' && styles.visibilityButtonSelected,
+                ]}
+                onPress={() => setVisibility('department')}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="people"
+                  size={20}
+                  color={visibility === 'department' ? '#fff' : '#6B7280'}
+                />
+                <Text
+                  style={[
+                    styles.visibilityText,
+                    visibility === 'department' && styles.visibilityTextSelected,
+                  ]}
+                >
+                  {t('post.departmentOnly')}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  visibility === 'major' && styles.visibilityButtonSelected,
+                ]}
+                onPress={() => setVisibility('major')}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="school"
+                  size={20}
+                  color={visibility === 'major' ? '#fff' : '#6B7280'}
+                />
+                <Text
+                  style={[
+                    styles.visibilityText,
+                    visibility === 'major' && styles.visibilityTextSelected,
+                  ]}
+                >
+                  {t('post.majorOnly')}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  visibility === 'public' && styles.visibilityButtonSelected,
+                ]}
+                onPress={() => setVisibility('public')}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="globe"
+                  size={20}
+                  color={visibility === 'public' ? '#fff' : '#6B7280'}
+                />
+                <Text
+                  style={[
+                    styles.visibilityText,
+                    visibility === 'public' && styles.visibilityTextSelected,
+                  ]}
+                >
+                  {t('post.publicPost')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.helperText}>
+              {visibility === 'department' && t('post.departmentOnlyHelper')}
+              {visibility === 'major' && t('post.majorOnlyHelper')}
+              {visibility === 'public' && t('post.publicPostHelper')}
+            </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>
               {t('post.tags')} {t('common.optional')}
             </Text>
             <TextInput
@@ -468,6 +557,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginTop: 4,
+  },
+  visibilityContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  visibilityButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    gap: 6,
+  },
+  visibilityButtonSelected: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  visibilityText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  visibilityTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
   },
   bottomSpace: {
     height: 40,

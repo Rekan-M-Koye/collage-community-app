@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList, RefreshControl } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +21,7 @@ const Profile = ({ navigation }) => {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState(null);
   const [postsLoaded, setPostsLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadUserPosts = useCallback(async () => {
     if (!user?.$id) return;
@@ -59,6 +60,21 @@ const Profile = ({ navigation }) => {
       loadUserPosts();
     }
   }, [activeTab, postsLoaded, user?.$id, loadUserPosts]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshUser();
+      setImageKey(Date.now());
+      if (activeTab === 'posts') {
+        setPostsLoaded(false);
+        await loadUserPosts();
+      }
+    } catch (error) {
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshUser, activeTab, loadUserPosts]);
 
   const handleLike = async (postId) => {
     if (!user?.$id) return;
@@ -348,11 +364,23 @@ const Profile = ({ navigation }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <AnimatedBackground particleCount={35} />
       <LinearGradient colors={isDarkMode ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#e3f2fd', '#bbdefb', '#90caf9']} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
+        >
           <View style={styles.profileHeader}>
             <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
               <GlassContainer borderRadius={borderRadius.round} style={styles.settingsButtonInner}>
-                <Ionicons name="settings-outline" size={moderateScale(24)} color="#FFFFFF" />
+                <Ionicons name="settings-outline" size={moderateScale(24)} color={isDarkMode ? '#FFFFFF' : '#1C1C1E'} />
               </GlassContainer>
             </TouchableOpacity>
             <View style={styles.avatarContainer}>
@@ -366,9 +394,9 @@ const Profile = ({ navigation }) => {
                 </View>
               </LinearGradient>
             </View>
-            <Text style={[styles.name, { fontSize: fontSize(22), color: '#FFFFFF' }]}>{userProfile.name}</Text>
-            {userProfile.bio && <Text style={[styles.bio, { fontSize: fontSize(13), color: 'rgba(255,255,255,0.8)' }]} numberOfLines={2}>{userProfile.bio}</Text>}
-            <View style={[styles.statsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)' }]}>
+            <Text style={[styles.name, { fontSize: fontSize(22), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>{userProfile.name}</Text>
+            {userProfile.bio && <Text style={[styles.bio, { fontSize: fontSize(13), color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(28, 28, 30, 0.8)' }]} numberOfLines={2}>{userProfile.bio}</Text>}
+            <View style={[styles.statsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.9)' }]}>
               <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.posts}</Text>
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.posts')}</Text>

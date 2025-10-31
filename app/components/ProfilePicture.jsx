@@ -10,9 +10,9 @@ const ProfilePicture = ({
   style,
   showBorder = false,
   borderColor,
-  borderWidth = 2
+  borderWidth = 2.5
 }) => {
-  const { theme } = useAppSettings();
+  const { theme, isDarkMode } = useAppSettings();
 
   const getInitials = (fullName) => {
     if (!fullName) return 'U';
@@ -29,7 +29,7 @@ const ProfilePicture = ({
     backgroundColor: theme.background,
     ...(showBorder && {
       borderWidth: borderWidth,
-      borderColor: borderColor || theme.primary,
+      borderColor: borderColor || (isDarkMode ? theme.primary : theme.border),
     }),
   };
 

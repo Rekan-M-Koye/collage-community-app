@@ -298,7 +298,7 @@ const UserProfile = ({ route, navigation }) => {
           <View style={styles.profileHeader}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
               <GlassContainer borderRadius={borderRadius.round} style={styles.backButtonInner}>
-                <Ionicons name="arrow-back" size={moderateScale(24)} color="#FFFFFF" />
+                <Ionicons name="arrow-back" size={moderateScale(24)} color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} />
               </GlassContainer>
             </TouchableOpacity>
             
@@ -313,7 +313,7 @@ const UserProfile = ({ route, navigation }) => {
               </LinearGradient>
             </View>
             
-            <Text style={[styles.name, { fontSize: fontSize(22), color: '#FFFFFF' }]}>{userProfile.name}</Text>
+            <Text style={[styles.name, { fontSize: fontSize(22), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>{userProfile.name}</Text>
             {userProfile.bio && <Text style={[styles.bio, { fontSize: fontSize(13), color: 'rgba(255,255,255,0.8)' }]} numberOfLines={2}>{userProfile.bio}</Text>}
             
             <TouchableOpacity 

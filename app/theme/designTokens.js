@@ -5,41 +5,48 @@ export const lightTheme = {
   warning: '#FF9500',
   danger: '#FF3B30',
   
-  background: '#F2F2F7',
+  background: '#F8F9FA',
   backgroundSecondary: '#FFFFFF',
+  surface: '#FAFBFC',
   
   text: '#1C1C1E',
   subText: '#6B7280',
   textSecondary: '#8E8E93',
-  textTertiary: '#C7C7CC',
+  textTertiary: '#9CA3AF',
+  textDisabled: '#C7C7CC',
   
-  border: 'rgba(0, 0, 0, 0.1)',
-  borderSecondary: 'rgba(0, 0, 0, 0.05)',
+  border: 'rgba(0, 0, 0, 0.15)',
+  borderSecondary: 'rgba(0, 0, 0, 0.1)',
   
-  shadow: 'rgba(0, 0, 0, 0.1)',
+  shadow: 'rgba(0, 0, 0, 0.15)',
   
   gradient: ['#007AFF', '#5856D6'],
-  gradientLight: ['rgba(0, 122, 255, 0.1)', 'rgba(88, 86, 214, 0.1)'],
+  gradientLight: ['rgba(0, 122, 255, 0.15)', 'rgba(88, 86, 214, 0.15)'],
   
   glass: {
-    background: 'rgba(255, 255, 255, 0.9)',
-    border: 'rgba(0, 0, 0, 0.08)',
+    background: 'rgba(255, 255, 255, 0.7)',
+    border: 'rgba(0, 0, 0, 0.1)',
     tint: 'light',
     intensity: 20,
   },
   
   card: {
-    background: 'rgba(255, 255, 255, 0.98)',
-    border: 'rgba(0, 0, 0, 0.06)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    border: 'rgba(0, 0, 0, 0.08)',
   },
   
   input: {
-    background: 'rgba(255, 255, 255, 0.95)',
-    border: 'rgba(0, 0, 0, 0.08)',
-    placeholder: '#9CA3AF',
+    background: 'rgba(255, 255, 255, 0.9)',
+    border: 'rgba(0, 0, 0, 0.1)',
+    borderFocused: 'rgba(0, 122, 255, 0.5)',
+    placeholder: '#8E8E93',
   },
   
-  overlay: 'rgba(0, 0, 0, 0.4)',
+  buttonActive: 'rgba(0, 122, 255, 0.15)',
+  buttonDisabled: 'rgba(0, 0, 0, 0.05)',
+  divider: 'rgba(0, 0, 0, 0.12)',
+  
+  overlay: 'rgba(0, 0, 0, 0.3)',
 };
 
 export const darkTheme = {
@@ -51,11 +58,13 @@ export const darkTheme = {
   
   background: '#000000',
   backgroundSecondary: '#1C1C1E',
+  surface: '#2C2C2E',
   
   text: '#FFFFFF',
   subText: '#9CA3AF',
   textSecondary: '#8E8E93',
   textTertiary: '#48484A',
+  textDisabled: '#48484A',
   
   border: 'rgba(255, 255, 255, 0.15)',
   borderSecondary: 'rgba(255, 255, 255, 0.08)',
@@ -80,8 +89,13 @@ export const darkTheme = {
   input: {
     background: 'rgba(255, 255, 255, 0.1)',
     border: 'rgba(255, 255, 255, 0.12)',
+    borderFocused: 'rgba(10, 132, 255, 0.6)',
     placeholder: '#8E8E93',
   },
+  
+  buttonActive: 'rgba(10, 132, 255, 0.2)',
+  buttonDisabled: 'rgba(255, 255, 255, 0.05)',
+  divider: 'rgba(255, 255, 255, 0.12)',
   
   overlay: 'rgba(0, 0, 0, 0.6)',
 };

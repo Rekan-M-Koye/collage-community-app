@@ -22,7 +22,7 @@ import PostCard from './PostCard';
 import { searchUsers } from '../../database/users';
 import { searchPosts } from '../../database/posts';
 
-const SearchBar = ({ onUserPress, onPostPress }) => {
+const SearchBar = ({ onUserPress, onPostPress, iconOnly = false }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
@@ -231,17 +231,41 @@ const SearchBar = ({ onUserPress, onPostPress }) => {
         onPress={handleOpenModal}
         activeOpacity={0.7}
       >
-        <GlassContainer borderRadius={borderRadius.lg} style={styles.searchButton}>
-          <Ionicons
-            name="search-outline"
-            size={moderateScale(20)}
-            color={theme.subText}
-            style={styles.searchIcon}
-          />
-          <Text style={[styles.searchButtonText, { color: theme.subText, fontSize: fontSize(14) }]}>
-            {t('search.placeholder')}
-          </Text>
-        </GlassContainer>
+        {iconOnly ? (
+          <View 
+            style={[
+              styles.iconOnlyButton,
+              {
+                backgroundColor: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.1)' 
+                  : 'rgba(0, 0, 0, 0.04)',
+                borderWidth: 0.5,
+                borderColor: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.15)' 
+                  : 'rgba(0, 0, 0, 0.08)',
+                borderRadius: borderRadius.md,
+              }
+            ]}
+          >
+            <Ionicons
+              name="search-outline"
+              size={moderateScale(22)}
+              color={theme.text}
+            />
+          </View>
+        ) : (
+          <GlassContainer borderRadius={borderRadius.lg} style={styles.searchButton}>
+            <Ionicons
+              name="search-outline"
+              size={moderateScale(20)}
+              color={theme.subText}
+              style={styles.searchIcon}
+            />
+            <Text style={[styles.searchButtonText, { color: theme.subText, fontSize: fontSize(14) }]}>
+              {t('search.placeholder')}
+            </Text>
+          </GlassContainer>
+        )}
       </TouchableOpacity>
 
       <Modal
@@ -272,7 +296,7 @@ const SearchBar = ({ onUserPress, onPostPress }) => {
                   },
                 ]}
                 placeholder={t('search.placeholder')}
-                placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                placeholderTextColor={theme.input.placeholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearchSubmit}
@@ -301,6 +325,12 @@ const SearchBar = ({ onUserPress, onPostPress }) => {
 };
 
 const styles = StyleSheet.create({
+  iconOnlyButton: {
+    width: moderateScale(44),
+    height: moderateScale(44),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -329,7 +359,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+    backgroundColor: 'rgba(128, 128, 128, 0.15)',
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,

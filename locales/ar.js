@@ -563,6 +563,13 @@ export default {
     selectDepartment: 'اختر القسم',
     stage: 'المرحلة',
     selectStage: 'اختر المرحلة',
+    visibility: 'من يمكنه رؤية هذا؟',
+    departmentOnly: 'القسم',
+    departmentOnlyHelper: 'فقط الطلاب في قسمك يمكنهم رؤية هذا المنشور',
+    majorOnly: 'التخصص',
+    majorOnlyHelper: 'الطلاب في تخصصك (الأقسام ذات الصلة) يمكنهم رؤية هذا المنشور',
+    publicPost: 'عام',
+    publicPostHelper: 'الجميع في المجتمع يمكنهم رؤية هذا المنشور',
     public: 'عام',
     tags: 'الوسوم',
     tagsPlaceholder: 'وسم1، وسم2، وسم3',
@@ -658,6 +665,7 @@ export default {
   // Filter
   filter: {
     selectStage: 'اختر المرحلة',
+    all: 'الكل',
     allStages: 'جميع المراحل',
     stage1: 'المرحلة الأولى',
     stage2: 'المرحلة الثانية',

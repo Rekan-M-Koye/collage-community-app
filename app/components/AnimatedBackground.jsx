@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, Dimensions } from 'react-native';
+import { useAppSettingsSafe } from '../context/AppSettingsContext';
 
 const { width, height } = Dimensions.get('window');
 
 const AnimatedBackground = ({ particleCount = 35 }) => {
+  const context = useAppSettingsSafe();
+  const isDarkMode = context?.isDarkMode || false;
   const particles = useRef(
     Array.from({ length: particleCount }, (i) => {
       const startX = Math.random() * width;
@@ -99,6 +102,8 @@ const AnimatedBackground = ({ particleCount = 35 }) => {
                 { translateY: particle.translateY },
               ],
               opacity: particle.opacity,
+              backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 122, 255, 0.3)',
+              shadowColor: isDarkMode ? '#fff' : '#007AFF',
             },
           ]}
         />
@@ -117,8 +122,6 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    shadowColor: '#fff',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 3,

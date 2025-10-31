@@ -63,12 +63,12 @@ const Settings = ({ navigation }) => {
         style={[
           styles.card,
           {
-            backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.7)',
-            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.85)',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
           },
         ]}>
         <View style={styles.cardContent}>
-          <View style={[styles.iconContainer, { backgroundColor: `${item.color}15` }]}>
+          <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? `${item.color}15` : `${item.color}20` }]}>
             <Ionicons name={item.icon} size={24} color={item.color} />
           </View>
           <View style={styles.textContainer}>

@@ -130,7 +130,7 @@ const CustomAlert = ({
                       {
                         backgroundColor: isDarkMode
                           ? `${iconConfig.color}20`
-                          : `${iconConfig.color}15`,
+                          : `${iconConfig.color}20`,
                       },
                     ]}>
                     <Ionicons
@@ -191,7 +191,7 @@ const CustomAlert = ({
                         (button.style === 'cancel' || button.style === 'default') && {
                           backgroundColor: isDarkMode
                             ? 'rgba(255, 255, 255, 0.1)'
-                            : 'rgba(0, 0, 0, 0.05)',
+                            : 'rgba(0, 0, 0, 0.08)',
                         },
                       ]}
                       activeOpacity={0.7}>

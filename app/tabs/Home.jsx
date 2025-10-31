@@ -8,6 +8,8 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +21,7 @@ import SearchBar from '../components/SearchBar';
 import FeedSelector from '../components/FeedSelector';
 import StageFilter from '../components/StageFilter';
 import PostCard from '../components/PostCard';
+import { PostCardSkeleton } from '../components/SkeletonLoader';
 import { 
   wp, 
   hp, 
@@ -28,11 +31,12 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike } from '../../database/posts';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 
 const POSTS_PER_PAGE = 15;
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const Home = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
@@ -47,12 +51,64 @@ const Home = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [userInteractions, setUserInteractions] = useState({});
+  const [showStageModal, setShowStageModal] = useState(false);
+  
+  const flatListRef = useRef(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const lastTapTime = useRef(0);
 
   useEffect(() => {
     if (user && user.department) {
       loadPosts(true);
     }
   }, [selectedFeed, selectedStage, user]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e) => {
+      const now = Date.now();
+      const DOUBLE_TAP_DELAY = 300;
+      
+      if (now - lastTapTime.current < DOUBLE_TAP_DELAY) {
+        e.preventDefault();
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        setTimeout(() => {
+          handleRefresh();
+        }, 300);
+      }
+      lastTapTime.current = now;
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: true,
+      listener: (event) => {
+        const currentScrollY = event.nativeEvent.contentOffset.y;
+        const diff = currentScrollY - lastScrollY.current;
+
+        if (diff > 5 && currentScrollY > 50) {
+          Animated.timing(headerTranslateY, {
+            toValue: -70,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        } else if (diff < -5 || currentScrollY < 50) {
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+
+        lastScrollY.current = currentScrollY;
+      },
+    }
+  );
 
   const loadPosts = async (reset = false) => {
     if (!user || !user.department) {
@@ -147,11 +203,46 @@ const Home = ({ navigation }) => {
     setHasMore(true);
   };
 
+  const getStagePreviewText = () => {
+    if (selectedStage === 'all') return t('filter.all');
+    if (selectedStage === 'graduate') return 'G';
+    return selectedStage.replace('stage_', '');
+  };
+
   const markPostAsViewed = async (postId) => {
     setUserInteractions(prev => ({
       ...prev,
       [postId]: { ...prev[postId], viewed: true }
     }));
+  };
+
+  const handleLike = async (postId) => {
+    if (!user?.$id) return;
+    
+    try {
+      const result = await togglePostLike(postId, user.$id);
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.$id === postId 
+            ? { 
+                ...post, 
+                likedBy: result.isLiked 
+                  ? [...(post.likedBy || []), user.$id]
+                  : (post.likedBy || []).filter(id => id !== user.$id),
+                likeCount: result.likeCount 
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      const errorInfo = handleNetworkError(error);
+      showAlert(
+        errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
+        errorInfo.message,
+        [{ text: t('common.ok') }]
+      );
+    }
   };
 
   const renderFooter = () => {
@@ -167,11 +258,16 @@ const Home = ({ navigation }) => {
   const renderFeedContent = () => {
     if (isLoadingPosts && posts.length === 0) {
       return (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.text, fontSize: fontSize(14) }]}>
-            {t('feed.loadingPosts')}
-          </Text>
+        <View style={styles.feedContent}>
+          <View style={styles.postContainer}>
+            <PostCardSkeleton />
+          </View>
+          <View style={styles.postContainer}>
+            <PostCardSkeleton />
+          </View>
+          <View style={styles.postContainer}>
+            <PostCardSkeleton />
+          </View>
         </View>
       );
     }
@@ -186,8 +282,8 @@ const Home = ({ navigation }) => {
               styles.emptyIconContainer, 
               { 
                 backgroundColor: isDarkMode 
-                  ? 'rgba(255,255,255,0.1)' 
-                  : 'rgba(0, 122, 255, 0.1)' 
+                  ? 'rgba(255,255,255,0.15)' 
+                  : 'rgba(0, 0, 0, 0.05)' 
               }
             ]}>
               <Ionicons 
@@ -199,7 +295,7 @@ const Home = ({ navigation }) => {
                     : 'globe-outline'
                 } 
                 size={moderateScale(64)} 
-                color={isDarkMode ? 'rgba(255,255,255,0.6)' : theme.primary} 
+                color={isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0, 0, 0, 0.4)'} 
               />
             </View>
             <Text style={[
@@ -228,7 +324,8 @@ const Home = ({ navigation }) => {
     }
 
     return (
-      <FlatList
+      <AnimatedFlatList
+        ref={flatListRef}
         data={posts}
         keyExtractor={(item) => item.$id}
         renderItem={({ item }) => (
@@ -240,6 +337,10 @@ const Home = ({ navigation }) => {
                 handlePostPress(item);
               }}
               onUserPress={() => handleUserPress({ $id: item.userId })}
+              onLike={() => handleLike(item.$id)}
+              onReply={() => handlePostPress(item)}
+              isLiked={item.likedBy?.includes(user?.$id)}
+              isOwner={item.userId === user?.$id}
             />
           </View>
         )}
@@ -256,6 +357,8 @@ const Home = ({ navigation }) => {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       />
     );
   };
@@ -271,7 +374,7 @@ const Home = ({ navigation }) => {
       <LinearGradient
         colors={isDarkMode 
           ? ['#1a1a2e', '#16213e', '#0f3460'] 
-          : ['#e3f2fd', '#bbdefb', '#90caf9']
+          : ['#FFFEF7', '#FFF9E6', '#FFF4D6']
         }
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
@@ -280,35 +383,70 @@ const Home = ({ navigation }) => {
         <AnimatedBackground particleCount={18} />
         
         <View style={styles.content}>
-          <View style={styles.searchSection}>
-            <SearchBar 
-              onUserPress={handleUserPress}
-              onPostPress={handlePostPress}
-            />
-          </View>
-
-          <View style={styles.feedSelectorSection}>
-            <FeedSelector 
-              selectedFeed={selectedFeed}
-              onFeedChange={handleFeedChange}
-            />
-          </View>
-
-          {selectedFeed === FEED_TYPES.DEPARTMENT && (
-            <View style={styles.filterSection}>
-              <StageFilter 
-                selectedStage={selectedStage}
-                onStageChange={handleStageChange}
-                visible={true}
+          <Animated.View 
+            style={[
+              styles.headerRow,
+              {
+                transform: [{ translateY: headerTranslateY }],
+              }
+            ]}
+          >
+            <View style={styles.searchIconButton}>
+              <SearchBar 
+                iconOnly={true}
+                onUserPress={handleUserPress}
+                onPostPress={handlePostPress}
               />
             </View>
-          )}
+
+            <View style={styles.feedSelectorWrapper}>
+              <FeedSelector 
+                selectedFeed={selectedFeed}
+                onFeedChange={handleFeedChange}
+              />
+            </View>
+
+            {selectedFeed === FEED_TYPES.DEPARTMENT && (
+              <TouchableOpacity 
+                style={styles.stageButton}
+                onPress={() => setShowStageModal(true)}
+                activeOpacity={0.7}
+              >
+                <View 
+                  style={[
+                    styles.stageContainer,
+                    {
+                      backgroundColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.1)' 
+                        : 'rgba(0, 0, 0, 0.04)',
+                      borderWidth: 0.5,
+                      borderColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.15)' 
+                        : 'rgba(0, 0, 0, 0.08)',
+                    }
+                  ]}
+                >
+                  <Ionicons name="filter-outline" size={moderateScale(18)} color={theme.primary} />
+                  <Text style={[styles.stageText, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {getStagePreviewText()}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </Animated.View>
 
           <View style={styles.feedContent}>
             {renderFeedContent()}
           </View>
         </View>
       </LinearGradient>
+
+      <StageFilter 
+        selectedStage={selectedStage}
+        onStageChange={handleStageChange}
+        visible={showStageModal}
+        onClose={() => setShowStageModal(false)}
+      />
     </View>
   );
 };
@@ -324,6 +462,43 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'ios' ? hp(6) : hp(5),
     paddingBottom: hp(2),
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(3),
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+    height: 44,
+  },
+  searchIconButton: {
+    width: 44,
+    height: 44,
+  },
+  iconContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedSelectorWrapper: {
+    flex: 1,
+    height: 44,
+  },
+  stageButton: {
+    height: 44,
+  },
+  stageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    paddingHorizontal: spacing.md,
+    gap: 6,
+    borderRadius: borderRadius.lg,
+  },
+  stageText: {
+    fontWeight: '600',
   },
   searchSection: {
     paddingHorizontal: wp(4),
@@ -345,34 +520,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: wp(5),
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   loadingText: {
     marginTop: spacing.md,
+    fontWeight: '500',
   },
   emptyStateCard: {
-    padding: spacing.xl,
+    padding: spacing.xl * 1.5,
     alignItems: 'center',
     width: '100%',
     maxWidth: moderateScale(400),
   },
   emptyIconContainer: {
-    width: moderateScale(120),
-    height: moderateScale(120),
-    borderRadius: moderateScale(60),
+    width: moderateScale(130),
+    height: moderateScale(130),
+    borderRadius: moderateScale(65),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontWeight: 'bold',
-    marginBottom: spacing.sm,
+    fontWeight: '700',
+    marginBottom: spacing.md,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowColor: 'rgba(0, 0, 0, 0.15)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   emptyMessage: {
     textAlign: 'center',
     lineHeight: fontSize(22),
+    opacity: 0.9,
   },
   postContainer: {
     paddingHorizontal: wp(4),

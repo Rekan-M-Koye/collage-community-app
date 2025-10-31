@@ -403,7 +403,7 @@ const PostDetails = ({ navigation, route }) => {
             style={styles.backButton}
             activeOpacity={0.7}>
             <GlassContainer borderRadius={borderRadius.round} style={styles.backButtonInner}>
-              <Ionicons name="arrow-back" size={moderateScale(24)} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={moderateScale(24)} color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} />
             </GlassContainer>
           </TouchableOpacity>
           
@@ -422,7 +422,7 @@ const PostDetails = ({ navigation, route }) => {
           
           <GlassContainer borderRadius={borderRadius.xl} style={styles.repliesSection}>
             <View style={styles.repliesHeader}>
-              <Ionicons name="chatbubbles-outline" size={moderateScale(24)} color="#FFFFFF" />
+              <Ionicons name="chatbubbles-outline" size={moderateScale(24)} color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} />
               <Text style={[styles.repliesTitle, { fontSize: fontSize(18) }]}>
                 {t('post.repliesCount').replace('{count}', replies.length)}
               </Text>

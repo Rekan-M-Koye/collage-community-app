@@ -35,7 +35,7 @@ const LanguageDropdown = () => {
           <Ionicons 
             name="language-outline" 
             size={moderateScale(20)} 
-            color="#FFFFFF" 
+            color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} 
           />
         </GlassContainer>
       </TouchableOpacity>

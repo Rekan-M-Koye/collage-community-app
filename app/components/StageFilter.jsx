@@ -24,162 +24,111 @@ const STAGES = [
   { key: 'graduate', label: 'filter.graduate' },
 ];
 
-const StageFilter = ({ selectedStage = 'all', onStageChange, visible = true }) => {
+const StageFilter = ({ selectedStage = 'all', onStageChange, visible = false, onClose }) => {
   const { t, theme, isDarkMode } = useAppSettings();
-  const [showModal, setShowModal] = useState(false);
-
-  if (!visible) return null;
-
-  const currentStage = STAGES.find(s => s.key === selectedStage) || STAGES[0];
 
   const handleStageSelect = (stageKey) => {
     onStageChange(stageKey);
-    setShowModal(false);
+    if (onClose) onClose();
   };
 
   return (
-    <>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <TouchableOpacity
-        style={styles.filterButton}
-        onPress={() => setShowModal(true)}
-        activeOpacity={0.7}
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
       >
-        <GlassContainer borderRadius={borderRadius.md} style={styles.filterContainer}>
-          <Ionicons
-            name="filter-outline"
-            size={moderateScale(18)}
-            color={theme.primary}
-          />
-          <Text
-            style={[
-              styles.filterText,
-              {
-                color: theme.text,
-                fontSize: fontSize(13),
-              },
-            ]}
+        <View style={styles.modalContent}>
+          <GlassContainer
+            borderRadius={borderRadius.lg}
+            style={styles.modalCard}
           >
-            {t(currentStage.label)}
-          </Text>
-          <Ionicons
-            name="chevron-down-outline"
-            size={moderateScale(16)}
-            color={theme.subText}
-          />
-        </GlassContainer>
-      </TouchableOpacity>
-
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <GlassContainer
-              borderRadius={borderRadius.lg}
-              style={styles.modalCard}
-            >
-              <View style={styles.modalHeader}>
-                <Text
-                  style={[
-                    styles.modalTitle,
-                    {
-                      color: theme.text,
-                      fontSize: fontSize(18),
-                    },
-                  ]}
-                >
-                  {t('filter.selectStage')}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowModal(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons
-                    name="close-outline"
-                    size={moderateScale(24)}
-                    color={theme.text}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                style={styles.stageList}
-                showsVerticalScrollIndicator={false}
+            <View style={styles.modalHeader}>
+              <Text
+                style={[
+                  styles.modalTitle,
+                  {
+                    color: theme.text,
+                    fontSize: fontSize(18),
+                  },
+                ]}
               >
-                {STAGES.map((stage) => {
-                  const isSelected = selectedStage === stage.key;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={stage.key}
+                {t('filter.selectStage')}
+              </Text>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeButton}
+              >
+                <Ionicons
+                  name="close-outline"
+                  size={moderateScale(24)}
+                  color={theme.text}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.stageList}
+              showsVerticalScrollIndicator={false}
+            >
+              {STAGES.map((stage) => {
+                const isSelected = selectedStage === stage.key;
+                
+                return (
+                  <TouchableOpacity
+                    key={stage.key}
+                    style={[
+                      styles.stageItem,
+                      isSelected && {
+                        backgroundColor: isDarkMode
+                          ? 'rgba(255, 255, 255, 0.12)'
+                          : 'rgba(0, 122, 255, 0.15)',
+                        borderWidth: 1,
+                        borderColor: isDarkMode
+                          ? 'rgba(255, 255, 255, 0.18)'
+                          : theme.primary + '40',
+                      },
+                    ]}
+                    onPress={() => handleStageSelect(stage.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
                       style={[
-                        styles.stageItem,
-                        isSelected && {
-                          backgroundColor: isDarkMode
-                            ? 'rgba(255, 255, 255, 0.12)'
-                            : 'rgba(0, 122, 255, 0.08)',
-                          borderWidth: 1,
-                          borderColor: isDarkMode
-                            ? 'rgba(255, 255, 255, 0.18)'
-                            : theme.primary + '30',
+                        styles.stageLabel,
+                        {
+                          color: isSelected ? theme.primary : theme.text,
+                          fontSize: fontSize(15),
+                          fontWeight: isSelected ? '600' : '400',
                         },
                       ]}
-                      onPress={() => handleStageSelect(stage.key)}
-                      activeOpacity={0.7}
                     >
-                      <Text
-                        style={[
-                          styles.stageLabel,
-                          {
-                            color: isSelected ? theme.primary : theme.text,
-                            fontSize: fontSize(15),
-                            fontWeight: isSelected ? '600' : '400',
-                          },
-                        ]}
-                      >
-                        {t(stage.label)}
-                      </Text>
-                      {isSelected && (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={moderateScale(22)}
-                          color={theme.primary}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </GlassContainer>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </>
+                      {t(stage.label)}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={moderateScale(22)}
+                        color={theme.primary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </GlassContainer>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  filterButton: {
-    marginBottom: spacing.sm,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  filterText: {
-    flex: 1,
-    marginLeft: spacing.sm,
-    fontWeight: '600',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

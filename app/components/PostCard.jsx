@@ -43,7 +43,7 @@ const PostCard = ({
   isLiked = false,
   isOwner = false,
 }) => {
-  const { t, theme } = useAppSettings();
+  const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
   const [showMenu, setShowMenu] = useState(false);
   const [imageGalleryVisible, setImageGalleryVisible] = useState(false);
@@ -269,12 +269,12 @@ const PostCard = ({
             )}
           </View>
           <View style={styles.badgesRow}>
-            <View style={[styles.stageBadge, { backgroundColor: `${stageColor}15`, borderColor: stageColor }]}>
+            <View style={[styles.stageBadge, { backgroundColor: isDarkMode ? `${stageColor}15` : `${stageColor}20`, borderColor: stageColor }]}>
               <Text style={[styles.stageText, { color: stageColor }]}>
                 {t(`stages.${post.stage}`)}
               </Text>
             </View>
-            <View style={[styles.typeBadgeInline, { backgroundColor: `${postColor}10` }]}>
+            <View style={[styles.typeBadgeInline, { backgroundColor: isDarkMode ? `${postColor}10` : `${postColor}18` }]}>
               <Ionicons name={postIcon} size={10} color={postColor} />
               <Text style={[styles.typeTextInline, { color: postColor }]}>
                 {t(`post.types.${post.postType}`)}
@@ -304,7 +304,7 @@ const PostCard = ({
         {post.tags && post.tags.length > 0 && (
           <View style={styles.tagsContainer}>
             {post.tags.slice(0, 3).map((tag, index) => (
-              <View key={index} style={[styles.tag, { backgroundColor: theme.border }]}>
+              <View key={index} style={[styles.tag, { backgroundColor: isDarkMode ? theme.border : theme.borderSecondary }]}>
                 <Text style={[styles.tagText, { color: theme.textSecondary }]}>#{tag}</Text>
               </View>
             ))}
@@ -511,9 +511,9 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
   header: {
     flexDirection: 'row',
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   editedText: {
     fontSize: 10,
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   stageText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   typeTextInline: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '600',
   },
   menuButton: {
@@ -737,7 +737,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },

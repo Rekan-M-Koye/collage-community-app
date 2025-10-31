@@ -564,6 +564,13 @@ export default {
     selectDepartment: 'Select Department',
     stage: 'Stage',
     selectStage: 'Select Stage',
+    visibility: 'Who can see this?',
+    departmentOnly: 'Department',
+    departmentOnlyHelper: 'Only students in your department can see this post',
+    majorOnly: 'Major',
+    majorOnlyHelper: 'Students in your major (related departments) can see this post',
+    publicPost: 'Public',
+    publicPostHelper: 'Everyone in the community can see this post',
     public: 'Public',
     tags: 'Tags',
     tagsPlaceholder: 'tag1, tag2, tag3',
@@ -659,6 +666,7 @@ export default {
   // Filter
   filter: {
     selectStage: 'Select Stage',
+    all: 'All',
     allStages: 'All Stages',
     stage1: 'Stage 1',
     stage2: 'Stage 2',
