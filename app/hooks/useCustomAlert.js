@@ -9,14 +9,34 @@ export const useCustomAlert = () => {
     buttons: [],
   });
 
-  const showAlert = useCallback((config) => {
-    setAlertConfig({
-      visible: true,
-      type: config.type || 'info',
-      title: config.title || '',
-      message: config.message || '',
-      buttons: config.buttons || [],
-    });
+  const showAlert = useCallback((titleOrConfig, message, typeOrButtons, buttons) => {
+    if (typeof titleOrConfig === 'object') {
+      setAlertConfig({
+        visible: true,
+        type: titleOrConfig.type || 'info',
+        title: titleOrConfig.title || '',
+        message: titleOrConfig.message || '',
+        buttons: titleOrConfig.buttons || [],
+      });
+    } else {
+      let finalType = 'info';
+      let finalButtons = [];
+      
+      if (Array.isArray(typeOrButtons)) {
+        finalButtons = typeOrButtons;
+      } else {
+        finalType = typeOrButtons || 'info';
+        finalButtons = buttons || [];
+      }
+      
+      setAlertConfig({
+        visible: true,
+        type: finalType,
+        title: titleOrConfig || '',
+        message: message || '',
+        buttons: finalButtons,
+      });
+    }
   }, []);
 
   const hideAlert = useCallback(() => {

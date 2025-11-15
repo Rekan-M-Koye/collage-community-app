@@ -27,6 +27,7 @@ import PersonalizationSettings from './screens/settings/PersonalizationSettings'
 import NotificationSettings from './screens/settings/NotificationSettings';
 import AccountSettings from './screens/settings/AccountSettings';
 import PostDetails from './screens/PostDetails';
+import EditPost from './screens/EditPost';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -208,6 +209,11 @@ const MainStack = () => {
       <Stack.Screen 
         name="PostDetails" 
         component={PostDetails}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="EditPost" 
+        component={EditPost}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

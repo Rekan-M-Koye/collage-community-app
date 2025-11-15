@@ -26,6 +26,7 @@ const PersonalizationSettings = ({ navigation }) => {
     changeLanguage,
     fontSize,
     changeFontSize,
+    getResponsiveFontSize,
   } = useAppSettings();
 
   const themeOptions = [
@@ -191,6 +192,18 @@ const PersonalizationSettings = ({ navigation }) => {
             {t('settings.fontSizeDesc') || 'Changes will apply throughout the app'}
           </Text>
           <GlassCard>
+            <View style={styles.fontPreviewContainer}>
+              <Text style={[
+                styles.previewText,
+                { 
+                  color: theme.text,
+                  fontSize: getResponsiveFontSize(16),
+                }
+              ]}>
+                {t('settings.previewText') || 'This is how text will appear'}
+              </Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <View style={styles.fontSizeContainer}>
               {fontSizes.map((size) => (
                 <TouchableOpacity
@@ -328,6 +341,16 @@ const styles = StyleSheet.create({
   fontSizeContainer: {
     padding: spacing.sm,
     gap: spacing.sm,
+  },
+  fontPreviewContainer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 60,
+  },
+  previewText: {
+    fontWeight: '500',
+    textAlign: 'center',
   },
   fontSizeButton: {
     flexDirection: 'row',

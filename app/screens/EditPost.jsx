@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,20 +29,22 @@ import {
   POST_ICONS,
 } from '../constants/postConstants';
 import { uploadImage } from '../../services/imgbbService';
-import { createPost } from '../../database/posts';
+import { updatePost } from '../../database/posts';
 
-const CreatePost = ({ navigation, route }) => {
+const EditPost = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { showAlert } = useCustomAlert();
   const { user } = useUser();
+  const { post } = route?.params || {};
 
-  const [postType, setPostType] = useState(POST_TYPES.DISCUSSION);
-  const [topic, setTopic] = useState('');
-  const [text, setText] = useState('');
-  const [department, setDepartment] = useState('');
-  const [stage, setStage] = useState('');
-  const [visibility, setVisibility] = useState('department');
+  const [postType, setPostType] = useState(post?.postType || POST_TYPES.DISCUSSION);
+  const [topic, setTopic] = useState(post?.topic || '');
+  const [text, setText] = useState(post?.text || '');
+  const [department, setDepartment] = useState(post?.department || '');
+  const [stage, setStage] = useState(post?.stage || '');
+  const [visibility, setVisibility] = useState(post?.visibility || 'department');
   const [images, setImages] = useState([]);
+  const [existingImages, setExistingImages] = useState(post?.images || []);
   const [tags, setTags] = useState('');
   const [links, setLinks] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,16 +69,24 @@ const CreatePost = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    if (user) {
-      if (user.stage) {
-        const mappedStage = convertUserStageToStageValue(user.stage);
-        setStage(mappedStage);
-      }
-      if (user.department) {
-        setDepartment(user.department);
-      }
+    if (!post) {
+      navigation.goBack();
+      return;
     }
-  }, [user]);
+
+    if (post.userId !== user?.$id) {
+      navigation.goBack();
+      return;
+    }
+
+    if (post.tags && Array.isArray(post.tags)) {
+      setTags(post.tags.join(', '));
+    }
+
+    if (post.links && Array.isArray(post.links)) {
+      setLinks(post.links.join('\n'));
+    }
+  }, []);
 
   const validateForm = () => {
     if (!topic.trim()) {
@@ -133,14 +144,14 @@ const CreatePost = ({ navigation, route }) => {
     return true;
   };
 
-  const handleCreatePost = async () => {
+  const handleUpdatePost = async () => {
     if (!validateForm()) return;
 
     try {
       setLoading(true);
 
-      let uploadedImages = [];
-      let imageDeleteUrls = [];
+      let uploadedImages = [...existingImages];
+      let imageDeleteUrls = post.imageDeleteUrls || [];
 
       if (images.length > 0) {
         showAlert(t('post.uploadingImages'), t('post.pleaseWait'), 'info');
@@ -166,10 +177,7 @@ const CreatePost = ({ navigation, route }) => {
         .map(link => link.trim())
         .filter(link => link.length > 0);
 
-      const postData = {
-        userId: user.$id,
-        userName: user.fullName,
-        userProfilePicture: user.profilePicture || null,
+      const updateData = {
         postType,
         topic: topic.trim(),
         text: text.trim(),
@@ -177,40 +185,40 @@ const CreatePost = ({ navigation, route }) => {
         stage,
         images: uploadedImages,
         imageDeleteUrls,
-        isResolved: false,
-        viewCount: 0,
-        likeCount: 0,
-        replyCount: 0,
-        isEdited: false,
       };
 
       if (tagArray.length > 0) {
-        postData.tags = tagArray;
+        updateData.tags = tagArray;
       }
 
       if (linkArray.length > 0) {
-        postData.links = linkArray;
+        updateData.links = linkArray;
       }
 
-      const createdPost = await createPost(postData);
-      console.log('Post created successfully:', createdPost);
+      const updatedPost = await updatePost(post.$id, updateData);
 
       showAlert(
         t('common.success'),
-        t('post.postCreated'),
+        t('post.postUpdated'),
         'success'
       );
 
       navigation.goBack();
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Error updating post:', error);
       showAlert(
         t('common.error'),
-        error.message || t('post.createError')
+        error.message || t('post.updateError')
       );
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRemoveExistingImage = (index) => {
+    const newImages = [...existingImages];
+    newImages.splice(index, 1);
+    setExistingImages(newImages);
   };
 
   const renderPostTypeSelector = () => (
@@ -252,26 +260,49 @@ const CreatePost = ({ navigation, route }) => {
     </View>
   );
 
+  if (!post) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="close" size={28} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Error</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={{ fontSize: 16, color: '#6B7280', marginTop: 10 }}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
           style={styles.headerButton}
+          onPress={() => navigation.goBack()}
           disabled={loading}
         >
-          <Ionicons name="close" size={24} color="#374151" />
+          <Ionicons name="close" size={28} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('post.createPost')}</Text>
+        
+        <Text style={styles.headerTitle}>{t('post.editPost')}</Text>
+        
         <TouchableOpacity
-          onPress={handleCreatePost}
           style={[styles.headerButton, loading && styles.headerButtonDisabled]}
+          onPress={handleUpdatePost}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator size="small" color="#3B82F6" />
           ) : (
-            <Text style={styles.postButtonText}>{t('post.post')}</Text>
+            <Text style={styles.postButtonText}>{t('common.save')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -279,6 +310,7 @@ const CreatePost = ({ navigation, route }) => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView
           style={styles.scrollView}
@@ -297,8 +329,8 @@ const CreatePost = ({ navigation, route }) => {
               onChangeText={setTopic}
               placeholder={t('post.topicPlaceholder')}
               placeholderTextColor="#9CA3AF"
-              maxLength={VALIDATION_RULES.POST.topic.max}
               editable={!loading}
+              maxLength={VALIDATION_RULES.POST.topic.max}
             />
             <Text style={styles.charCount}>
               {topic.length}/{VALIDATION_RULES.POST.topic.max}
@@ -316,10 +348,10 @@ const CreatePost = ({ navigation, route }) => {
               placeholder={t('post.descriptionPlaceholder')}
               placeholderTextColor="#9CA3AF"
               multiline
-              numberOfLines={6}
-              maxLength={VALIDATION_RULES.POST.text.max}
+              numberOfLines={8}
               textAlignVertical="top"
               editable={!loading}
+              maxLength={VALIDATION_RULES.POST.text.max}
             />
             <Text style={styles.charCount}>
               {text.length}/{VALIDATION_RULES.POST.text.max}
@@ -353,9 +385,7 @@ const CreatePost = ({ navigation, route }) => {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
-              {t('post.visibility')} *
-            </Text>
+            <Text style={styles.sectionLabel}>{t('post.visibility')}</Text>
             <View style={styles.visibilityContainer}>
               <TouchableOpacity
                 style={[
@@ -475,10 +505,35 @@ const CreatePost = ({ navigation, route }) => {
             </Text>
           </View>
 
+          {existingImages.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>
+                {t('post.existingImages')}
+              </Text>
+              <View style={styles.existingImagesContainer}>
+                {existingImages.map((imageUrl, index) => (
+                  <View key={index} style={styles.existingImageWrapper}>
+                    <Image 
+                      source={{ uri: imageUrl }} 
+                      style={styles.existingImage}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeExistingImageButton}
+                      onPress={() => handleRemoveExistingImage(index)}
+                      disabled={loading}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           <ImagePickerComponent
             images={images}
             onImagesChange={setImages}
-            maxImages={MAX_IMAGES_PER_POST}
+            maxImages={MAX_IMAGES_PER_POST - existingImages.length}
             disabled={loading}
           />
 
@@ -623,9 +678,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  existingImagesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  existingImageWrapper: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+  },
+  existingImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  removeExistingImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
   bottomSpace: {
     height: 40,
   },
 });
 
-export default CreatePost;
+export default EditPost;

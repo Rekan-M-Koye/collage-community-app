@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
 import i18n from '../../locales/i18n';
 import { I18nManager, Appearance, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { getScaledFontSize, createFontSizeScale } from '../utils/fontScale';
 
 const AppSettingsContext = createContext();
 
@@ -256,6 +257,12 @@ export const AppSettingsProvider = ({ children }) => {
     return i18n.t(key, config);
   };
 
+  const getResponsiveFontSize = (size) => {
+    return getScaledFontSize(size, fontSize);
+  };
+
+  const fontSizes = createFontSizeScale(fontSize);
+
   const value = {
     currentLanguage,
     changeLanguage,
@@ -270,6 +277,8 @@ export const AppSettingsProvider = ({ children }) => {
 
     fontSize,
     changeFontSize,
+    getResponsiveFontSize,
+    fontSizes,
 
     notificationsEnabled,
     toggleNotifications,

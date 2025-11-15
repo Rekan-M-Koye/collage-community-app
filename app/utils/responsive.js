@@ -45,6 +45,14 @@ export const fontSize = (size) => {
   return moderateScale(size);
 };
 
+export const fontSizeWithScale = (size, scale = 1) => {
+  const scaledSize = size * scale;
+  if (isTablet()) {
+    return moderateScale(scaledSize * 1.2);
+  }
+  return moderateScale(scaledSize);
+};
+
 export const spacing = {
   xs: moderateScale(4),
   sm: moderateScale(8),

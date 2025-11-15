@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList, RefreshControl, Alert } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,7 @@ import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import PostCard from '../components/PostCard';
 import { getCompleteUserData } from '../../database/auth';
-import { getPostsByUser, togglePostLike, markQuestionAsResolved } from '../../database/posts';
+import { getPostsByUser, togglePostLike, markQuestionAsResolved, deletePost } from '../../database/posts';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
@@ -114,6 +114,37 @@ const Profile = ({ navigation }) => {
     } catch (error) {
       console.error('Error marking as resolved:', error);
     }
+  };
+
+  const handleEditPost = (post) => {
+    navigation.navigate('EditPost', { post });
+  };
+
+  const handleDeletePost = async (post) => {
+    Alert.alert(
+      t('common.delete'),
+      t('post.deleteConfirm'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePost(post.$id, post.imageDeleteUrls);
+              setUserPosts(prevPosts => prevPosts.filter(p => p.$id !== post.$id));
+              Alert.alert(t('common.success'), t('post.postDeleted'));
+            } catch (error) {
+              console.error('Error deleting post:', error);
+              Alert.alert(t('common.error'), t('post.deleteError'));
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (isLoading) {
@@ -340,6 +371,8 @@ const Profile = ({ navigation }) => {
             onReply={() => navigation.navigate('PostDetails', { post })}
             onLike={() => handleLike(post.$id)}
             onMarkResolved={() => handleMarkResolved(post.$id)}
+            onEdit={() => handleEditPost(post)}
+            onDelete={() => handleDeletePost(post)}
             onUserPress={() => {}}
             isOwner={true}
             isLiked={post.likedBy?.includes(user.$id)}

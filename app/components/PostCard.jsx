@@ -260,7 +260,7 @@ const PostCard = ({
               </Text>
             </TouchableOpacity>
             <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-              {formatTimeAgo(post.$createdAt)}
+              {formatTimeAgo(post.isEdited && post.$updatedAt ? post.$updatedAt : post.$createdAt)}
             </Text>
             {post.isEdited && (
               <Text style={[styles.editedText, { color: theme.textTertiary }]}>

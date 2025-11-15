@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
+import {
+  View,
+  Text,
   StyleSheet,
   StatusBar,
   Platform,
@@ -22,16 +22,16 @@ import FeedSelector from '../components/FeedSelector';
 import StageFilter from '../components/StageFilter';
 import PostCard from '../components/PostCard';
 import { PostCardSkeleton } from '../components/SkeletonLoader';
-import { 
-  wp, 
-  hp, 
-  fontSize, 
-  spacing, 
+import {
+  wp,
+  hp,
+  fontSize,
+  spacing,
   moderateScale,
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost } from '../../database/posts';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 
@@ -52,7 +52,7 @@ const Home = ({ navigation }) => {
   const [page, setPage] = useState(0);
   const [userInteractions, setUserInteractions] = useState({});
   const [showStageModal, setShowStageModal] = useState(false);
-  
+
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerTranslateY = useRef(new Animated.Value(0)).current;
@@ -69,7 +69,7 @@ const Home = ({ navigation }) => {
     const unsubscribe = navigation.addListener('tabPress', (e) => {
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300;
-      
+
       if (now - lastTapTime.current < DOUBLE_TAP_DELAY) {
         e.preventDefault();
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -117,7 +117,7 @@ const Home = ({ navigation }) => {
 
     const currentPage = reset ? 0 : page;
     const loadingState = reset ? setIsLoadingPosts : setIsLoadingMore;
-    
+
     loadingState(true);
 
     try {
@@ -125,7 +125,7 @@ const Home = ({ navigation }) => {
       const offset = currentPage * POSTS_PER_PAGE;
 
       if (selectedFeed === FEED_TYPES.DEPARTMENT) {
-        const filters = { 
+        const filters = {
           department: user.department
         };
         if (selectedStage !== 'all') {
@@ -183,14 +183,14 @@ const Home = ({ navigation }) => {
   };
 
   const handlePostPress = (post) => {
-    navigation.navigate('PostDetails', { postId: post.$id });
+    navigation.navigate('PostDetails', { post });
   };
 
   const handleFeedChange = (feedType) => {
     if (feedType === selectedFeed) {
       return;
     }
-    
+
     setSelectedFeed(feedType);
     setPosts([]);
     setPage(0);
@@ -221,20 +221,20 @@ const Home = ({ navigation }) => {
 
   const handleLike = async (postId) => {
     if (!user?.$id) return;
-    
+
     try {
       const result = await togglePostLike(postId, user.$id);
-      
-      setPosts(prevPosts => 
-        prevPosts.map(post => 
-          post.$id === postId 
-            ? { 
-                ...post, 
-                likedBy: result.isLiked 
-                  ? [...(post.likedBy || []), user.$id]
-                  : (post.likedBy || []).filter(id => id !== user.$id),
-                likeCount: result.likeCount 
-              }
+
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.$id === postId
+            ? {
+              ...post,
+              likedBy: result.isLiked
+                ? [...(post.likedBy || []), user.$id]
+                : (post.likedBy || []).filter(id => id !== user.$id),
+              likeCount: result.likeCount
+            }
             : post
         )
       );
@@ -248,9 +248,45 @@ const Home = ({ navigation }) => {
     }
   };
 
+  const handleEditPost = (post) => {
+    navigation.navigate('EditPost', { post });
+  };
+
+  const handleDeletePost = async (post) => {
+    showAlert(
+      t('common.delete'),
+      t('post.deleteConfirm'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePost(post.$id, post.imageDeleteUrls);
+              setPosts(prevPosts => prevPosts.filter(p => p.$id !== post.$id));
+              showAlert(t('common.success'), t('post.postDeleted'), 'success');
+            } catch (error) {
+              console.error('Error deleting post:', error);
+              const errorInfo = handleNetworkError(error);
+              showAlert(
+                errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
+                errorInfo.message,
+                [{ text: t('common.ok') }]
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderFooter = () => {
     if (!isLoadingMore) return null;
-    
+
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={theme.primary} />
@@ -278,42 +314,42 @@ const Home = ({ navigation }) => {
     if (posts.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <GlassContainer 
+          <GlassContainer
             borderRadius={borderRadius.xl}
             style={styles.emptyStateCard}>
             <View style={[
-              styles.emptyIconContainer, 
-              { 
-                backgroundColor: isDarkMode 
-                  ? 'rgba(255,255,255,0.15)' 
-                  : 'rgba(0, 0, 0, 0.05)' 
+              styles.emptyIconContainer,
+              {
+                backgroundColor: isDarkMode
+                  ? 'rgba(255,255,255,0.15)'
+                  : 'rgba(0, 0, 0, 0.05)'
               }
             ]}>
-              <Ionicons 
+              <Ionicons
                 name={
-                  selectedFeed === FEED_TYPES.DEPARTMENT 
-                    ? 'people-outline' 
-                    : selectedFeed === FEED_TYPES.MAJOR 
-                    ? 'school-outline' 
-                    : 'globe-outline'
-                } 
-                size={moderateScale(64)} 
-                color={isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0, 0, 0, 0.4)'} 
+                  selectedFeed === FEED_TYPES.DEPARTMENT
+                    ? 'people-outline'
+                    : selectedFeed === FEED_TYPES.MAJOR
+                      ? 'school-outline'
+                      : 'globe-outline'
+                }
+                size={moderateScale(64)}
+                color={isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0, 0, 0, 0.4)'}
               />
             </View>
             <Text style={[
-              styles.emptyTitle, 
-              { 
-                fontSize: fontSize(20), 
+              styles.emptyTitle,
+              {
+                fontSize: fontSize(20),
                 color: theme.text
               }
             ]}>
               {t('feed.noPosts')}
             </Text>
             <Text style={[
-              styles.emptyMessage, 
-              { 
-                fontSize: fontSize(14), 
+              styles.emptyMessage,
+              {
+                fontSize: fontSize(14),
                 color: theme.subText
               }
             ]}>
@@ -342,6 +378,8 @@ const Home = ({ navigation }) => {
               onUserPress={() => handleUserPress({ $id: item.userId })}
               onLike={() => handleLike(item.$id)}
               onReply={() => handlePostPress(item)}
+              onEdit={() => handleEditPost(item)}
+              onDelete={() => handleDeletePost(item)}
               isLiked={item.likedBy?.includes(user?.$id)}
               isOwner={item.userId === user?.$id}
             />
@@ -368,25 +406,25 @@ const Home = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar 
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
         translucent
       />
-      
+
       <LinearGradient
-        colors={isDarkMode 
-          ? ['#1a1a2e', '#16213e', '#0f3460'] 
+        colors={isDarkMode
+          ? ['#1a1a2e', '#16213e', '#0f3460']
           : ['#FFFEF7', '#FFF9E6', '#FFF4D6']
         }
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
-        
+
         <AnimatedBackground particleCount={18} />
-        
+
         <View style={styles.content}>
-          <Animated.View 
+          <Animated.View
             style={[
               styles.headerRow,
               {
@@ -395,7 +433,7 @@ const Home = ({ navigation }) => {
             ]}
           >
             <View style={styles.searchIconButton}>
-              <SearchBar 
+              <SearchBar
                 iconOnly={true}
                 onUserPress={handleUserPress}
                 onPostPress={handlePostPress}
@@ -403,27 +441,27 @@ const Home = ({ navigation }) => {
             </View>
 
             <View style={styles.feedSelectorWrapper}>
-              <FeedSelector 
+              <FeedSelector
                 selectedFeed={selectedFeed}
                 onFeedChange={handleFeedChange}
               />
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.stageButton}
               onPress={() => setShowStageModal(true)}
               activeOpacity={0.7}
             >
-              <View 
+              <View
                 style={[
                   styles.stageContainer,
                   {
-                    backgroundColor: isDarkMode 
-                      ? 'rgba(255, 255, 255, 0.1)' 
+                    backgroundColor: isDarkMode
+                      ? 'rgba(255, 255, 255, 0.1)'
                       : 'rgba(0, 0, 0, 0.04)',
                     borderWidth: 0.5,
-                    borderColor: isDarkMode 
-                      ? 'rgba(255, 255, 255, 0.15)' 
+                    borderColor: isDarkMode
+                      ? 'rgba(255, 255, 255, 0.15)'
                       : 'rgba(0, 0, 0, 0.08)',
                   }
                 ]}
@@ -442,7 +480,7 @@ const Home = ({ navigation }) => {
         </View>
       </LinearGradient>
 
-      <StageFilter 
+      <StageFilter
         selectedStage={selectedStage}
         onStageChange={handleStageChange}
         visible={showStageModal}
