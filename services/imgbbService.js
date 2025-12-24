@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
-const IMGBB_API_KEY = '2b74b47dbff705a8ee383763714dce86';
+const IMGBB_API_KEY = process.env.EXPO_PUBLIC_IMGBB_API_KEY || '2b74b47dbff705a8ee383763714dce86';
 const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
 
 export const pickImage = async () => {
@@ -41,7 +41,6 @@ export const compressImage = async (imageUri) => {
     
     return compressedImage;
   } catch (error) {
-    console.error('Error compressing image:', error);
     throw error;
   }
 };
@@ -70,7 +69,6 @@ export const uploadToImgbb = async (base64Image) => {
       throw new Error('Upload failed');
     }
   } catch (error) {
-    console.error('Error uploading to imgbb:', error);
     throw error;
   }
 };
@@ -93,7 +91,6 @@ export const uploadProfilePicture = async () => {
     
     return uploadResult;
   } catch (error) {
-    console.error('Error in uploadProfilePicture:', error);
     throw error;
   }
 };
@@ -139,7 +136,6 @@ export const uploadPostImage = async () => {
 
     return null;
   } catch (error) {
-    console.error('Error in uploadPostImage:', error);
     throw error;
   }
 };
@@ -172,7 +168,6 @@ export const uploadImage = async (imageUri) => {
       thumbnailUrl: uploadResult.thumbnailUrl,
     };
   } catch (error) {
-    console.error('Error in uploadImage:', error);
     return {
       success: false,
       error: error.message,
@@ -183,7 +178,6 @@ export const uploadImage = async (imageUri) => {
 export const deleteImageFromImgbb = async (deleteUrl) => {
   try {
     if (!deleteUrl) {
-      console.log('No delete URL provided');
       return { success: false, error: 'No delete URL provided' };
     }
 
@@ -192,14 +186,11 @@ export const deleteImageFromImgbb = async (deleteUrl) => {
     });
 
     if (response.ok) {
-      console.log('Image deleted from imgbb successfully');
       return { success: true };
     } else {
-      console.log('Failed to delete image from imgbb');
       return { success: false, error: 'Delete request failed' };
     }
   } catch (error) {
-    console.error('Error deleting image from imgbb:', error);
     return { success: false, error: error.message };
   }
 };
@@ -214,7 +205,6 @@ export const deleteMultipleImages = async (deleteUrls) => {
     const results = await Promise.allSettled(deletePromises);
     
     const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-    console.log(`Deleted ${successCount}/${deleteUrls.length} images from imgbb`);
     
     return { 
       success: true, 
@@ -222,7 +212,6 @@ export const deleteMultipleImages = async (deleteUrls) => {
       totalCount: deleteUrls.length 
     };
   } catch (error) {
-    console.error('Error deleting multiple images:', error);
     return { success: false, error: error.message };
   }
 };

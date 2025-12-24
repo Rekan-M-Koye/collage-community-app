@@ -80,7 +80,6 @@ const PostCard = ({
         await onLike();
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
       setLiked(previousLiked);
       setLikeCount(previousCount);
     } finally {
@@ -109,13 +108,13 @@ const PostCard = ({
       
       return postDate.toLocaleDateString();
     } catch (error) {
-      console.error('Error formatting time:', error);
       return '';
     }
   };
 
   const getDefaultAvatar = (name) => {
-    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name || 'User') + '&size=200&background=667eea&color=fff&bold=true';
+    const sanitizedName = (name || 'User').replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 50);
+    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(sanitizedName) + '&size=200&background=667eea&color=fff&bold=true';
   };
 
   const handleMenuAction = (action) => {
@@ -136,7 +135,6 @@ const PostCard = ({
         title: post.topic,
       });
     } catch (error) {
-      console.error('Error sharing:', error);
     }
   };
 
@@ -305,7 +303,7 @@ const PostCard = ({
           <View style={styles.tagsContainer}>
             {post.tags.slice(0, 3).map((tag, index) => (
               <View key={index} style={[styles.tag, { backgroundColor: isDarkMode ? theme.border : theme.borderSecondary }]}>
-                <Text style={[styles.tagText, { color: theme.textSecondary }]}>#{tag}</Text>
+                <Text style={[styles.tagText, { color: theme.textSecondary }]}>#{sanitizeTag(tag)}</Text>
               </View>
             ))}
             {post.tags.length > 3 && (

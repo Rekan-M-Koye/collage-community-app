@@ -8,7 +8,7 @@ export const GlassContainer = ({
   style, 
   intensity,
   borderRadius = 16,
-  borderWidth = 1,
+  borderWidth = 0,
 }) => {
   const context = useAppSettingsSafe();
   const theme = context?.theme || {};
@@ -16,13 +16,21 @@ export const GlassContainer = ({
   
   const isAndroid = Platform.OS === 'android';
   
+  // More transparent backgrounds to blend with gradient
+  // Light mode: semi-transparent to show gradient behind
   const glassBackground = theme.glass?.background || (
     isDarkMode 
-      ? (isAndroid ? 'rgba(28, 28, 30, 0.92)' : 'rgba(28, 28, 30, 0.6)') 
-      : (isAndroid ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 1)')
+      ? (isAndroid ? 'rgba(28, 28, 30, 0.85)' : 'rgba(28, 28, 30, 0.6)') 
+      : (isAndroid ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.6)')
   );
   const glassIntensity = intensity || (isAndroid ? 80 : 25);
   const glassTint = theme.glass?.tint || (isDarkMode ? 'dark' : 'light');
+  
+  // Light mode border - subtle shadow instead of border lines
+  const lightModeBorder = !isDarkMode ? {
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+  } : {};
   
   return (
     <View style={[styles.container, { borderRadius }, style]}>
@@ -56,58 +64,43 @@ export const GlassContainer = ({
           { 
             backgroundColor: glassBackground,
             borderRadius,
-            shadowColor: isDarkMode ? '#000' : '#000',
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDarkMode ? 0.4 : 0.12,
+            shadowOpacity: isDarkMode ? 0.4 : 0.06,
             shadowRadius: isDarkMode ? 8 : 4,
-            elevation: isAndroid ? (isDarkMode ? 4 : 3) : 0,
+            elevation: isAndroid ? (isDarkMode ? 4 : 1) : 0,
+            ...lightModeBorder,
           }
         ]} 
       />
-      <View 
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            borderRadius,
-            borderWidth: isDarkMode ? borderWidth * 0.5 : borderWidth,
-            borderColor: isDarkMode 
-              ? 'rgba(0, 0, 0, 0.2)' 
-              : 'rgba(0, 0, 0, 0.12)',
-          }
-        ]} 
-      />
-      <View 
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            borderRadius,
-            borderTopWidth: isDarkMode ? borderWidth * 0.5 : 0,
-            borderLeftWidth: isDarkMode ? borderWidth * 0.5 : 0,
-            borderTopColor: isDarkMode 
-              ? 'rgba(255, 255, 255, 0.3)' 
-              : 'transparent',
-            borderLeftColor: isDarkMode 
-              ? 'rgba(255, 255, 255, 0.3)' 
-              : 'transparent',
-          }
-        ]} 
-      />
-      <View 
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            borderRadius,
-            borderBottomWidth: isDarkMode ? borderWidth * 0.5 : 0,
-            borderRightWidth: isDarkMode ? borderWidth * 0.5 : 0,
-            borderBottomColor: isDarkMode 
-              ? 'rgba(0, 0, 0, 0.3)' 
-              : 'transparent',
-            borderRightColor: isDarkMode 
-              ? 'rgba(0, 0, 0, 0.3)' 
-              : 'transparent',
-          }
-        ]} 
-      />
+      {isDarkMode && borderWidth > 0 && (
+        <>
+          <View 
+            style={[
+              StyleSheet.absoluteFill,
+              { 
+                borderRadius,
+                borderWidth: borderWidth * 0.5,
+                borderColor: 'rgba(0, 0, 0, 0.2)',
+              }
+            ]} 
+          />
+          <View 
+            style={[
+              StyleSheet.absoluteFill,
+              { 
+                borderRadius,
+                borderTopWidth: borderWidth * 0.5,
+                borderLeftWidth: borderWidth * 0.5,
+                borderTopColor: 'rgba(255, 255, 255, 0.3)',
+                borderLeftColor: 'rgba(255, 255, 255, 0.3)',
+                borderBottomColor: 'transparent',
+                borderRightColor: 'transparent',
+              }
+            ]} 
+          />
+        </>
+      )}
       <View style={styles.content}>
         {children}
       </View>
@@ -145,9 +138,17 @@ export const GlassInput = ({
   const glassTint = theme.glass?.tint || (isDarkMode ? 'dark' : 'light');
   const primaryColor = theme.primary || '#007AFF';
   
+  const backgroundColor = isDarkMode 
+    ? (isAndroid ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.1)')
+    : (isAndroid ? 'rgba(0, 0, 0, 0.04)' : 'rgba(0, 0, 0, 0.03)');
+  
+  const borderColor = focused 
+    ? primaryColor 
+    : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)');
+  
   return (
     <View style={[styles.container, style]}>
-      {Platform.OS === 'ios' && (
+      {Platform.OS === 'ios' && isDarkMode && (
         <BlurView
           intensity={15}
           tint={glassTint}
@@ -162,30 +163,9 @@ export const GlassInput = ({
           StyleSheet.absoluteFill,
           { 
             borderRadius: 16,
-            borderTopWidth: focused ? 2 : 1.5,
-            borderLeftWidth: focused ? 2 : 1.5,
-            borderTopColor: focused 
-              ? primaryColor 
-              : (isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.9)'),
-            borderLeftColor: focused 
-              ? primaryColor 
-              : (isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.9)'),
-          }
-        ]} 
-      />
-      <View 
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            borderRadius: 16,
-            borderBottomWidth: focused ? 2 : 1.5,
-            borderRightWidth: focused ? 2 : 1.5,
-            borderBottomColor: focused 
-              ? primaryColor 
-              : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.1)'),
-            borderRightColor: focused 
-              ? primaryColor 
-              : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.1)'),
+            backgroundColor: backgroundColor,
+            borderWidth: focused ? 2 : 1,
+            borderColor: borderColor,
           }
         ]} 
       />

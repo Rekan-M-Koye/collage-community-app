@@ -39,7 +39,6 @@ export const compressImage = async (uri, options = {}) => {
 
     return result;
   } catch (error) {
-    console.error('Error compressing image:', error);
     throw error;
   }
 };
@@ -51,7 +50,6 @@ export const compressMultipleImages = async (uris, options = {}) => {
     );
     return compressedImages;
   } catch (error) {
-    console.error('Error compressing multiple images:', error);
     throw error;
   }
 };
@@ -76,7 +74,6 @@ export const createThumbnail = async (uri) => {
 
     return result;
   } catch (error) {
-    console.error('Error creating thumbnail:', error);
     throw error;
   }
 };
@@ -108,7 +105,6 @@ export const calculateOptimalQuality = async (uri) => {
       return COMPRESSION_QUALITY.HIGH;
     }
   } catch (error) {
-    console.error('Error calculating quality:', error);
     return COMPRESSION_QUALITY.MEDIUM;
   }
 };
@@ -127,7 +123,6 @@ export const smartCompress = async (uri) => {
       resize: shouldResize,
     });
   } catch (error) {
-    console.error('Error in smart compress:', error);
     throw error;
   }
 };
@@ -176,7 +171,6 @@ export const pickAndCompressImages = async (options = {}) => {
       originalUri: selectedImages[index].uri,
     }));
   } catch (error) {
-    console.error('Error picking and compressing images:', error);
     throw error;
   }
 };
@@ -212,7 +206,6 @@ export const takePictureAndCompress = async (options = {}) => {
       originalUri: result.assets[0].uri,
     };
   } catch (error) {
-    console.error('Error taking and compressing picture:', error);
     throw error;
   }
 };

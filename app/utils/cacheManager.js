@@ -16,7 +16,7 @@ export const cacheManager = {
         JSON.stringify(cacheData)
       );
     } catch (error) {
-      console.error('Cache set error:', error);
+      // Failed to set cache
     }
   },
 
@@ -34,7 +34,6 @@ export const cacheManager = {
 
       return value;
     } catch (error) {
-      console.error('Cache get error:', error);
       return null;
     }
   },
@@ -43,7 +42,7 @@ export const cacheManager = {
     try {
       await AsyncStorage.removeItem(`${CACHE_PREFIX}${key}`);
     } catch (error) {
-      console.error('Cache remove error:', error);
+      // Failed to remove cache
     }
   },
 
@@ -53,7 +52,7 @@ export const cacheManager = {
       const cacheKeys = keys.filter(key => key.startsWith(CACHE_PREFIX));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.error('Cache clear error:', error);
+      // Failed to clear cache
     }
   }
 };

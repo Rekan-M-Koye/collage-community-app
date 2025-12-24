@@ -1,0 +1,793 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  StatusBar,
+  Platform,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Switch,
+  Image,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useAppSettings } from '../../context/AppSettingsContext';
+import { useUser } from '../../context/UserContext';
+import { GlassContainer, GlassInput } from '../../components/GlassComponents';
+import AnimatedBackground from '../../components/AnimatedBackground';
+import ProfilePicture from '../../components/ProfilePicture';
+import { getUserById } from '../../../database/users';
+import { pickAndCompressImages } from '../../utils/imageCompression';
+import { uploadToImgbb } from '../../../services/imgbbService';
+import { 
+  updateGroupSettings, 
+  addGroupAdmin, 
+  removeGroupAdmin,
+  addGroupMember,
+  removeGroupMember,
+  leaveGroup,
+  deleteGroup,
+} from '../../../database/chatHelpers';
+import { 
+  wp, 
+  hp, 
+  fontSize, 
+  spacing, 
+  moderateScale,
+} from '../../utils/responsive';
+import { borderRadius } from '../../theme/designTokens';
+
+const GroupSettings = ({ navigation, route }) => {
+  const { chat } = route.params || {};
+  const { t, theme, isDarkMode } = useAppSettings();
+  const { user: currentUser } = useUser();
+  
+  const [groupName, setGroupName] = useState(chat?.name || '');
+  const [description, setDescription] = useState(chat?.description || '');
+  const [groupPhoto, setGroupPhoto] = useState(chat?.groupPhoto || null);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  
+  const [settings, setSettings] = useState({
+    allowMemberInvites: false,
+    onlyAdminsCanPost: false,
+    muteNotifications: false,
+  });
+
+  const isAdmin = chat?.admins?.includes(currentUser?.$id) || 
+                  chat?.representatives?.includes(currentUser?.$id);
+  const isCreator = chat?.admins?.[0] === currentUser?.$id;
+
+  useEffect(() => {
+    loadMembers();
+    loadSettings();
+  }, [chat]);
+
+  const loadSettings = () => {
+    try {
+      if (chat?.settings) {
+        const parsed = typeof chat.settings === 'string' 
+          ? JSON.parse(chat.settings) 
+          : chat.settings;
+        setSettings(prev => ({ ...prev, ...parsed }));
+      }
+    } catch (e) {
+      // Keep default settings
+    }
+  };
+
+  const handleChangeGroupPhoto = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setUploadingPhoto(true);
+      const result = await pickAndCompressImages({
+        allowsMultipleSelection: false,
+        maxImages: 1,
+        quality: 'medium',
+      });
+
+      if (result && result.length > 0) {
+        const uploadResult = await uploadToImgbb(result[0].base64);
+        if (uploadResult && uploadResult.url) {
+          setGroupPhoto(uploadResult.url);
+        }
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.groupPhotoError'));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const loadMembers = async () => {
+    if (!chat?.participants) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const memberPromises = chat.participants.map(id => getUserById(id));
+      const memberData = await Promise.all(memberPromises);
+      const validMembers = memberData.filter(m => m);
+      setMembers(validMembers);
+    } catch (error) {
+      setMembers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!isAdmin) return;
+
+    setSaving(true);
+    try {
+      await updateGroupSettings(chat.$id, {
+        name: groupName.trim(),
+        description: description.trim(),
+        groupPhoto: groupPhoto,
+        settings: JSON.stringify(settings),
+        requiresRepresentative: settings.onlyAdminsCanPost,
+      });
+      Alert.alert(t('common.success'), t('chats.settingsSaved'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.settingsSaveError'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleAdmin = async (userId) => {
+    if (!isCreator || userId === currentUser?.$id) return;
+
+    const isUserAdmin = chat?.admins?.includes(userId);
+    
+    try {
+      if (isUserAdmin) {
+        await removeGroupAdmin(chat.$id, userId);
+      } else {
+        await addGroupAdmin(chat.$id, userId);
+      }
+      // Refresh data
+      navigation.setParams({ 
+        chat: { 
+          ...chat, 
+          admins: isUserAdmin 
+            ? chat.admins.filter(id => id !== userId)
+            : [...(chat.admins || []), userId]
+        } 
+      });
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.adminUpdateError'));
+    }
+  };
+
+  const handleRemoveMember = async (userId) => {
+    if (!isAdmin || userId === currentUser?.$id) return;
+
+    Alert.alert(
+      t('chats.removeMember'),
+      t('chats.removeMemberConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.remove'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeGroupMember(chat.$id, userId);
+              setMembers(prev => prev.filter(m => m.$id !== userId));
+            } catch (error) {
+              Alert.alert(t('common.error'), t('chats.removeMemberError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLeaveGroup = () => {
+    Alert.alert(
+      t('chats.leaveGroup'),
+      t('chats.leaveGroupConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('chats.leave'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveGroup(chat.$id, currentUser.$id);
+              navigation.popToTop();
+            } catch (error) {
+              Alert.alert(t('common.error'), t('chats.leaveGroupError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteGroup = () => {
+    if (!isCreator) return;
+
+    Alert.alert(
+      t('chats.deleteGroup'),
+      t('chats.deleteGroupConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteGroup(chat.$id);
+              navigation.popToTop();
+            } catch (error) {
+              Alert.alert(t('common.error'), t('chats.deleteGroupError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderMemberItem = ({ item }) => {
+    const isMemberAdmin = chat?.admins?.includes(item.$id);
+    const isMemberCreator = chat?.admins?.[0] === item.$id;
+    const isCurrentUser = item.$id === currentUser?.$id;
+
+    return (
+      <View style={styles.memberCard}>
+        <ProfilePicture 
+          uri={item.profilePicture}
+          name={item.name}
+          size={moderateScale(44)}
+        />
+        <View style={styles.memberInfo}>
+          <View style={styles.memberNameRow}>
+            <Text style={[styles.memberName, { color: theme.text, fontSize: fontSize(14) }]} numberOfLines={1}>
+              {item.name} {isCurrentUser && `(${t('chats.you')})`}
+            </Text>
+            {isMemberCreator && (
+              <View style={[styles.roleBadge, { backgroundColor: '#F59E0B20' }]}>
+                <Text style={[styles.roleBadgeText, { color: '#F59E0B', fontSize: fontSize(10) }]}>
+                  {t('chats.creator')}
+                </Text>
+              </View>
+            )}
+            {isMemberAdmin && !isMemberCreator && (
+              <View style={[styles.roleBadge, { backgroundColor: `${theme.primary}20` }]}>
+                <Text style={[styles.roleBadgeText, { color: theme.primary, fontSize: fontSize(10) }]}>
+                  {t('chats.admin')}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.memberDetails, { color: theme.textSecondary, fontSize: fontSize(11) }]} numberOfLines={1}>
+            {item.department || item.email}
+          </Text>
+        </View>
+        
+        {isAdmin && !isCurrentUser && !isMemberCreator && (
+          <View style={styles.memberActions}>
+            {isCreator && (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: `${theme.primary}15` }]}
+                onPress={() => handleToggleAdmin(item.$id)}>
+                <Ionicons 
+                  name={isMemberAdmin ? 'shield' : 'shield-outline'} 
+                  size={moderateScale(18)} 
+                  color={theme.primary} 
+                />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#FF3B3020' }]}
+              onPress={() => handleRemoveMember(item.$id)}>
+              <Ionicons name="remove-circle-outline" size={moderateScale(18)} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderSettingItem = (icon, title, subtitle, value, onToggle, disabled = false) => (
+    <View style={[styles.settingRow, disabled && styles.settingRowDisabled]}>
+      <View style={[styles.settingIcon, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+        <Ionicons name={icon} size={moderateScale(20)} color={theme.primary} />
+      </View>
+      <View style={styles.settingContent}>
+        <Text style={[styles.settingTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+          {title}
+        </Text>
+        <Text style={[styles.settingSubtitle, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
+          {subtitle}
+        </Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        disabled={disabled || !isAdmin}
+        trackColor={{ false: isDarkMode ? '#555' : '#ccc', true: `${theme.primary}80` }}
+        thumbColor={value ? theme.primary : isDarkMode ? '#888' : '#f4f3f4'}
+      />
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar 
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+        backgroundColor="transparent"
+        translucent
+      />
+      
+      <LinearGradient
+        colors={isDarkMode 
+          ? ['#1a1a2e', '#16213e', '#0f3460'] 
+          : ['#f0f4ff', '#d8e7ff', '#c0deff']
+        }
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}>
+        
+        <AnimatedBackground particleCount={15} />
+        
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={moderateScale(24)} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: theme.text, fontSize: fontSize(20) }]}>
+              {t('chats.groupSettings')}
+            </Text>
+            {isAdmin && (
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={handleSaveSettings}
+                disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator size="small" color={theme.primary} />
+                ) : (
+                  <Text style={[styles.saveButtonText, { color: theme.primary, fontSize: fontSize(16) }]}>
+                    {t('common.save')}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+            {!isAdmin && <View style={styles.placeholder} />}
+          </View>
+
+          <ScrollView 
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}>
+            
+            {/* Group Info Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                {t('chats.groupInfo')}
+              </Text>
+              <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.sectionCard}>
+                {/* Group Photo */}
+                <View style={styles.groupPhotoSection}>
+                  <TouchableOpacity
+                    style={styles.groupPhotoContainer}
+                    onPress={handleChangeGroupPhoto}
+                    disabled={!isAdmin || uploadingPhoto}>
+                    {uploadingPhoto ? (
+                      <View style={[styles.groupPhotoPlaceholder, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                      </View>
+                    ) : groupPhoto ? (
+                      <Image 
+                        source={{ uri: groupPhoto }} 
+                        style={styles.groupPhoto}
+                      />
+                    ) : (
+                      <View style={[styles.groupPhotoPlaceholder, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+                        <Ionicons name="people" size={moderateScale(40)} color={theme.textSecondary} />
+                      </View>
+                    )}
+                    {isAdmin && !uploadingPhoto && (
+                      <View style={[styles.photoEditBadge, { backgroundColor: theme.primary }]}>
+                        <Ionicons name="camera" size={moderateScale(14)} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {isAdmin && (
+                    <TouchableOpacity 
+                      onPress={handleChangeGroupPhoto}
+                      disabled={uploadingPhoto}>
+                      <Text style={[styles.changePhotoText, { color: theme.primary, fontSize: fontSize(13) }]}>
+                        {t('chats.changeGroupPhoto')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {t('chats.groupName')}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      { 
+                        color: theme.text, 
+                        fontSize: fontSize(15),
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      }
+                    ]}
+                    value={groupName}
+                    onChangeText={setGroupName}
+                    editable={isAdmin}
+                    placeholder={t('chats.groupNamePlaceholder')}
+                    placeholderTextColor={theme.textSecondary}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {t('chats.groupDescription')}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      styles.textArea,
+                      { 
+                        color: theme.text, 
+                        fontSize: fontSize(15),
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                      }
+                    ]}
+                    value={description}
+                    onChangeText={setDescription}
+                    editable={isAdmin}
+                    multiline
+                    numberOfLines={3}
+                    placeholder={t('chats.groupDescriptionPlaceholder')}
+                    placeholderTextColor={theme.textSecondary}
+                  />
+                </View>
+              </GlassContainer>
+            </View>
+
+            {/* Permissions Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                {t('chats.permissions')}
+              </Text>
+              <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.sectionCard}>
+                {renderSettingItem(
+                  'chatbubble-ellipses',
+                  t('chats.onlyAdminsCanPost'),
+                  t('chats.onlyAdminsCanPostDesc'),
+                  settings.onlyAdminsCanPost,
+                  (val) => setSettings(prev => ({ ...prev, onlyAdminsCanPost: val }))
+                )}
+                {renderSettingItem(
+                  'person-add',
+                  t('chats.allowMemberInvites'),
+                  t('chats.allowMemberInvitesDesc'),
+                  settings.allowMemberInvites,
+                  (val) => setSettings(prev => ({ ...prev, allowMemberInvites: val }))
+                )}
+                {renderSettingItem(
+                  'notifications-off',
+                  t('chats.muteNotifications'),
+                  t('chats.muteNotificationsDesc'),
+                  settings.muteNotifications,
+                  (val) => setSettings(prev => ({ ...prev, muteNotifications: val }))
+                )}
+              </GlassContainer>
+            </View>
+
+            {/* Members Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                  {t('chats.members')} ({members.length})
+                </Text>
+                {(isAdmin || settings.allowMemberInvites) && (
+                  <TouchableOpacity 
+                    style={[styles.addButton, { backgroundColor: `${theme.primary}15` }]}
+                    onPress={() => navigation.navigate('AddMembers', { chat })}>
+                    <Ionicons name="add" size={moderateScale(18)} color={theme.primary} />
+                    <Text style={[styles.addButtonText, { color: theme.primary, fontSize: fontSize(12) }]}>
+                      {t('chats.addMembers')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+              ) : (
+                <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.membersCard}>
+                  <FlatList
+                    data={members}
+                    renderItem={renderMemberItem}
+                    keyExtractor={(item) => item.$id}
+                    scrollEnabled={false}
+                    ItemSeparatorComponent={() => (
+                      <View style={[styles.separator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]} />
+                    )}
+                  />
+                </GlassContainer>
+              )}
+            </View>
+
+            {/* Danger Zone */}
+            <View style={[styles.section, styles.dangerSection]}>
+              <Text style={[styles.sectionTitle, { color: '#FF3B30', fontSize: fontSize(12) }]}>
+                {t('chats.dangerZone')}
+              </Text>
+              <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.sectionCard}>
+                <TouchableOpacity 
+                  style={styles.dangerButton}
+                  onPress={handleLeaveGroup}>
+                  <Ionicons name="exit-outline" size={moderateScale(20)} color="#FF3B30" />
+                  <Text style={[styles.dangerButtonText, { fontSize: fontSize(14) }]}>
+                    {t('chats.leaveGroup')}
+                  </Text>
+                </TouchableOpacity>
+                
+                {isCreator && (
+                  <>
+                    <View style={[styles.separator, { backgroundColor: 'rgba(255,59,48,0.15)' }]} />
+                    <TouchableOpacity 
+                      style={styles.dangerButton}
+                      onPress={handleDeleteGroup}>
+                      <Ionicons name="trash-outline" size={moderateScale(20)} color="#FF3B30" />
+                      <Text style={[styles.dangerButtonText, { fontSize: fontSize(14) }]}>
+                        {t('chats.deleteGroup')}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </GlassContainer>
+            </View>
+
+            <View style={styles.bottomPadding} />
+          </ScrollView>
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  backButton: {
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: moderateScale(20),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  saveButton: {
+    minWidth: moderateScale(60),
+    alignItems: 'flex-end',
+  },
+  saveButtonText: {
+    fontWeight: '600',
+  },
+  placeholder: {
+    width: moderateScale(60),
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+  },
+  sectionCard: {
+    padding: spacing.md,
+  },
+  groupPhotoSection: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  groupPhotoContainer: {
+    position: 'relative',
+    marginBottom: spacing.sm,
+  },
+  groupPhoto: {
+    width: moderateScale(100),
+    height: moderateScale(100),
+    borderRadius: moderateScale(50),
+  },
+  groupPhotoPlaceholder: {
+    width: moderateScale(100),
+    height: moderateScale(100),
+    borderRadius: moderateScale(50),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: moderateScale(30),
+    height: moderateScale(30),
+    borderRadius: moderateScale(15),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  changePhotoText: {
+    fontWeight: '500',
+  },
+  inputGroup: {
+    marginBottom: spacing.md,
+  },
+  inputLabel: {
+    fontWeight: '500',
+    marginBottom: spacing.xs,
+  },
+  textInput: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    fontWeight: '400',
+  },
+  textArea: {
+    height: moderateScale(80),
+    textAlignVertical: 'top',
+    paddingTop: spacing.sm,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  settingRowDisabled: {
+    opacity: 0.5,
+  },
+  settingIcon: {
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: moderateScale(10),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontWeight: '500',
+  },
+  settingSubtitle: {
+    marginTop: 2,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  addButtonText: {
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+  },
+  membersCard: {
+    paddingVertical: spacing.xs,
+  },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  memberInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  memberName: {
+    fontWeight: '600',
+  },
+  memberDetails: {
+    marginTop: 2,
+  },
+  roleBadge: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  roleBadgeText: {
+    fontWeight: '600',
+  },
+  memberActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  actionButton: {
+    width: moderateScale(32),
+    height: moderateScale(32),
+    borderRadius: moderateScale(16),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  separator: {
+    height: 1,
+    marginVertical: spacing.xs,
+  },
+  dangerSection: {
+    marginTop: spacing.md,
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  dangerButtonText: {
+    color: '#FF3B30',
+    fontWeight: '500',
+  },
+  bottomPadding: {
+    height: hp(5),
+  },
+});
+
+export default GroupSettings;

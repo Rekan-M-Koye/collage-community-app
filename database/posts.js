@@ -4,6 +4,14 @@ import { handleNetworkError } from '../app/utils/networkErrorHandler';
 
 export const createPost = async (postData) => {
     try {
+        if (!postData || typeof postData !== 'object') {
+            throw new Error('Invalid post data');
+        }
+        
+        if (!postData.userId || !postData.topic) {
+            throw new Error('Missing required fields');
+        }
+        
         const post = await databases.createDocument(
             config.databaseId,
             config.postsCollectionId,
@@ -12,13 +20,16 @@ export const createPost = async (postData) => {
         );
         return post;
     } catch (error) {
-        console.error('Create post error:', error);
         throw error;
     }
 };
 
 export const getPost = async (postId) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         const post = await databases.getDocument(
             config.databaseId,
             config.postsCollectionId,
@@ -26,7 +37,6 @@ export const getPost = async (postId) => {
         );
         return post;
     } catch (error) {
-        console.error('Get post error:', error);
         throw error;
     }
 };
@@ -61,7 +71,6 @@ export const getPosts = async (filters = {}, limit = 20, offset = 0) => {
         return posts.documents;
     } catch (error) {
         const errorInfo = handleNetworkError(error);
-        console.error('Get posts error:', errorInfo.message);
         throw error;
     }
 };
@@ -92,7 +101,6 @@ export const getPostsByDepartments = async (departments = [], stage = 'all', lim
         return posts.documents;
     } catch (error) {
         const errorInfo = handleNetworkError(error);
-        console.error('Get posts by departments error:', errorInfo.message);
         throw error;
     }
 };
@@ -118,7 +126,6 @@ export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0) =
         return posts.documents;
     } catch (error) {
         const errorInfo = handleNetworkError(error);
-        console.error('Get all public posts error:', errorInfo.message);
         throw error;
     }
 };
@@ -136,6 +143,11 @@ export const searchPosts = async (searchQuery, userDepartment = null, userMajor 
         if (!searchQuery || searchQuery.trim().length === 0) {
             return [];
         }
+        
+        const sanitizedQuery = searchQuery.trim().replace(/[<>"']/g, '').substring(0, 100);
+        if (sanitizedQuery.length < 2) {
+            return [];
+        }
 
         const queries = [
             Query.limit(500),
@@ -148,7 +160,7 @@ export const searchPosts = async (searchQuery, userDepartment = null, userMajor 
             queries
         );
         
-        const searchLower = searchQuery.toLowerCase();
+        const searchLower = sanitizedQuery.toLowerCase();
         const filtered = posts.documents.filter(post => {
             const matchesSearch = 
                 post.title?.toLowerCase().includes(searchLower) ||
@@ -169,6 +181,14 @@ export const searchPosts = async (searchQuery, userDepartment = null, userMajor 
 
 export const updatePost = async (postId, postData) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
+        if (!postData || typeof postData !== 'object') {
+            throw new Error('Invalid post data');
+        }
+        
         const updateData = {
             ...postData,
             isEdited: true
@@ -182,13 +202,16 @@ export const updatePost = async (postId, postData) => {
         );
         return post;
     } catch (error) {
-        console.error('Update post error:', error);
         throw error;
     }
 };
 
 export const deletePost = async (postId, imageDeleteUrls = []) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         await databases.deleteDocument(
             config.databaseId,
             config.postsCollectionId,
@@ -202,13 +225,16 @@ export const deletePost = async (postId, imageDeleteUrls = []) => {
         
         return { success: true };
     } catch (error) {
-        console.error('Delete post error:', error);
         throw error;
     }
 };
 
 export const incrementPostViewCount = async (postId, userId = null) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         const post = await getPost(postId);
         const viewedBy = post.viewedBy || [];
         
@@ -232,13 +258,20 @@ export const incrementPostViewCount = async (postId, userId = null) => {
             );
         }
     } catch (error) {
-        console.error('Increment view count error:', error);
         throw error;
     }
 };
 
 export const togglePostLike = async (postId, userId) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
+        if (!userId || typeof userId !== 'string') {
+            throw new Error('Invalid user ID');
+        }
+        
         const post = await getPost(postId);
         const likedBy = post.likedBy || [];
         const isLiked = likedBy.includes(userId);
@@ -262,13 +295,16 @@ export const togglePostLike = async (postId, userId) => {
         
         return { isLiked: !isLiked, likeCount: updatedLikedBy.length };
     } catch (error) {
-        console.error('Toggle like error:', error);
         throw error;
     }
 };
 
 export const markQuestionAsResolved = async (postId) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         await databases.updateDocument(
             config.databaseId,
             config.postsCollectionId,
@@ -276,16 +312,19 @@ export const markQuestionAsResolved = async (postId) => {
             { isResolved: true }
         );
     } catch (error) {
-        console.error('Mark resolved error:', error);
         throw error;
     }
 };
 
 export const createReply = async (postId, replyData) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         const reply = await databases.createDocument(
             config.databaseId,
-            'REPLIES_COLLECTION_ID',
+            config.repliesCollectionId,
             ID.unique(),
             {
                 ...replyData,
@@ -294,16 +333,19 @@ export const createReply = async (postId, replyData) => {
         );
         return reply;
     } catch (error) {
-        console.error('Create reply error:', error);
         throw error;
     }
 };
 
 export const getReplies = async (postId) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         const replies = await databases.listDocuments(
             config.databaseId,
-            'REPLIES_COLLECTION_ID',
+            config.repliesCollectionId,
             [
                 Query.equal('postId', postId),
                 Query.orderAsc('$createdAt')
@@ -311,26 +353,32 @@ export const getReplies = async (postId) => {
         );
         return replies.documents;
     } catch (error) {
-        console.error('Get replies error:', error);
         throw error;
     }
 };
 
 export const deleteReply = async (replyId) => {
     try {
+        if (!replyId || typeof replyId !== 'string') {
+            throw new Error('Invalid reply ID');
+        }
+        
         await databases.deleteDocument(
             config.databaseId,
-            'REPLIES_COLLECTION_ID',
+            config.repliesCollectionId,
             replyId
         );
     } catch (error) {
-        console.error('Delete reply error:', error);
         throw error;
     }
 };
 
 export const uploadImage = async (file) => {
     try {
+        if (!file) {
+            throw new Error('File is required');
+        }
+        
         const uploadedFile = await storage.createFile(
             config.bucketId,
             ID.unique(),
@@ -338,7 +386,6 @@ export const uploadImage = async (file) => {
         );
         return uploadedFile;
     } catch (error) {
-        console.error('Upload image error:', error);
         throw error;
     }
 };
@@ -349,9 +396,12 @@ export const getImageUrl = (fileId) => {
 
 export const deleteImage = async (fileId) => {
     try {
+        if (!fileId || typeof fileId !== 'string') {
+            throw new Error('Invalid file ID');
+        }
+        
         await storage.deleteFile(config.bucketId, fileId);
     } catch (error) {
-        console.error('Delete image error:', error);
         throw error;
     }
 };

@@ -2,21 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Animated,
   StatusBar,
   Alert,
   Platform,
-  ScrollView,
+  ActivityIndicator,
   KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useUser } from '../context/UserContext';
 import { GlassContainer } from '../components/GlassComponents';
-import { confirmEmailVerification, resendEmailVerification } from '../../database/auth';
+import { checkAndCompleteVerification, resendVerificationEmail, cancelPendingVerification, getCompleteUserData } from '../../database/auth';
 import { 
   wp, 
   hp, 
@@ -28,14 +29,13 @@ import {
 import { borderRadius } from '../theme/designTokens';
 
 const VerifyEmail = ({ route, navigation }) => {
-  const { email, userId, secret } = route.params || {};
-  const [code, setCode] = useState(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
+  const { email, userId, name } = route.params || {};
+  const [isChecking, setIsChecking] = useState(false);
   const [canResend, setCanResend] = useState(false);
   const [countdown, setCountdown] = useState(60);
   
   const { t, theme, isDarkMode } = useAppSettings();
-  const inputRefs = useRef([]);
+  const { setUserData } = useUser();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -69,66 +69,50 @@ const VerifyEmail = ({ route, navigation }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleCodeChange = (text, index) => {
-    if (text.length > 1) {
-      text = text[text.length - 1];
-    }
-
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode);
-
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (newCode.every(digit => digit !== '')) {
-      handleVerify(newCode.join(''));
-    }
-  };
-
-  const handleKeyPress = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerify = async (verificationCode) => {
-    setIsLoading(true);
+  const handleCheckVerification = async () => {
+    setIsChecking(true);
 
     try {
-      if (userId && verificationCode) {
-        await confirmEmailVerification(userId, verificationCode);
+      await checkAndCompleteVerification();
+      
+      const completeUserData = await getCompleteUserData();
+      
+      if (completeUserData) {
+        const userData = {
+          $id: completeUserData.$id,
+          email: completeUserData.email,
+          fullName: completeUserData.name,
+          bio: completeUserData.bio || '',
+          profilePicture: completeUserData.profilePicture || '',
+          university: completeUserData.university || '',
+          college: completeUserData.major || '',
+          department: completeUserData.department || '',
+          stage: completeUserData.year || '',
+          postsCount: completeUserData.postsCount || 0,
+          followersCount: completeUserData.followersCount || 0,
+          followingCount: completeUserData.followingCount || 0,
+          isEmailVerified: true,
+          lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
+        };
         
-        Alert.alert(
-          t('common.success'),
-          t('auth.accountCreated') || 'Email verified successfully!',
-          [
-            {
-              text: t('common.ok') || 'OK',
-              onPress: () => navigation.replace('MainTabs'),
-            }
-          ]
-        );
+        await setUserData(userData);
       }
+      
+      navigation.replace('MainTabs');
     } catch (error) {
-      console.error('Verification error:', error);
+      setIsChecking(false);
       Alert.alert(
         t('common.error'),
-        t('auth.verificationError') || 'Invalid verification code. Please try again.'
+        error.message || t('auth.emailNotVerifiedYet') || 'Email not verified yet. Please check your email and click the verification link.'
       );
-      setCode(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleResendCode = async () => {
+  const handleResendEmail = async () => {
     if (!canResend) return;
 
     try {
-      await resendEmailVerification();
+      await resendVerificationEmail();
       
       setCanResend(false);
       setCountdown(60);
@@ -146,15 +130,39 @@ const VerifyEmail = ({ route, navigation }) => {
 
       Alert.alert(
         t('common.success'),
-        t('auth.codeSent') || 'Verification code sent to your email!'
+        t('auth.verificationEmailSent') || 'Verification email sent! Please check your inbox.'
       );
     } catch (error) {
-      console.error('Resend error:', error);
       Alert.alert(
         t('common.error'),
-        'Failed to resend verification code. Please try again.'
+        error.message || t('auth.resendError') || 'Failed to resend verification email. Please try again.'
       );
     }
+  };
+
+  const handleGoBack = async () => {
+    Alert.alert(
+      t('auth.cancelVerification') || 'Cancel Verification',
+      t('auth.cancelVerificationMessage') || 'Your signup data will be deleted. You will need to sign up again.',
+      [
+        {
+          text: t('common.cancel') || 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: t('common.ok') || 'OK',
+          onPress: async () => {
+            try {
+              await cancelPendingVerification();
+              navigation.replace('SignUp');
+            } catch (error) {
+              navigation.replace('SignUp');
+            }
+          },
+          style: 'destructive'
+        }
+      ]
+    );
   };
 
   return (
@@ -195,7 +203,7 @@ const VerifyEmail = ({ route, navigation }) => {
               <View style={styles.iconContainer}>
                 <View style={styles.iconCircle}>
                   <Ionicons 
-                    name="mail-open-outline" 
+                    name="mail-outline" 
                     size={moderateScale(60)} 
                     color="#FFFFFF" 
                   />
@@ -207,11 +215,13 @@ const VerifyEmail = ({ route, navigation }) => {
                   {t('auth.verifyEmail') || 'Verify Your Email'}
                 </Text>
                 <Text style={[styles.subHeaderText, { fontSize: fontSize(14) }]}>
-                  {t('auth.verificationCodeSent') || 'We sent a verification code to'}
+                  {t('auth.verificationEmailSent') || 'We sent a verification email to'}
                 </Text>
-                <Text style={[styles.emailText, { fontSize: fontSize(15) }]} numberOfLines={1}>
-                  {email}
-                </Text>
+                <View style={styles.emailBox}>
+                  <Text style={[styles.emailText, { fontSize: fontSize(15) }]} numberOfLines={1}>
+                    {email}
+                  </Text>
+                </View>
               </View>
 
           <GlassContainer 
@@ -222,41 +232,45 @@ const VerifyEmail = ({ route, navigation }) => {
             <Text style={[styles.instructionText, { 
               color: theme.textSecondary,
               fontSize: fontSize(14),
+              textAlign: 'center',
             }]}>
-              {t('auth.enterCode') || 'Enter the 6-digit code'}
+              {t('auth.clickVerificationLink') || 'Click the verification link in your email, then return here and click the button below.'}
             </Text>
 
-            <View style={styles.codeInputContainer}>
-              {code.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => (inputRefs.current[index] = ref)}
-                  style={[
-                    styles.codeInput,
-                    {
-                      borderColor: digit ? theme.primary : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.8)'),
-                      backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-                      color: theme.text,
-                      fontSize: fontSize(24),
-                    },
-                  ]}
-                  value={digit}
-                  onChangeText={(text) => handleCodeChange(text, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  selectTextOnFocus
-                  editable={!isLoading}
+            <TouchableOpacity 
+              style={[
+                styles.checkButton,
+                { 
+                  backgroundColor: theme.primary,
+                  opacity: isChecking ? 0.7 : 1,
+                }
+              ]}
+              onPress={handleCheckVerification}
+              disabled={isChecking}
+              activeOpacity={0.8}>
+              {isChecking ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Ionicons 
+                  name="checkmark-circle-outline" 
+                  size={moderateScale(22)} 
+                  color="#FFFFFF" 
                 />
-              ))}
-            </View>
+              )}
+              <Text style={[styles.checkButtonText, { fontSize: fontSize(16) }]}>
+                {isChecking 
+                  ? (t('auth.verifying') || 'Verifying...') 
+                  : (t('auth.iHaveVerified') || 'I Have Verified')
+                }
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity 
               style={[
                 styles.resendButton,
                 { opacity: canResend ? 1 : 0.5 }
               ]}
-              onPress={handleResendCode}
+              onPress={handleResendEmail}
               disabled={!canResend}
               activeOpacity={0.7}>
               <Text style={[styles.resendText, { 
@@ -264,7 +278,7 @@ const VerifyEmail = ({ route, navigation }) => {
                 fontSize: fontSize(14),
               }]}>
                 {canResend 
-                  ? (t('auth.resendCode') || 'Resend Code') 
+                  ? (t('auth.resendVerificationEmail') || 'Resend Verification Email') 
                   : `${t('auth.resendIn') || 'Resend in'} ${countdown}s`
                 }
               </Text>
@@ -272,7 +286,7 @@ const VerifyEmail = ({ route, navigation }) => {
 
             <TouchableOpacity 
               style={styles.changeEmailButton}
-              onPress={() => navigation.goBack()}
+              onPress={handleGoBack}
               activeOpacity={0.7}>
               <Ionicons 
                 name="arrow-back-outline" 
@@ -283,7 +297,7 @@ const VerifyEmail = ({ route, navigation }) => {
                 color: theme.textSecondary,
                 fontSize: fontSize(14),
               }]}>
-                {t('auth.changeEmail') || 'Change Email Address'}
+                {t('auth.goBack') || 'Go Back'}
               </Text>
             </TouchableOpacity>
           </GlassContainer>
@@ -352,13 +366,21 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  emailBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   emailText: {
     fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: spacing.xs,
   },
   formContainer: {
     padding: isTablet() ? spacing.xxl : spacing.lg,
@@ -368,22 +390,31 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
     fontWeight: '500',
+    lineHeight: fontSize(14) * 1.5,
+    paddingHorizontal: spacing.md,
   },
-  codeInputContainer: {
+  checkButton: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  codeInput: {
-    width: moderateScale(45),
-    height: moderateScale(55),
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    textAlign: 'center',
+  checkButtonText: {
+    color: '#FFFFFF',
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   resendButton: {
     marginBottom: spacing.md,

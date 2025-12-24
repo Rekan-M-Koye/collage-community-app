@@ -65,20 +65,16 @@ const SearchBar = ({ onUserPress, onPostPress, iconOnly = false }) => {
     }
 
     try {
-      console.log('Searching for:', query.trim());
       const [usersResults, postsResults] = await Promise.all([
         searchUsers(query.trim(), 5),
         searchPosts(query.trim(), user?.department, user?.major, 10)
       ]);
-
-      console.log('Search results - Users:', usersResults?.length, 'Posts:', postsResults?.length);
 
       setResults({
         users: usersResults || [],
         posts: postsResults || [],
       });
     } catch (error) {
-      console.error('Search error:', error);
       setResults({ users: [], posts: [] });
     } finally {
       setIsSearching(false);

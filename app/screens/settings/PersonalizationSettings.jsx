@@ -24,9 +24,6 @@ const PersonalizationSettings = ({ navigation }) => {
     setThemeMode,
     currentLanguage,
     changeLanguage,
-    fontSize,
-    changeFontSize,
-    getResponsiveFontSize,
   } = useAppSettings();
 
   const themeOptions = [
@@ -39,12 +36,6 @@ const PersonalizationSettings = ({ navigation }) => {
     { code: 'en', name: 'English', nativeName: 'English' },
     { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
     { code: 'ku', name: 'Kurdish', nativeName: 'کوردی' },
-  ];
-
-  const fontSizes = [
-    { value: 'small', label: t('settings.small') },
-    { value: 'medium', label: t('settings.medium') },
-    { value: 'large', label: t('settings.large') },
   ];
 
   const handleLanguageChange = (languageCode) => {
@@ -184,64 +175,6 @@ const PersonalizationSettings = ({ navigation }) => {
           </GlassCard>
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-            {t('settings.fontSize')}
-          </Text>
-          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
-            {t('settings.fontSizeDesc') || 'Changes will apply throughout the app'}
-          </Text>
-          <GlassCard>
-            <View style={styles.fontPreviewContainer}>
-              <Text style={[
-                styles.previewText,
-                { 
-                  color: theme.text,
-                  fontSize: getResponsiveFontSize(16),
-                }
-              ]}>
-                {t('settings.previewText') || 'This is how text will appear'}
-              </Text>
-            </View>
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <View style={styles.fontSizeContainer}>
-              {fontSizes.map((size) => (
-                <TouchableOpacity
-                  key={size.value}
-                  style={[
-                    styles.fontSizeButton,
-                    {
-                      backgroundColor: fontSize === size.value
-                        ? isDarkMode ? 'rgba(10, 132, 255, 0.2)' : 'rgba(0, 122, 255, 0.15)'
-                        : isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                      borderColor: fontSize === size.value ? theme.primary : 'transparent',
-                    },
-                  ]}
-                  onPress={() => changeFontSize(size.value)}
-                  activeOpacity={0.7}>
-                  <Ionicons
-                    name="text-outline"
-                    size={size.value === 'small' ? 16 : size.value === 'large' ? 24 : 20}
-                    color={fontSize === size.value ? theme.primary : theme.text}
-                    style={styles.fontIcon}
-                  />
-                  <Text style={[
-                    styles.fontSizeLabel,
-                    { color: fontSize === size.value ? theme.primary : theme.text },
-                  ]}>
-                    {size.label}
-                  </Text>
-                  {fontSize === size.value && (
-                    <View style={styles.checkmarkContainer}>
-                      <Ionicons name="checkmark" size={16} color={theme.primary} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </GlassCard>
-        </View>
-
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
@@ -337,44 +270,6 @@ const styles = StyleSheet.create({
   },
   languageName: {
     fontSize: responsiveFontSize(13),
-  },
-  fontSizeContainer: {
-    padding: spacing.sm,
-    gap: spacing.sm,
-  },
-  fontPreviewContainer: {
-    padding: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 60,
-  },
-  previewText: {
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  fontSizeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-  },
-  fontIcon: {
-    marginRight: spacing.sm,
-  },
-  fontSizeLabel: {
-    flex: 1,
-    fontSize: responsiveFontSize(15),
-    fontWeight: '600',
-  },
-  checkmarkContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(10, 132, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   divider: {
     height: 1,

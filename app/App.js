@@ -8,7 +8,7 @@ import { AppSettingsProvider, useAppSettings } from './context/AppSettingsContex
 import { UserProvider } from './context/UserContext';
 import { LanguageProvider } from './context/LanguageContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import { getCurrentUser } from '../database/auth';
+import { getCurrentUser, getUserDocument, signOut } from '../database/auth';
 
 import SignIn from './auth/SignIn';
 import SignUp from './auth/SignUp';
@@ -28,6 +28,10 @@ import NotificationSettings from './screens/settings/NotificationSettings';
 import AccountSettings from './screens/settings/AccountSettings';
 import PostDetails from './screens/PostDetails';
 import EditPost from './screens/EditPost';
+import ChatRoom from './screens/ChatRoom';
+import UserProfile from './screens/UserProfile';
+import ManageRepresentatives from './screens/ManageRepresentatives';
+import { NewChat, UserSearch, CreateGroup, GroupSettings } from './screens/chats';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -138,9 +142,19 @@ const MainStack = () => {
   const checkSession = async () => {
     try {
       const user = await getCurrentUser();
-      setIsAuthenticated(!!user);
+      
+      if (user) {
+        try {
+          const userDoc = await getUserDocument(user.$id);
+          setIsAuthenticated(!!userDoc);
+        } catch (error) {
+          await signOut();
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
     } catch (error) {
-      console.error('Session check error:', error);
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
@@ -214,6 +228,41 @@ const MainStack = () => {
       <Stack.Screen 
         name="EditPost" 
         component={EditPost}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="ChatRoom" 
+        component={ChatRoom}
+        options={{ headerShown: true }}
+      />
+      <Stack.Screen 
+        name="NewChat" 
+        component={NewChat}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="UserSearch" 
+        component={UserSearch}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CreateGroup" 
+        component={CreateGroup}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="GroupSettings" 
+        component={GroupSettings}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="UserProfile" 
+        component={UserProfile}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="ManageRepresentatives" 
+        component={ManageRepresentatives}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

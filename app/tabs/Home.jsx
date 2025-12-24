@@ -154,7 +154,6 @@ const Home = ({ navigation }) => {
 
       setHasMore(fetchedPosts.length === POSTS_PER_PAGE);
     } catch (error) {
-      console.error('Error loading posts:', error);
       const errorInfo = handleNetworkError(error);
       showAlert(
         errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
@@ -270,7 +269,6 @@ const Home = ({ navigation }) => {
               setPosts(prevPosts => prevPosts.filter(p => p.$id !== post.$id));
               showAlert(t('common.success'), t('post.postDeleted'), 'success');
             } catch (error) {
-              console.error('Error deleting post:', error);
               const errorInfo = handleNetworkError(error);
               showAlert(
                 errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
@@ -312,11 +310,22 @@ const Home = ({ navigation }) => {
     }
 
     if (posts.length === 0) {
+      const cardBackground = isDarkMode 
+        ? 'rgba(255, 255, 255, 0.08)' 
+        : 'rgba(255, 255, 255, 0.6)';
+
       return (
         <View style={styles.centerContainer}>
-          <GlassContainer
-            borderRadius={borderRadius.xl}
-            style={styles.emptyStateCard}>
+          <View
+            style={[
+              styles.emptyStateCard,
+              {
+                backgroundColor: cardBackground,
+                borderRadius: borderRadius.xl,
+                borderWidth: isDarkMode ? 0 : 1,
+                borderColor: 'rgba(0, 0, 0, 0.04)',
+              }
+            ]}>
             <View style={[
               styles.emptyIconContainer,
               {
@@ -357,7 +366,7 @@ const Home = ({ navigation }) => {
               {selectedFeed === FEED_TYPES.MAJOR && t('home.majorFeedEmpty')}
               {selectedFeed === FEED_TYPES.PUBLIC && t('home.publicFeedEmpty')}
             </Text>
-          </GlassContainer>
+          </View>
         </View>
       );
     }

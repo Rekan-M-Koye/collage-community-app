@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
 import i18n from '../../locales/i18n';
 import { I18nManager, Appearance, View, ActivityIndicator, StyleSheet } from 'react-native';
-import { getScaledFontSize, createFontSizeScale } from '../utils/fontScale';
 
 const AppSettingsContext = createContext();
 
@@ -94,7 +93,6 @@ export const AppSettingsProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [themePreference, setThemePreference] = useState('system');
   const [isLoading, setIsLoading] = useState(true);
-  const [fontSize, setFontSize] = useState('medium');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const theme = isDarkMode ? darkTheme : lightTheme;
@@ -115,10 +113,9 @@ export const AppSettingsProvider = ({ children }) => {
 
   const loadSettings = async () => {
     try {
-      const [savedLanguage, savedThemePreference, savedFontSize, savedNotifications] = await Promise.all([
+      const [savedLanguage, savedThemePreference, savedNotifications] = await Promise.all([
         AsyncStorage.getItem('appLanguage'),
         AsyncStorage.getItem('themePreference'),
-        AsyncStorage.getItem('fontSize'),
         AsyncStorage.getItem('notificationsEnabled'),
       ]);
 
@@ -138,7 +135,6 @@ export const AppSettingsProvider = ({ children }) => {
           setCurrentLanguage(defaultLang);
           i18n.locale = defaultLang;
         } catch (error) {
-          console.log('Error getting locale:', error);
           setCurrentLanguage('en');
           i18n.locale = 'en';
         }
@@ -154,15 +150,11 @@ export const AppSettingsProvider = ({ children }) => {
         setIsDarkMode(preference === 'dark');
       }
 
-      if (savedFontSize) {
-        setFontSize(savedFontSize);
-      }
-
       if (savedNotifications !== null) {
         setNotificationsEnabled(savedNotifications === 'true');
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      // Failed to load settings, using defaults
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +175,7 @@ export const AppSettingsProvider = ({ children }) => {
         I18nManager.forceRTL(false);
       }
     } catch (error) {
-      console.error('Error saving language:', error);
+      // Failed to save language preference
     }
   };
 
@@ -194,7 +186,7 @@ export const AppSettingsProvider = ({ children }) => {
       setThemePreference(newMode ? 'dark' : 'light');
       await AsyncStorage.setItem('themePreference', newMode ? 'dark' : 'light');
     } catch (error) {
-      console.error('Error saving dark mode:', error);
+      // Failed to save theme preference
     }
   };
 
@@ -210,16 +202,7 @@ export const AppSettingsProvider = ({ children }) => {
         setIsDarkMode(mode === 'dark');
       }
     } catch (error) {
-      console.error('Error saving theme preference:', error);
-    }
-  };
-
-  const changeFontSize = async (size) => {
-    try {
-      setFontSize(size);
-      await AsyncStorage.setItem('fontSize', size);
-    } catch (error) {
-      console.error('Error saving font size:', error);
+      // Failed to save theme preference
     }
   };
 
@@ -229,7 +212,7 @@ export const AppSettingsProvider = ({ children }) => {
       setNotificationsEnabled(newValue);
       await AsyncStorage.setItem('notificationsEnabled', newValue.toString());
     } catch (error) {
-      console.error('Error saving notifications:', error);
+      // Failed to save notification preference
     }
   };
 
@@ -238,7 +221,6 @@ export const AppSettingsProvider = ({ children }) => {
       await AsyncStorage.multiRemove([
         'appLanguage',
         'themePreference',
-        'fontSize',
         'notificationsEnabled',
       ]);
       setCurrentLanguage('en');
@@ -246,22 +228,15 @@ export const AppSettingsProvider = ({ children }) => {
       setThemePreference('system');
       const systemColorScheme = Appearance.getColorScheme();
       setIsDarkMode(systemColorScheme === 'dark');
-      setFontSize('medium');
       setNotificationsEnabled(true);
     } catch (error) {
-      console.error('Error resetting settings:', error);
+      // Failed to reset settings
     }
   };
 
   const t = (key, config) => {
     return i18n.t(key, config);
   };
-
-  const getResponsiveFontSize = (size) => {
-    return getScaledFontSize(size, fontSize);
-  };
-
-  const fontSizes = createFontSizeScale(fontSize);
 
   const value = {
     currentLanguage,
@@ -274,11 +249,6 @@ export const AppSettingsProvider = ({ children }) => {
     themePreference,
     setThemeMode,
     theme,
-
-    fontSize,
-    changeFontSize,
-    getResponsiveFontSize,
-    fontSizes,
 
     notificationsEnabled,
     toggleNotifications,

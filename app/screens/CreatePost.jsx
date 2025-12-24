@@ -151,7 +151,6 @@ const CreatePost = ({ navigation, route }) => {
             uploadedImages.push(result.url);
             imageDeleteUrls.push(result.deleteUrl);
           } catch (error) {
-            console.error('Error uploading image:', error);
           }
         }
       }
@@ -193,7 +192,6 @@ const CreatePost = ({ navigation, route }) => {
       }
 
       const createdPost = await createPost(postData);
-      console.log('Post created successfully:', createdPost);
 
       showAlert(
         t('common.success'),
@@ -203,7 +201,6 @@ const CreatePost = ({ navigation, route }) => {
 
       navigation.goBack();
     } catch (error) {
-      console.error('Error creating post:', error);
       showAlert(
         t('common.error'),
         error.message || t('post.createError')

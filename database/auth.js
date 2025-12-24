@@ -1,44 +1,199 @@
 import { account, databases, config } from './config';
-import { ID, Permission, Role } from 'appwrite';
+import { ID, Permission, Role, Query } from 'appwrite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PENDING_VERIFICATION_KEY = 'pending_verification';
+
+export const initiateSignup = async (email, password, name, additionalData = {}) => {
+    try {
+        console.log('[Auth] initiateSignup: Starting signup for', email);
+        
+        const sanitizedEmail = sanitizeInput(email).toLowerCase();
+        const sanitizedName = sanitizeInput(name);
+        
+        if (!sanitizedEmail || !sanitizedName) {
+            throw new Error('Invalid input data');
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(sanitizedEmail)) {
+            throw new Error('Invalid email format');
+        }
+        
+        if (password.length < 8) {
+            throw new Error('Password must be at least 8 characters');
+        }
+        
+        const userId = ID.unique();
+        
+        console.log('[Auth] initiateSignup: Creating account with userId:', userId);
+        
+        await account.create(
+            userId,
+            sanitizedEmail,
+            password,
+            sanitizedName
+        );
+        
+        console.log('[Auth] initiateSignup: Account created, creating session');
+        
+        await account.createEmailPasswordSession(sanitizedEmail, password);
+        
+        console.log('[Auth] initiateSignup: Session created, sending verification email');
+        console.log('[Auth] NOTE: Verification URL is cloud.appwrite.io - user must click link in email then return to app');
+        
+        await account.createVerification(
+            'https://cloud.appwrite.io'
+        );
+        
+        const pendingData = {
+            userId,
+            email: sanitizedEmail,
+            name: sanitizedName,
+            additionalData,
+            timestamp: Date.now()
+        };
+        
+        await AsyncStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(pendingData));
+        
+        return {
+            userId,
+            email: sanitizedEmail,
+            name: sanitizedName
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const checkAndCompleteVerification = async () => {
+    try {
+        console.log('[Auth] checkAndCompleteVerification: Checking verification status');
+        
+        const user = await account.get();
+        
+        console.log('[Auth] checkAndCompleteVerification: User emailVerification status:', user.emailVerification);
+        
+        if (!user.emailVerification) {
+            console.log('[Auth] checkAndCompleteVerification: Email not verified yet');
+            throw new Error('Email not verified yet');
+        }
+        
+        console.log('[Auth] checkAndCompleteVerification: Email verified, checking for pending data');
+        
+        const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
+        
+        if (!storedData) {
+            console.warn('[Auth] checkAndCompleteVerification: No pending verification data found');
+            throw new Error('No pending verification found');
+        }
+        
+        console.log('[Auth] checkAndCompleteVerification: Found pending data, parsing');
+        
+        const pendingData = JSON.parse(storedData);
+        
+        try {
+            console.log('[Auth] checkAndCompleteVerification: Checking if user document exists');
+            await getUserDocument(user.$id);
+            console.log('[Auth] checkAndCompleteVerification: User document exists, cleaning up');
+            await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
+            return true;
+        } catch (error) {
+            console.log('[Auth] checkAndCompleteVerification: User document not found, creating new one');
+        }
+        
+        await createUserDocument(
+            user.$id,
+            pendingData.name,
+            pendingData.email,
+            pendingData.additionalData
+        );
+        
+        await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
+        
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const resendVerificationEmail = async () => {
+    try {
+        console.log('[Auth] resendVerificationEmail: Resending verification email');
+        
+        await account.createVerification(
+            'https://cloud.appwrite.io'
+        );
+        
+        console.log('[Auth] resendVerificationEmail: Email sent successfully');
+        return true;
+    } catch (error) {
+        console.error('[Auth] resendVerificationEmail error:', error.message);
+        throw error;
+    }
+};
+
+export const cancelPendingVerification = async () => {
+    try {
+        await account.deleteSession('current');
+        await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
 
 export const signUp = async (email, password, name, additionalData = {}) => {
     let userId = null;
     let userCreated = false;
     
     try {
+        const sanitizedEmail = sanitizeInput(email).toLowerCase();
+        const sanitizedName = sanitizeInput(name);
+        
+        if (!sanitizedEmail || !sanitizedName) {
+            throw new Error('Invalid input data');
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(sanitizedEmail)) {
+            throw new Error('Invalid email format');
+        }
+        
+        if (password.length < 8) {
+            throw new Error('Password must be at least 8 characters');
+        }
+        
         userId = ID.unique();
         
         const user = await account.create(
             userId,
-            email,
+            sanitizedEmail,
             password,
-            name
+            sanitizedName
         );
         userCreated = true;
         
-        await signIn(email, password);
+        await signIn(sanitizedEmail, password);
         
         await createUserDocument(userId, name, email, additionalData);
         
         return user;
     } catch (error) {
-        console.error('Sign up error:', error);
         
         if (userCreated && userId) {
             try {
                 await account.deleteSession('current');
             } catch (sessionError) {
-                console.error('Session cleanup error:', sessionError);
             }
             
             try {
                 await databases.deleteDocument(
                     config.databaseId,
-                    '68fc7b42001bf7efbba3',
+                    config.usersCollectionId || '68fc7b42001bf7efbba3',
                     userId
                 );
             } catch (cleanupError) {
-                console.error('Cleanup error:', cleanupError);
             }
         }
         
@@ -46,23 +201,35 @@ export const signUp = async (email, password, name, additionalData = {}) => {
     }
 };
 
+const sanitizeInput = (input) => {
+    if (typeof input !== 'string') return '';
+    return input.trim().replace(/[<>"']/g, '');
+};
+
 const createUserDocument = async (userId, name, email, additionalData = {}) => {
     try {
+        const sanitizedName = sanitizeInput(name);
+        const sanitizedEmail = sanitizeInput(email);
+        
+        if (!sanitizedName || !sanitizedEmail) {
+            throw new Error('Invalid user data');
+        }
+        
         const userDoc = await databases.createDocument(
             config.databaseId,
-            '68fc7b42001bf7efbba3',
+            config.usersCollectionId || '68fc7b42001bf7efbba3',
             userId,
             {
                 userID: userId,
-                name,
-                email,
+                name: sanitizedName,
+                email: sanitizedEmail,
                 bio: '',
                 profilePicture: '',
-                isEmailVerified: false,
-                university: additionalData.university || '',
-                major: additionalData.college || '',
-                department: additionalData.department || '',
-                year: additionalData.stage || 1,
+                isEmailVerified: true,
+                university: sanitizeInput(additionalData.university || ''),
+                major: sanitizeInput(additionalData.college || ''),
+                department: sanitizeInput(additionalData.department || ''),
+                year: parseInt(additionalData.stage) || 1,
                 followersCount: 0,
                 followingCount: 0,
                 postsCount: 0
@@ -75,17 +242,21 @@ const createUserDocument = async (userId, name, email, additionalData = {}) => {
         );
         return userDoc;
     } catch (error) {
-        console.error('Create user document error:', error);
         throw error;
     }
 };
 
 export const signIn = async (email, password) => {
     try {
-        const session = await account.createEmailPasswordSession(email, password);
+        const sanitizedEmail = sanitizeInput(email).toLowerCase();
+        
+        if (!sanitizedEmail || !password) {
+            throw new Error('Email and password are required');
+        }
+        
+        const session = await account.createEmailPasswordSession(sanitizedEmail, password);
         return session;
     } catch (error) {
-        console.error('Sign in error:', error);
         throw error;
     }
 };
@@ -94,7 +265,6 @@ export const signOut = async () => {
     try {
         await account.deleteSession('current');
     } catch (error) {
-        console.error('Sign out error:', error);
         throw error;
     }
 };
@@ -102,8 +272,10 @@ export const signOut = async () => {
 export const getCurrentUser = async () => {
     try {
         const user = await account.get();
+        console.log('[Auth] getCurrentUser: User found:', user.$id, 'verified:', user.emailVerification);
         return user;
     } catch (error) {
+        console.log('[Auth] getCurrentUser: No user session found');
         if (error.message?.includes('missing scopes') || error.code === 401) {
             return null;
         }
@@ -126,36 +298,57 @@ export const getCompleteUserData = async () => {
         if (error.message?.includes('missing scopes') || error.code === 401) {
             return null;
         }
-        console.error('Get complete user data error:', error);
         return null;
     }
 };
 
 export const getUserDocument = async (userId) => {
     try {
+        if (!userId || typeof userId !== 'string') {
+            throw new Error('Invalid user ID');
+        }
+        
         const userDoc = await databases.getDocument(
             config.databaseId,
-            '68fc7b42001bf7efbba3',
+            config.usersCollectionId || '68fc7b42001bf7efbba3',
             userId
         );
         return userDoc;
     } catch (error) {
-        console.error('Get user document error:', error);
         throw error;
     }
 };
 
 export const updateUserDocument = async (userId, data) => {
     try {
+        if (!userId || typeof userId !== 'string') {
+            throw new Error('Invalid user ID');
+        }
+        
+        if (data.name) {
+            data.name = sanitizeInput(data.name);
+        }
+        if (data.bio) {
+            data.bio = sanitizeInput(data.bio);
+        }
+        if (data.university) {
+            data.university = sanitizeInput(data.university);
+        }
+        if (data.major) {
+            data.major = sanitizeInput(data.major);
+        }
+        if (data.department) {
+            data.department = sanitizeInput(data.department);
+        }
+        
         const userDoc = await databases.updateDocument(
             config.databaseId,
-            '68fc7b42001bf7efbba3',
+            config.usersCollectionId || '68fc7b42001bf7efbba3',
             userId,
             data
         );
         return userDoc;
     } catch (error) {
-        console.error('Update user document error:', error);
         throw error;
     }
 };
@@ -165,7 +358,6 @@ export const updateUserName = async (name) => {
         const user = await account.updateName(name);
         return user;
     } catch (error) {
-        console.error('Update name error:', error);
         throw error;
     }
 };
@@ -175,17 +367,17 @@ export const updateUserPassword = async (newPassword, oldPassword) => {
         const user = await account.updatePassword(newPassword, oldPassword);
         return user;
     } catch (error) {
-        console.error('Update password error:', error);
         throw error;
     }
 };
 
 export const sendEmailVerification = async () => {
     try {
-        const verification = await account.createVerification();
+        const verification = await account.createVerification(
+            `${config.endpoint}/verify`
+        );
         return verification;
     } catch (error) {
-        console.error('Send email verification error:', error);
         throw error;
     }
 };
@@ -201,7 +393,6 @@ export const confirmEmailVerification = async (userId, secret) => {
         
         return true;
     } catch (error) {
-        console.error('Confirm email verification error:', error);
         throw error;
     }
 };
@@ -211,16 +402,17 @@ export const checkEmailVerification = async () => {
         const user = await account.get();
         return user.emailVerification;
     } catch (error) {
-        console.error('Check email verification error:', error);
         return false;
     }
 };
 
 export const resendEmailVerification = async () => {
     try {
-        return await sendEmailVerification();
+        const verification = await account.createVerification(
+            `${config.endpoint}/verify`
+        );
+        return verification;
     } catch (error) {
-        console.error('Resend email verification error:', error);
         throw error;
     }
 };
@@ -231,14 +423,13 @@ export const deleteAccount = async () => {
         if (user) {
             await databases.deleteDocument(
                 config.databaseId,
-                '68fc7b42001bf7efbba3',
+                config.usersCollectionId || '68fc7b42001bf7efbba3',
                 user.$id
             );
             
             await account.deleteSessions();
         }
     } catch (error) {
-        console.error('Delete account error:', error);
         throw error;
     }
 };

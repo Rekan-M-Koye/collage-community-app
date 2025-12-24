@@ -17,7 +17,6 @@ const getDeviceLocale = () => {
     const locales = getLocales();
     return locales && locales[0] ? locales[0].languageCode : 'en';
   } catch (error) {
-    console.log('Error getting locale, defaulting to en:', error);
     return 'en';
   }
 };

@@ -23,7 +23,7 @@ import SearchableDropdown from '../components/SearchableDropdownNew';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { GlassContainer, GlassInput } from '../components/GlassComponents';
 import { getUniversityKeys, getCollegesForUniversity, getDepartmentsForCollege } from '../data/universitiesData';
-import { signUp, getCompleteUserData } from '../../database/auth';
+import { initiateSignup, getCompleteUserData } from '../../database/auth';
 import { 
   wp, 
   hp, 
@@ -128,10 +128,23 @@ const SignUp = ({ navigation }) => {
       Alert.alert(t('common.error'), t('auth.fullNameRequired') || 'Full name is required');
       return false;
     }
+    
+    if (fullName.trim().length < 2 || fullName.trim().length > 100) {
+      Alert.alert(t('common.error'), 'Name must be between 2 and 100 characters');
+      return false;
+    }
+    
     if (!email.trim() || !email.includes('@')) {
       Alert.alert(t('common.error'), t('auth.validEmailRequired') || 'Valid email is required');
       return false;
     }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert(t('common.error'), 'Please enter a valid email address');
+      return false;
+    }
+    
     if (!age || parseInt(age) < 16 || parseInt(age) > 100) {
       Alert.alert(t('common.error'), t('auth.validAgeRequired') || 'Valid age is required');
       return false;
@@ -154,6 +167,10 @@ const SignUp = ({ navigation }) => {
     }
     if (password.length < 8) {
       Alert.alert(t('common.error'), t('auth.passwordTooShort') || 'Password must be at least 8 characters');
+      return false;
+    }
+    if (passwordStrength === 'weak') {
+      Alert.alert(t('common.error'), 'Password is too weak. Use a mix of letters, numbers, and symbols.');
       return false;
     }
     if (password !== confirmPassword) {
@@ -196,47 +213,18 @@ const SignUp = ({ navigation }) => {
         stage: parseInt(stageNumber) || 1,
       };
 
-      await signUp(email, password, fullName, additionalData);
-      
-      const completeUserData = await getCompleteUserData();
-      
-      if (completeUserData) {
-        const userData = {
-          $id: completeUserData.$id,
-          email: completeUserData.email,
-          fullName: completeUserData.name,
-          bio: completeUserData.bio || '',
-          profilePicture: completeUserData.profilePicture || '',
-          university: completeUserData.university || '',
-          college: completeUserData.major || '',
-          department: completeUserData.department || '',
-          stage: completeUserData.year || '',
-          postsCount: completeUserData.postsCount || 0,
-          followersCount: completeUserData.followersCount || 0,
-          followingCount: completeUserData.followingCount || 0,
-          isEmailVerified: completeUserData.emailVerification || false,
-          lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
-        };
-        
-        await setUserData(userData);
-      }
+      const result = await initiateSignup(email, password, fullName, additionalData);
       
       setIsLoading(false);
       
-      Alert.alert(
-        t('common.success'),
-        t('auth.accountCreated') || 'Account created successfully!',
-        [
-          {
-            text: t('common.ok') || 'OK',
-            onPress: () => navigation.replace('MainTabs'),
-          }
-        ]
-      );
+      navigation.navigate('VerifyEmail', {
+        email: result.email,
+        userId: result.userId,
+        name: result.name
+      });
       
     } catch (error) {
       setIsLoading(false);
-      console.error('Signup error:', error);
       
       let errorMessage = t('auth.signUpError') || 'Failed to create account. Please try again.';
       

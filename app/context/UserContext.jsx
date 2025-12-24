@@ -55,15 +55,13 @@ export const UserProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('Error initializing user:', error);
-      
       try {
         const cachedData = await AsyncStorage.getItem('userData');
         if (cachedData) {
           setUser(JSON.parse(cachedData));
         }
       } catch (cacheError) {
-        console.error('Error loading cached user data:', cacheError);
+        // Failed to load cached data
       }
     } finally {
       setIsLoading(false);
@@ -108,7 +106,6 @@ export const UserProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
       const cachedData = await AsyncStorage.getItem('userData');
       if (cachedData) {
         setUser(JSON.parse(cachedData));
@@ -180,7 +177,6 @@ export const UserProvider = ({ children }) => {
       
       return true;
     } catch (error) {
-      console.error('Error updating user data:', error);
       return false;
     }
   };
@@ -194,7 +190,6 @@ export const UserProvider = ({ children }) => {
       }
       return await updateUser({ profilePicture: imageUrl });
     } catch (error) {
-      console.error('Error updating profile picture:', error);
       return false;
     }
   };
@@ -204,7 +199,7 @@ export const UserProvider = ({ children }) => {
       await AsyncStorage.removeItem('userData');
       setUser(null);
     } catch (error) {
-      console.error('Error clearing user data:', error);
+      // Failed to clear user data from storage
     }
   };
 
@@ -213,7 +208,7 @@ export const UserProvider = ({ children }) => {
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
       setUser(userData);
     } catch (error) {
-      console.error('Error setting user data:', error);
+      // Failed to store user data
     }
   };
 

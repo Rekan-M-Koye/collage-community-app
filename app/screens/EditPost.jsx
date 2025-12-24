@@ -162,7 +162,6 @@ const EditPost = ({ navigation, route }) => {
             uploadedImages.push(result.url);
             imageDeleteUrls.push(result.deleteUrl);
           } catch (error) {
-            console.error('Error uploading image:', error);
           }
         }
       }
@@ -205,7 +204,6 @@ const EditPost = ({ navigation, route }) => {
 
       navigation.goBack();
     } catch (error) {
-      console.error('Error updating post:', error);
       showAlert(
         t('common.error'),
         error.message || t('post.updateError')

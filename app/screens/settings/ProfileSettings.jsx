@@ -144,7 +144,6 @@ const ProfileSettings = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +191,6 @@ const ProfileSettings = ({ navigation }) => {
         throw new Error('Update failed');
       }
     } catch (error) {
-      console.error('Error saving profile:', error);
       showAlert({
         type: 'error',
         title: t('common.error'),
@@ -222,7 +220,6 @@ const ProfileSettings = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('Error uploading profile picture:', error);
       showAlert({
         type: 'error',
         title: t('common.error'),

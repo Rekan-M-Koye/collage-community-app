@@ -98,7 +98,6 @@ const Post = () => {
               const compressed = await compressImage(asset.uri, { quality: 0.7 });
               return compressed?.uri || asset.uri;
             } catch (error) {
-              console.error('Error compressing image:', error);
               return asset.uri;
             }
           })
@@ -106,7 +105,6 @@ const Post = () => {
         setImages([...images, ...compressedImages]);
       }
     } catch (error) {
-      console.error('Error picking images:', error);
       Alert.alert(t('common.error'), 'Failed to pick images');
     }
   };
@@ -178,7 +176,6 @@ const Post = () => {
       setImages([]);
       setPostType(POST_TYPES.DISCUSSION);
     } catch (error) {
-      console.error('Error creating post:', error);
       Alert.alert(t('common.error'), t('post.createError'));
     } finally {
       setLoading(false);

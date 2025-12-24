@@ -135,8 +135,6 @@ const SignIn = ({ navigation }) => {
       
       navigation.replace('MainTabs');
     } catch (error) {
-      console.error('Sign in error:', error);
-      
       let errorMessage = t('auth.signInError') || 'Failed to sign in. Please try again.';
       
       if (error.message?.includes('Invalid credentials') || error.message?.includes('user') || error.message?.includes('password')) {
@@ -149,7 +147,6 @@ const SignIn = ({ navigation }) => {
         try {
           await signOut();
         } catch (signOutError) {
-          console.error('Error signing out:', signOutError);
         }
       }
       

@@ -33,7 +33,6 @@ const UserProfile = ({ route, navigation }) => {
       setUserPosts(posts);
       setPostsLoaded(true);
     } catch (error) {
-      console.error('Error loading user posts:', error);
       setPostsError(error.message);
     } finally {
       setLoadingPosts(false);
@@ -59,7 +58,6 @@ const UserProfile = ({ route, navigation }) => {
     try {
       setIsFollowing(!isFollowing);
     } catch (error) {
-      console.error('Error toggling follow:', error);
       setIsFollowing(!isFollowing);
     } finally {
       setFollowLoading(false);
@@ -86,7 +84,6 @@ const UserProfile = ({ route, navigation }) => {
         )
       );
     } catch (error) {
-      console.error('Error toggling like:', error);
     }
   };
 
@@ -126,7 +123,7 @@ const UserProfile = ({ route, navigation }) => {
     );
   }
 
-  const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.fullName || 'User') + '&size=400&background=667eea&color=fff&bold=true';
+  const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent((userData.fullName || 'User').replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 50)) + '&size=400&background=667eea&color=fff&bold=true';
   const avatarUri = userData.profilePicture ? userData.profilePicture : defaultAvatar;
   
   const stageKey = getStageKey(userData.stage);

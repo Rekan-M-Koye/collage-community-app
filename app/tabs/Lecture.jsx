@@ -9,7 +9,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
-import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { 
   wp, 
@@ -22,6 +21,10 @@ import { borderRadius } from '../theme/designTokens';
 
 const Lecture = () => {
   const { t, theme, isDarkMode } = useAppSettings();
+
+  const cardBackground = isDarkMode 
+    ? 'rgba(255, 255, 255, 0.08)' 
+    : 'rgba(255, 255, 255, 0.6)';
 
   return (
     <View style={styles.container}>
@@ -43,19 +46,26 @@ const Lecture = () => {
         <AnimatedBackground particleCount={18} />
         
         <View style={styles.content}>
-          <GlassContainer 
-            borderRadius={borderRadius.xl}
-            style={styles.emptyStateCard}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0, 122, 255, 0.15)' }]}>
-              <Ionicons name="book-outline" size={moderateScale(64)} color={isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary} />
+          <View 
+            style={[
+              styles.emptyStateCard,
+              { 
+                backgroundColor: cardBackground,
+                borderRadius: borderRadius.xl,
+                borderWidth: isDarkMode ? 0 : 1,
+                borderColor: 'rgba(0, 0, 0, 0.04)',
+              }
+            ]}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0, 122, 255, 0.08)' }]}>
+              <Ionicons name="book-outline" size={moderateScale(56)} color={isDarkMode ? 'rgba(255,255,255,0.6)' : theme.primary} />
             </View>
-            <Text style={[styles.emptyTitle, { fontSize: fontSize(24), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>
+            <Text style={[styles.emptyTitle, { fontSize: fontSize(22), color: theme.text }]}>
               {t('lecture.emptyTitle')}
             </Text>
-            <Text style={[styles.emptyMessage, { fontSize: fontSize(15), color: isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
+            <Text style={[styles.emptyMessage, { fontSize: fontSize(14), color: theme.textSecondary }]}>
               {t('lecture.emptyMessage')}
             </Text>
-          </GlassContainer>
+          </View>
         </View>
       </LinearGradient>
     </View>
@@ -81,27 +91,24 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     width: '100%',
-    maxWidth: moderateScale(400),
+    maxWidth: moderateScale(380),
   },
   emptyIconContainer: {
-    width: moderateScale(120),
-    height: moderateScale(120),
-    borderRadius: moderateScale(60),
+    width: moderateScale(100),
+    height: moderateScale(100),
+    borderRadius: moderateScale(50),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: spacing.sm,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   emptyMessage: {
     textAlign: 'center',
-    lineHeight: fontSize(22),
+    lineHeight: fontSize(20),
   },
 });
 

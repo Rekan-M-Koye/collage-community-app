@@ -50,7 +50,6 @@ const ImagePickerComponent = ({
         onImagesChange([...images, ...result]);
       }
     } catch (error) {
-      console.error('Error picking images:', error);
       showAlert(
         t('common.error'),
         error.message || t('post.imagePickError')
@@ -82,7 +81,6 @@ const ImagePickerComponent = ({
         onImagesChange([...images, result]);
       }
     } catch (error) {
-      console.error('Error taking picture:', error);
       showAlert(
         t('common.error'),
         error.message || t('post.cameraError')

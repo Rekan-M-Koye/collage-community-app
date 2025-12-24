@@ -3,6 +3,14 @@ import { ID, Query } from 'appwrite';
 
 export const createReply = async (replyData) => {
     try {
+        if (!replyData || typeof replyData !== 'object') {
+            throw new Error('Invalid reply data');
+        }
+        
+        if (!replyData.postId || !replyData.userId) {
+            throw new Error('Missing required fields');
+        }
+        
         const reply = await databases.createDocument(
             config.databaseId,
             config.repliesCollectionId,
@@ -14,13 +22,16 @@ export const createReply = async (replyData) => {
 
         return reply;
     } catch (error) {
-        console.error('Create reply error:', error);
         throw error;
     }
 };
 
 export const getReply = async (replyId) => {
     try {
+        if (!replyId || typeof replyId !== 'string') {
+            throw new Error('Invalid reply ID');
+        }
+        
         const reply = await databases.getDocument(
             config.databaseId,
             config.repliesCollectionId,
@@ -28,51 +39,64 @@ export const getReply = async (replyId) => {
         );
         return reply;
     } catch (error) {
-        console.error('Get reply error:', error);
         throw error;
     }
 };
 
 export const getRepliesByPost = async (postId, limit = 50, offset = 0) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         const replies = await databases.listDocuments(
             config.databaseId,
             config.repliesCollectionId,
             [
                 Query.equal('postId', postId),
                 Query.orderDesc('upCount'),
-                Query.limit(limit),
+                Query.limit(Math.min(limit, 100)),
                 Query.offset(offset)
             ]
         );
         return replies.documents;
     } catch (error) {
-        console.error('Get replies by post error:', error);
         throw error;
     }
 };
 
 export const getRepliesByUser = async (userId, limit = 20, offset = 0) => {
     try {
+        if (!userId || typeof userId !== 'string') {
+            throw new Error('Invalid user ID');
+        }
+        
         const replies = await databases.listDocuments(
             config.databaseId,
             config.repliesCollectionId,
             [
                 Query.equal('userId', userId),
                 Query.orderDesc('$createdAt'),
-                Query.limit(limit),
+                Query.limit(Math.min(limit, 100)),
                 Query.offset(offset)
             ]
         );
         return replies.documents;
     } catch (error) {
-        console.error('Get replies by user error:', error);
         throw error;
     }
 };
 
 export const updateReply = async (replyId, replyData) => {
     try {
+        if (!replyId || typeof replyId !== 'string') {
+            throw new Error('Invalid reply ID');
+        }
+        
+        if (!replyData || typeof replyData !== 'object') {
+            throw new Error('Invalid reply data');
+        }
+        
         const updateData = {
             ...replyData,
             isEdited: true
@@ -86,13 +110,20 @@ export const updateReply = async (replyId, replyData) => {
         );
         return reply;
     } catch (error) {
-        console.error('Update reply error:', error);
         throw error;
     }
 };
 
 export const deleteReply = async (replyId, postId, imageDeleteUrls = []) => {
     try {
+        if (!replyId || typeof replyId !== 'string') {
+            throw new Error('Invalid reply ID');
+        }
+        
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         await databases.deleteDocument(
             config.databaseId,
             config.repliesCollectionId,
@@ -102,16 +133,18 @@ export const deleteReply = async (replyId, postId, imageDeleteUrls = []) => {
         await decrementPostReplyCount(postId);
 
         if (imageDeleteUrls && imageDeleteUrls.length > 0) {
-            console.log('Deleting reply images from imgBB:', imageDeleteUrls);
         }
     } catch (error) {
-        console.error('Delete reply error:', error);
         throw error;
     }
 };
 
 export const deleteRepliesByPost = async (postId) => {
     try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        
         const replies = await getRepliesByPost(postId, 1000, 0);
         
         for (const reply of replies) {
@@ -122,19 +155,19 @@ export const deleteRepliesByPost = async (postId) => {
             );
 
             if (reply.imageDeleteUrls && reply.imageDeleteUrls.length > 0) {
-                console.log('Deleting reply images from imgBB:', reply.imageDeleteUrls);
             }
         }
-
-        console.log(`Deleted ${replies.length} replies for post ${postId}`);
     } catch (error) {
-        console.error('Delete replies by post error:', error);
         throw error;
     }
 };
 
 export const markReplyAsAccepted = async (replyId) => {
     try {
+        if (!replyId || typeof replyId !== 'string') {
+            throw new Error('Invalid reply ID');
+        }
+        
         await databases.updateDocument(
             config.databaseId,
             config.repliesCollectionId,
@@ -142,13 +175,16 @@ export const markReplyAsAccepted = async (replyId) => {
             { isAccepted: true }
         );
     } catch (error) {
-        console.error('Mark reply as accepted error:', error);
         throw error;
     }
 };
 
 export const unmarkReplyAsAccepted = async (replyId) => {
     try {
+        if (!replyId || typeof replyId !== 'string') {
+            throw new Error('Invalid reply ID');
+        }
+        
         await databases.updateDocument(
             config.databaseId,
             config.repliesCollectionId,
@@ -156,17 +192,6 @@ export const unmarkReplyAsAccepted = async (replyId) => {
             { isAccepted: false }
         );
     } catch (error) {
-        console.error('Unmark reply as accepted error:', error);
-        throw error;
-    }
-};
-
-export const toggleReplyLike = async (replyId, userId) => {
-    try {
-        console.log('Toggle like for reply:', replyId, userId);
-        
-    } catch (error) {
-        console.error('Toggle reply like error:', error);
         throw error;
     }
 };
@@ -182,7 +207,6 @@ const incrementPostReplyCount = async (postId) => {
             { replyCount: (post.replyCount || 0) + 1 }
         );
     } catch (error) {
-        console.error('Increment reply count error:', error);
     }
 };
 
@@ -197,6 +221,5 @@ const decrementPostReplyCount = async (postId) => {
             { replyCount: Math.max(0, (post.replyCount || 0) - 1) }
         );
     } catch (error) {
-        console.error('Decrement reply count error:', error);
     }
 };

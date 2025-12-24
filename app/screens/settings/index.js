@@ -8,7 +8,6 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../../context/AppSettingsContext';
 import { borderRadius, shadows } from '../../theme/designTokens';
@@ -56,32 +55,27 @@ const Settings = ({ navigation }) => {
     <TouchableOpacity
       onPress={() => navigation.navigate(item.screen)}
       activeOpacity={0.7}
-      style={styles.cardWrapper}>
-      <BlurView
-        intensity={isDarkMode ? 30 : 0}
-        tint={isDarkMode ? 'dark' : 'light'}
-        style={[
-          styles.card,
-          {
-            backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : '#FFFFFF',
-            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-          },
-        ]}>
-        <View style={styles.cardContent}>
-          <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? `${item.color}15` : `${item.color}20` }]}>
-            <Ionicons name={item.icon} size={24} color={item.color} />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>
-              {item.title}
-            </Text>
-            <Text style={[styles.cardDescription, { color: theme.textSecondary }]}>
-              {item.description}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+      style={[
+        styles.card,
+        {
+          backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : 'rgba(255, 255, 255, 0.85)',
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+        },
+      ]}>
+      <View style={styles.cardContent}>
+        <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? `${item.color}15` : `${item.color}15` }]}>
+          <Ionicons name={item.icon} size={24} color={item.color} />
         </View>
-      </BlurView>
+        <View style={styles.textContainer}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>
+            {item.title}
+          </Text>
+          <Text style={[styles.cardDescription, { color: theme.textSecondary }]}>
+            {item.description}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+      </View>
     </TouchableOpacity>
   );
 
@@ -171,14 +165,11 @@ const styles = StyleSheet.create({
   cardsContainer: {
     gap: spacing.md,
   },
-  cardWrapper: {
-    marginBottom: spacing.sm,
-  },
   card: {
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    ...shadows.small,
+    marginBottom: spacing.sm,
   },
   cardContent: {
     flexDirection: 'row',

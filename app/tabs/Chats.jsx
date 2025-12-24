@@ -1,16 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet,
   StatusBar,
   Platform,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  SectionList,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
-import { GlassContainer } from '../components/GlassComponents';
+import { useUser } from '../context/UserContext';
 import AnimatedBackground from '../components/AnimatedBackground';
+import ChatListItem from '../components/ChatListItem';
+import { 
+  initializeUserGroups,
+  getAllUserChats,
+} from '../../database/chatHelpers';
 import { 
   wp, 
   hp, 
@@ -20,8 +31,258 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
-const Chats = () => {
+const Chats = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
+  const { user } = useUser();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const [defaultGroups, setDefaultGroups] = useState([]);
+  const [customGroups, setCustomGroups] = useState([]);
+  const [privateChats, setPrivateChats] = useState([]);
+
+  const stageToValue = (stage) => {
+    if (!stage) return null;
+    const stageMap = {
+      'firstYear': '1',
+      'secondYear': '2',
+      'thirdYear': '3',
+      'fourthYear': '4',
+      'fifthYear': '5',
+      'sixthYear': '6',
+    };
+    return stageMap[stage] || stage;
+  };
+
+  useEffect(() => {
+    if (user?.department) {
+      initializeAndLoadChats();
+    } else {
+      setLoading(false);
+      setInitializing(false);
+    }
+  }, [user]);
+
+  const initializeAndLoadChats = async () => {
+    try {
+      setInitializing(true);
+      const stageValue = stageToValue(user?.stage);
+      
+      await initializeUserGroups(user.department, stageValue);
+      
+      setInitializing(false);
+      await loadChats();
+    } catch (error) {
+      setInitializing(false);
+      setLoading(false);
+    }
+  };
+
+  const loadChats = async () => {
+    if (!user?.department) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const stageValue = stageToValue(user.stage);
+      
+      const chats = await getAllUserChats(user.$id, user.department, stageValue);
+      
+      setDefaultGroups(chats.defaultGroups || []);
+      setCustomGroups(chats.customGroups || []);
+      setPrivateChats(chats.privateChats || []);
+    } catch (error) {
+      setDefaultGroups([]);
+      setCustomGroups([]);
+      setPrivateChats([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadChats();
+    setRefreshing(false);
+  };
+
+  const handleChatPress = (chat) => {
+    navigation.navigate('ChatRoom', { chat });
+  };
+
+  const getSectionData = () => {
+    const sections = [];
+
+    if (defaultGroups.length > 0) {
+      sections.push({
+        title: t('chats.yourGroups'),
+        data: defaultGroups,
+        icon: 'people',
+        color: '#3B82F6',
+      });
+    }
+
+    if (customGroups.length > 0) {
+      sections.push({
+        title: t('chats.groupChat'),
+        data: customGroups,
+        icon: 'people-circle',
+        color: '#F59E0B',
+      });
+    }
+
+    if (privateChats.length > 0) {
+      sections.push({
+        title: t('chats.directMessage'),
+        data: privateChats,
+        icon: 'person',
+        color: '#10B981',
+      });
+    }
+
+    return sections;
+  };
+
+  const renderSectionHeader = ({ section }) => (
+    <View style={styles.sectionHeader}>
+      <View style={[styles.sectionIconContainer, { backgroundColor: `${section.color}20` }]}>
+        <Ionicons name={section.icon} size={moderateScale(16)} color={section.color} />
+      </View>
+      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+        {section.title}
+      </Text>
+      <View style={[styles.sectionBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+        <Text style={[styles.sectionBadgeText, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+          {section.data.length}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderChatItem = ({ item }) => (
+    <ChatListItem 
+      chat={item} 
+      onPress={() => handleChatPress(item)}
+      currentUserId={user?.$id}
+    />
+  );
+
+  const renderEmpty = () => {
+    if (loading || initializing) {
+      return null;
+    }
+    
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : 'rgba(0, 122, 255, 0.08)' }]}>
+          <Ionicons name="chatbubbles" size={moderateScale(56)} color={theme.primary} />
+        </View>
+        <Text style={[styles.emptyTitle, { fontSize: fontSize(20), color: theme.text }]}>
+          {t('chats.emptyTitle')}
+        </Text>
+        <Text style={[styles.emptyMessage, { fontSize: fontSize(14), color: theme.textSecondary }]}>
+          {t('chats.emptyMessage')}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.headerTop}>
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.headerTitle, { color: theme.text, fontSize: fontSize(26) }]}>
+            {t('chats.title')}
+          </Text>
+          {user?.department && (
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary, fontSize: fontSize(13) }]}>
+              {user.department}
+            </Text>
+          )}
+        </View>
+      </View>
+      
+      <View style={styles.quickActionsContainer}>
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity
+            style={[styles.quickActionButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('UserSearch')}>
+            <Ionicons name="search" size={moderateScale(18)} color={theme.primary} />
+            <Text style={[styles.quickActionButtonText, { color: theme.text, fontSize: fontSize(13) }]}>
+              {t('chats.searchUsers')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickActionButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('CreateGroup')}>
+            <Ionicons name="add-circle" size={moderateScale(18)} color="#F59E0B" />
+            <Text style={[styles.quickActionButtonText, { color: theme.text, fontSize: fontSize(13) }]}>
+              {t('chats.createGroup')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (initializing) {
+    return (
+      <View style={styles.container}>
+        <StatusBar 
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+          backgroundColor="transparent"
+          translucent
+        />
+        <LinearGradient
+          colors={isDarkMode 
+            ? ['#1a1a2e', '#16213e', '#0f3460'] 
+            : ['#f0f4ff', '#d8e7ff', '#c0deff']
+          }
+          style={styles.gradient}>
+          <AnimatedBackground particleCount={18} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
+              {t('chats.settingUpGroups')}
+            </Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.container}>
+        <StatusBar 
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+          backgroundColor="transparent"
+          translucent
+        />
+        <LinearGradient
+          colors={isDarkMode 
+            ? ['#1a1a2e', '#16213e', '#0f3460'] 
+            : ['#f0f4ff', '#d8e7ff', '#c0deff']
+          }
+          style={styles.gradient}>
+          <AnimatedBackground particleCount={18} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
+              {t('chats.loadingChats')}
+            </Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  const sections = getSectionData();
+  const hasContent = sections.length > 0;
 
   return (
     <View style={styles.container}>
@@ -43,19 +304,41 @@ const Chats = () => {
         <AnimatedBackground particleCount={18} />
         
         <View style={styles.content}>
-          <GlassContainer 
-            borderRadius={borderRadius.xl}
-            style={styles.emptyStateCard}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0, 122, 255, 0.15)' }]}>
-              <Ionicons name="chatbubbles-outline" size={moderateScale(64)} color={isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary} />
-            </View>
-            <Text style={[styles.emptyTitle, { fontSize: fontSize(24), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>
-              {t('chats.emptyTitle')}
-            </Text>
-            <Text style={[styles.emptyMessage, { fontSize: fontSize(15), color: isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary }]}>
-              {t('chats.emptyMessage')}
-            </Text>
-          </GlassContainer>
+          {hasContent ? (
+            <SectionList
+              sections={sections}
+              renderItem={renderChatItem}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={(item) => item.$id}
+              contentContainerStyle={styles.listContent}
+              ListHeaderComponent={renderHeader}
+              stickySectionHeadersEnabled={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={theme.primary}
+                  colors={[theme.primary]}
+                />
+              }
+            />
+          ) : (
+            <FlatList
+              data={[]}
+              renderItem={() => null}
+              ListHeaderComponent={renderHeader}
+              ListEmptyComponent={renderEmpty}
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={theme.primary}
+                  colors={[theme.primary]}
+                />
+              }
+            />
+          )}
         </View>
       </LinearGradient>
     </View>
@@ -69,39 +352,138 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    marginTop: spacing.sm,
+    fontWeight: '500',
+  },
   content: {
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(5),
+    paddingBottom: hp(12),
+  },
+  listContent: {
+    paddingHorizontal: wp(4),
+    paddingTop: spacing.sm,
+    flexGrow: 1,
+  },
+  headerContainer: {
+    marginBottom: spacing.md,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    marginTop: spacing.xs,
+    fontWeight: '500',
+  },
+  quickActionsContainer: {
+    marginTop: spacing.md,
+  },
+  quickActionsTitle: {
+    fontWeight: '600',
+    marginBottom: spacing.md,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+  },
+  quickActionButtonText: {
+    fontWeight: '500',
+  },
+  quickActionCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  quickActionIcon: {
+    width: moderateScale(48),
+    height: moderateScale(48),
+    borderRadius: moderateScale(24),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickActionText: {
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  sectionIconContainer: {
+    width: moderateScale(28),
+    height: moderateScale(28),
+    borderRadius: moderateScale(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    flex: 1,
+  },
+  sectionBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: moderateScale(10),
+  },
+  sectionBadgeText: {
+    fontWeight: '600',
+  },
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(5),
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(5),
-    paddingBottom: hp(12),
-  },
-  emptyStateCard: {
-    padding: spacing.xl,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: moderateScale(400),
+    paddingTop: hp(5),
   },
   emptyIconContainer: {
-    width: moderateScale(120),
-    height: moderateScale(120),
-    borderRadius: moderateScale(60),
+    width: moderateScale(100),
+    height: moderateScale(100),
+    borderRadius: moderateScale(50),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: spacing.sm,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   emptyMessage: {
     textAlign: 'center',
-    lineHeight: fontSize(22),
+    lineHeight: fontSize(20),
+    paddingHorizontal: wp(5),
   },
 });
 

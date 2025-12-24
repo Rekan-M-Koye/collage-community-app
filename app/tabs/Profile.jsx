@@ -4,7 +4,6 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import PostCard from '../components/PostCard';
 import { getCompleteUserData } from '../../database/auth';
@@ -33,7 +32,6 @@ const Profile = ({ navigation }) => {
       setUserPosts(posts);
       setPostsLoaded(true);
     } catch (error) {
-      console.error('Error loading user posts:', error);
       setPostsError(error.message);
     } finally {
       setLoadingPosts(false);
@@ -96,7 +94,7 @@ const Profile = ({ navigation }) => {
         )
       );
     } catch (error) {
-      console.error('Error toggling like:', error);
+      // Failed to toggle like
     }
   };
 
@@ -112,7 +110,7 @@ const Profile = ({ navigation }) => {
         )
       );
     } catch (error) {
-      console.error('Error marking as resolved:', error);
+      // Failed to mark as resolved
     }
   };
 
@@ -138,7 +136,6 @@ const Profile = ({ navigation }) => {
               setUserPosts(prevPosts => prevPosts.filter(p => p.$id !== post.$id));
               Alert.alert(t('common.success'), t('post.postDeleted'));
             } catch (error) {
-              console.error('Error deleting post:', error);
               Alert.alert(t('common.error'), t('post.deleteError'));
             }
           },
@@ -162,6 +159,10 @@ const Profile = ({ navigation }) => {
   }
 
   if (!user) {
+    const cardBackground = isDarkMode 
+      ? 'rgba(255, 255, 255, 0.08)' 
+      : 'rgba(255, 255, 255, 0.85)';
+
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
@@ -170,7 +171,16 @@ const Profile = ({ navigation }) => {
           style={styles.gradient}
         >
           <View style={styles.loadingContainer}>
-            <GlassContainer borderRadius={borderRadius.xl} style={styles.notSignedInCard}>
+            <View 
+              style={[
+                styles.notSignedInCard, 
+                { 
+                  backgroundColor: cardBackground,
+                  borderRadius: borderRadius.xl,
+                  borderWidth: isDarkMode ? 0 : 1,
+                  borderColor: 'rgba(0, 0, 0, 0.04)',
+                }
+              ]}>
               <Ionicons name="person-circle-outline" size={moderateScale(60)} color={theme.primary} />
               <Text style={[styles.notSignedInTitle, { color: theme.text, marginTop: spacing.md }]}>
                 {t('profile.notSignedIn') || 'Not Signed In'}
@@ -191,7 +201,7 @@ const Profile = ({ navigation }) => {
                   <Text style={styles.signInButtonText}>{t('auth.signIn')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
-            </GlassContainer>
+            </View>
           </View>
         </LinearGradient>
       </View>
@@ -249,9 +259,22 @@ const Profile = ({ navigation }) => {
     }
   };
 
+  const cardBackground = isDarkMode 
+    ? 'rgba(255, 255, 255, 0.08)' 
+    : 'rgba(255, 255, 255, 0.85)';
+
   const renderAboutTab = () => (
     <View style={styles.tabContent}>
-      <GlassContainer borderRadius={borderRadius.lg} style={styles.infoCard}>
+      <View 
+        style={[
+          styles.infoCard,
+          {
+            backgroundColor: cardBackground,
+            borderRadius: borderRadius.lg,
+            borderWidth: isDarkMode ? 0 : 1,
+            borderColor: 'rgba(0, 0, 0, 0.04)',
+          }
+        ]}>
         <View style={styles.infoRow}>
           <Ionicons name="mail-outline" size={moderateScale(20)} color={theme.primary} />
           <View style={styles.infoTextContainer}>
@@ -311,7 +334,7 @@ const Profile = ({ navigation }) => {
             </View>
           </>
         )}
-      </GlassContainer>
+      </View>
     </View>
   );
 
@@ -319,12 +342,21 @@ const Profile = ({ navigation }) => {
     if (loadingPosts) {
       return (
         <View style={styles.tabContent}>
-          <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+          <View 
+            style={[
+              styles.emptyCard,
+              {
+                backgroundColor: cardBackground,
+                borderRadius: borderRadius.lg,
+                borderWidth: isDarkMode ? 0 : 1,
+                borderColor: 'rgba(0, 0, 0, 0.04)',
+              }
+            ]}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
               {t('common.loading')}
             </Text>
-          </GlassContainer>
+          </View>
         </View>
       );
     }
@@ -332,7 +364,16 @@ const Profile = ({ navigation }) => {
     if (postsError) {
       return (
         <View style={styles.tabContent}>
-          <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+          <View 
+            style={[
+              styles.emptyCard,
+              {
+                backgroundColor: cardBackground,
+                borderRadius: borderRadius.lg,
+                borderWidth: isDarkMode ? 0 : 1,
+                borderColor: 'rgba(0, 0, 0, 0.04)',
+              }
+            ]}>
             <Ionicons name="alert-circle-outline" size={moderateScale(40)} color={theme.error} />
             <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
               {t('common.error')}
@@ -340,7 +381,7 @@ const Profile = ({ navigation }) => {
             <TouchableOpacity onPress={loadUserPosts} style={styles.retryButton}>
               <Text style={[styles.retryButtonText, { color: theme.primary }]}>{t('common.retry')}</Text>
             </TouchableOpacity>
-          </GlassContainer>
+          </View>
         </View>
       );
     }
@@ -348,12 +389,21 @@ const Profile = ({ navigation }) => {
     if (!userPosts || userPosts.length === 0) {
       return (
         <View style={styles.tabContent}>
-          <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+          <View 
+            style={[
+              styles.emptyCard,
+              {
+                backgroundColor: cardBackground,
+                borderRadius: borderRadius.lg,
+                borderWidth: isDarkMode ? 0 : 1,
+                borderColor: 'rgba(0, 0, 0, 0.04)',
+              }
+            ]}>
             <Ionicons name="document-text-outline" size={moderateScale(40)} color={theme.textSecondary} />
             <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
               {t('profile.noPosts')}
             </Text>
-          </GlassContainer>
+          </View>
         </View>
       );
     }
@@ -385,10 +435,19 @@ const Profile = ({ navigation }) => {
 
   const renderActivityTab = () => (
     <View style={styles.tabContent}>
-      <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
+      <View 
+        style={[
+          styles.emptyCard,
+          {
+            backgroundColor: cardBackground,
+            borderRadius: borderRadius.lg,
+            borderWidth: isDarkMode ? 0 : 1,
+            borderColor: 'rgba(0, 0, 0, 0.04)',
+          }
+        ]}>
         <Ionicons name="pulse-outline" size={moderateScale(40)} color={theme.textSecondary} />
         <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>{t('profile.noActivity')}</Text>
-      </GlassContainer>
+      </View>
     </View>
   );
 
@@ -411,10 +470,17 @@ const Profile = ({ navigation }) => {
           }
         >
           <View style={styles.profileHeader}>
-            <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
-              <GlassContainer borderRadius={borderRadius.round} style={styles.settingsButtonInner}>
-                <Ionicons name="settings-outline" size={moderateScale(24)} color={isDarkMode ? '#FFFFFF' : '#1C1C1E'} />
-              </GlassContainer>
+            <TouchableOpacity 
+              style={[
+                styles.settingsButton,
+                {
+                  backgroundColor: cardBackground,
+                  borderRadius: borderRadius.round,
+                }
+              ]} 
+              onPress={() => navigation.navigate('Settings')} 
+              activeOpacity={0.7}>
+              <Ionicons name="settings-outline" size={moderateScale(24)} color={isDarkMode ? '#FFFFFF' : '#1C1C1E'} />
             </TouchableOpacity>
             <View style={styles.avatarContainer}>
               <LinearGradient colors={theme.gradient} style={styles.avatarBorder} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -529,8 +595,7 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 }, 
   scrollContent: { paddingTop: Platform.OS === 'ios' ? hp(5) : hp(3), paddingBottom: hp(10) }, 
   profileHeader: { alignItems: 'center', paddingHorizontal: wp(5), marginBottom: spacing.md, position: 'relative' }, 
-  settingsButton: { position: 'absolute', top: spacing.md, right: wp(5), zIndex: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }, 
-  settingsButtonInner: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
+  settingsButton: { position: 'absolute', top: spacing.md, right: wp(5), zIndex: 10, width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
   avatarContainer: { marginBottom: spacing.sm }, 
   avatarBorder: { width: moderateScale(110), height: moderateScale(110), borderRadius: moderateScale(55), padding: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }, 
   avatarInner: { width: moderateScale(104), height: moderateScale(104), borderRadius: moderateScale(52), padding: 3 }, 

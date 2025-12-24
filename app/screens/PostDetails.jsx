@@ -58,7 +58,6 @@ const PostDetails = ({ navigation, route }) => {
     try {
       await incrementPostViewCount(post.$id, user.$id);
     } catch (error) {
-      console.error('Error tracking view:', error);
     }
   };
 
@@ -81,7 +80,6 @@ const PostDetails = ({ navigation, route }) => {
               }
             };
           } catch (error) {
-            console.error('Error fetching user data:', error);
             return {
               ...reply,
               userData: {
@@ -95,7 +93,6 @@ const PostDetails = ({ navigation, route }) => {
       
       setReplies(repliesWithUserData);
     } catch (error) {
-      console.error('Load replies error:', error);
       setReplies([]);
     } finally {
       setIsLoadingReplies(false);
@@ -126,7 +123,6 @@ const PostDetails = ({ navigation, route }) => {
             uploadedImageUrls.push(uploadResult.url);
             uploadedImageDeleteUrls.push(uploadResult.deleteUrl);
           } catch (uploadError) {
-            console.error('Image upload error:', uploadError);
           }
         }
       }
@@ -172,7 +168,6 @@ const PostDetails = ({ navigation, route }) => {
       setReplyLinks('');
       setShowLinksInput(false);
     } catch (error) {
-      console.error('Add reply error:', error);
       showAlert(t('common.error'), t('post.replyError'), 'error');
     } finally {
       setIsSubmitting(false);
@@ -207,7 +202,6 @@ const PostDetails = ({ navigation, route }) => {
               await loadReplies();
               showAlert(t('common.success'), t('post.replyDeleted'), 'success');
             } catch (error) {
-              console.error('Delete reply error:', error);
               showAlert(t('common.error'), 'Failed to delete reply', 'error');
             }
           },
@@ -225,7 +219,6 @@ const PostDetails = ({ navigation, route }) => {
       }
       await loadReplies();
     } catch (error) {
-      console.error('Accept reply error:', error);
       showAlert(t('common.error'), 'Failed to update reply', 'error');
     }
   };
@@ -262,7 +255,6 @@ const PostDetails = ({ navigation, route }) => {
       
       await loadReplies();
     } catch (error) {
-      console.error('Upvote error:', error);
       showAlert(t('common.error'), 'Failed to upvote', 'error');
     }
   };
@@ -295,7 +287,6 @@ const PostDetails = ({ navigation, route }) => {
       
       await loadReplies();
     } catch (error) {
-      console.error('Downvote error:', error);
       showAlert(t('common.error'), 'Failed to downvote', 'error');
     }
   };
@@ -340,7 +331,6 @@ const PostDetails = ({ navigation, route }) => {
         setReplyImages([...replyImages, ...newImages]);
       }
     } catch (error) {
-      console.error('Image pick error:', error);
       showAlert(t('common.error'), t('post.imagePickError'), 'error');
     }
   };
@@ -362,7 +352,6 @@ const PostDetails = ({ navigation, route }) => {
         setReplyImages([...replyImages, result.assets[0].uri]);
       }
     } catch (error) {
-      console.error('Camera error:', error);
       showAlert(t('common.error'), t('post.cameraError'), 'error');
     }
   };

@@ -48,7 +48,7 @@ export const LanguageProvider = ({ children }) => {
         i18n.locale = defaultLang;
       }
     } catch (error) {
-      console.error('Error loading language preference:', error);
+      // Failed to load language preference, using default
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +72,7 @@ export const LanguageProvider = ({ children }) => {
       // Note: For RTL to fully take effect, app needs to reload
       // You might want to add a restart prompt here
     } catch (error) {
-      console.error('Error saving language preference:', error);
+      // Failed to save language preference
     }
   };
 

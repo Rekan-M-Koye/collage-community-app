@@ -50,7 +50,6 @@ const AccountSettings = ({ navigation }) => {
               await clearUser();
               navigation.replace('SignIn');
             } catch (error) {
-              console.error('Logout error:', error);
               Alert.alert(
                 t('common.error'),
                 t('settings.logoutError')

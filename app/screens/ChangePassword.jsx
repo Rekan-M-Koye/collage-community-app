@@ -106,8 +106,6 @@ const ChangePassword = ({ navigation }) => {
         ]
       );
     } catch (error) {
-      console.error('Change password error:', error);
-      
       let errorMessage = t('settings.changePasswordError') || 'Failed to change password. Please try again.';
       
       if (error.message?.includes('Invalid credentials') || error.message?.includes('password')) {
