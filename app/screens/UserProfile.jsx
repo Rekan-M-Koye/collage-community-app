@@ -8,11 +8,12 @@ import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import PostCard from '../components/PostCard';
 import { getPostsByUser, togglePostLike } from '../../database/posts';
+import { getUserById } from '../../database/users';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
 const UserProfile = ({ route, navigation }) => {
-  const { userId, userData } = route.params;
+  const { userId, userData: initialUserData } = route.params;
   const { t, theme, isDarkMode } = useAppSettings();
   const { user: currentUser } = useUser();
   const [activeTab, setActiveTab] = useState('about');
@@ -22,17 +23,77 @@ const UserProfile = ({ route, navigation }) => {
   const [postsLoaded, setPostsLoaded] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [userData, setUserData] = useState(initialUserData || null);
+  const [loadingUser, setLoadingUser] = useState(!initialUserData);
+  const [userError, setUserError] = useState(null);
+
+  // Fetch user data if not provided
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (initialUserData) {
+        console.log('[UserProfile] Using initial userData:', initialUserData);
+        setUserData(initialUserData);
+        setLoadingUser(false);
+        return;
+      }
+
+      if (!userId) {
+        console.log('[UserProfile] No userId provided');
+        setUserError('No user ID provided');
+        setLoadingUser(false);
+        return;
+      }
+
+      console.log('[UserProfile] Fetching user data for userId:', userId);
+      setLoadingUser(true);
+      setUserError(null);
+
+      try {
+        const fetchedUser = await getUserById(userId);
+        console.log('[UserProfile] Fetched user data:', fetchedUser);
+        
+        // Map the database fields to expected format
+        const mappedUser = {
+          $id: fetchedUser.$id,
+          fullName: fetchedUser.name || fetchedUser.fullName,
+          email: fetchedUser.email,
+          bio: fetchedUser.bio || '',
+          profilePicture: fetchedUser.profilePicture || '',
+          university: fetchedUser.university || '',
+          college: fetchedUser.major || fetchedUser.college || '',
+          department: fetchedUser.department || '',
+          stage: fetchedUser.year || fetchedUser.stage || '',
+          postsCount: fetchedUser.postsCount || 0,
+          followersCount: fetchedUser.followersCount || 0,
+          followingCount: fetchedUser.followingCount || 0,
+        };
+        
+        console.log('[UserProfile] Mapped user data:', mappedUser);
+        setUserData(mappedUser);
+      } catch (error) {
+        console.log('[UserProfile] Error fetching user:', error.message);
+        setUserError(error.message);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUserData();
+  }, [userId, initialUserData]);
 
   const loadUserPosts = useCallback(async () => {
     if (!userId) return;
     
+    console.log('[UserProfile] Loading posts for userId:', userId);
     setLoadingPosts(true);
     setPostsError(null);
     try {
       const posts = await getPostsByUser(userId, 20, 0);
+      console.log('[UserProfile] Loaded posts:', posts.length);
       setUserPosts(posts);
       setPostsLoaded(true);
     } catch (error) {
+      console.log('[UserProfile] Error loading posts:', error.message);
       setPostsError(error.message);
     } finally {
       setLoadingPosts(false);
@@ -109,7 +170,8 @@ const UserProfile = ({ route, navigation }) => {
     return stageMap[normalized] || stageValue;
   };
 
-  if (!userData) {
+  // Show loading state
+  if (loadingUser) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
@@ -118,6 +180,27 @@ const UserProfile = ({ route, navigation }) => {
           <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing.md }]}>
             {t('common.loading')}
           </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (userError || !userData) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle-outline" size={moderateScale(50)} color={theme.error || '#EF4444'} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing.md }]}>
+            {userError || t('profile.userNotFound')}
+          </Text>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={[styles.retryButton, { marginTop: spacing.lg }]}
+          >
+            <Text style={[styles.retryButtonText, { color: theme.primary }]}>{t('common.goBack')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -481,6 +564,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   }, 
   emptyText: { fontWeight: '500', textAlign: 'center' },
+  retryButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  retryButtonText: {
+    fontWeight: '600',
+    fontSize: moderateScale(14),
+  },
 });
 
 export default UserProfile;

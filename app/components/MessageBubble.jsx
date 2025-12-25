@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
+import ProfilePicture from './ProfilePicture';
 import { 
   fontSize, 
   spacing, 
@@ -26,10 +27,18 @@ const MessageBubble = ({
   message, 
   isCurrentUser, 
   senderName,
+  senderPhoto,
+  showAvatar = true,
   onCopy,
   onDelete,
   onReply,
   onForward,
+  onPin,
+  onUnpin,
+  onBookmark,
+  onUnbookmark,
+  isBookmarked = false,
+  onAvatarPress,
 }) => {
   const { theme, isDarkMode, t } = useAppSettings();
   const [imageModalVisible, setImageModalVisible] = useState(false);
@@ -77,6 +86,8 @@ const MessageBubble = ({
   const hasImage = !!imageUrl;
   const hasText = message.content && message.content.trim().length > 0;
   const hasReply = message.replyToId && message.replyToContent;
+  const isPinned = message.isPinned;
+  const mentionsAll = message.mentionsAll;
 
   const handleLongPress = () => {
     setActionsVisible(true);
@@ -89,10 +100,58 @@ const MessageBubble = ({
     }
   };
 
+  // Render message content with @everyone highlighting
+  const renderMessageContent = () => {
+    if (!hasText) return null;
+    
+    const content = message.content;
+    
+    // Check if contains @everyone or @all
+    if (mentionsAll || content.toLowerCase().includes('@everyone') || content.toLowerCase().includes('@all')) {
+      const parts = content.split(/(@everyone|@all)/gi);
+      return (
+        <Text style={[
+          styles.messageText,
+          { 
+            fontSize: fontSize(14),
+            color: isCurrentUser ? '#FFFFFF' : theme.text 
+          },
+          hasImage && styles.messageTextWithImage,
+        ]}>
+          {parts.map((part, index) => {
+            if (part.toLowerCase() === '@everyone' || part.toLowerCase() === '@all') {
+              return (
+                <Text key={index} style={styles.mentionHighlight}>
+                  {part}
+                </Text>
+              );
+            }
+            return part;
+          })}
+        </Text>
+      );
+    }
+
+    return (
+      <Text style={[
+        styles.messageText,
+        { 
+          fontSize: fontSize(14),
+          color: isCurrentUser ? '#FFFFFF' : theme.text 
+        },
+        hasImage && styles.messageTextWithImage,
+      ]}>
+        {content}
+      </Text>
+    );
+  };
+
   const actionButtons = [
     { icon: 'copy-outline', label: t('chats.copy'), action: onCopy, show: hasText },
     { icon: 'arrow-undo-outline', label: t('chats.reply'), action: onReply, show: true },
     { icon: 'arrow-redo-outline', label: t('chats.forward'), action: onForward, show: true },
+    { icon: isPinned ? 'pin' : 'pin-outline', label: isPinned ? t('chats.unpin') : t('chats.pin'), action: isPinned ? onUnpin : onPin, show: onPin || onUnpin },
+    { icon: isBookmarked ? 'bookmark' : 'bookmark-outline', label: isBookmarked ? t('chats.unbookmark') : t('chats.bookmark'), action: isBookmarked ? onUnbookmark : onBookmark, show: onBookmark || onUnbookmark },
     { icon: 'trash-outline', label: t('common.delete'), action: onDelete, show: isCurrentUser && onDelete, danger: true },
   ].filter(btn => btn.show);
 
@@ -101,64 +160,95 @@ const MessageBubble = ({
       styles.container,
       isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer
     ]}>
+      {/* Show sender name for other users */}
       {!isCurrentUser && senderName && (
         <Text style={[
           styles.senderName, 
-          { fontSize: fontSize(10), color: theme.primary }
+          { fontSize: fontSize(11), color: theme.primary, marginLeft: showAvatar ? moderateScale(40) : spacing.xs }
         ]}>
           {senderName}
         </Text>
       )}
       
-      <Animated.View 
-        style={{ transform: [{ translateX }] }}
-        {...panResponder.panHandlers}>
-        <Pressable
-          onLongPress={handleLongPress}
-          delayLongPress={300}
+      <View style={styles.messageRow}>
+        {/* Show avatar for other users */}
+        {!isCurrentUser && showAvatar && (
+          <TouchableOpacity 
+            style={styles.avatarContainer}
+            onPress={() => onAvatarPress && onAvatarPress(message.senderId)}
+            activeOpacity={0.7}
+          >
+            <ProfilePicture 
+              uri={senderPhoto || message.senderPhoto}
+              name={senderName || message.senderName}
+              size={moderateScale(32)}
+            />
+          </TouchableOpacity>
+        )}
+        
+        <Animated.View 
           style={[
-            styles.bubble,
-            isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
-            {
-              backgroundColor: isCurrentUser 
-                ? '#667eea'
-                : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
-            },
-            hasImage && !hasText && styles.imageBubble,
-          ]}>
-          
-          {hasReply && (
-            <View style={[
-              styles.replyContainer,
-              { 
+            { transform: [{ translateX }] },
+            !isCurrentUser && showAvatar && styles.bubbleWithAvatar,
+          ]}
+          {...panResponder.panHandlers}>
+          <Pressable
+            onLongPress={handleLongPress}
+            delayLongPress={300}
+            style={[
+              styles.bubble,
+              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+              {
                 backgroundColor: isCurrentUser 
-                  ? 'rgba(255,255,255,0.15)' 
-                  : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
-                borderLeftColor: isCurrentUser ? 'rgba(255,255,255,0.5)' : theme.primary,
-              }
+                  ? '#667eea'
+                  : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+              },
+              hasImage && !hasText && styles.imageBubble,
+              isPinned && styles.pinnedBubble,
             ]}>
-              <Text style={[
-                styles.replyToSender, 
+            
+            {/* Pinned indicator */}
+            {isPinned && (
+              <View style={styles.pinnedIndicator}>
+                <Ionicons name="pin" size={moderateScale(12)} color={isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.primary} />
+                <Text style={[styles.pinnedText, { color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.primary, fontSize: fontSize(9) }]}>
+                  {t('chats.pinnedMessages').split(' ')[0]}
+                </Text>
+              </View>
+            )}
+            
+            {hasReply && (
+              <View style={[
+                styles.replyContainer,
                 { 
-                  fontSize: fontSize(10), 
-                  color: isCurrentUser ? 'rgba(255,255,255,0.9)' : theme.primary 
+                  backgroundColor: isCurrentUser 
+                    ? 'rgba(255,255,255,0.15)' 
+                    : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
+                  borderLeftColor: isCurrentUser ? 'rgba(255,255,255,0.5)' : theme.primary,
                 }
               ]}>
-                {message.replyToSender}
-              </Text>
-              <Text 
-                style={[
-                  styles.replyToContent, 
+                <Text style={[
+                  styles.replyToSender, 
                   { 
-                    fontSize: fontSize(11), 
-                    color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.textSecondary 
+                    fontSize: fontSize(10), 
+                    color: isCurrentUser ? 'rgba(255,255,255,0.9)' : theme.primary 
                   }
-                ]}
-                numberOfLines={1}>
-                {message.replyToContent}
-              </Text>
-            </View>
-          )}
+                ]}>
+                  {message.replyToSender}
+                </Text>
+                <Text 
+                  style={[
+                    styles.replyToContent, 
+                    { 
+                      fontSize: fontSize(11), 
+                      color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.textSecondary 
+                    }
+                  ]}
+                  numberOfLines={1}>
+                  {message.replyToContent}
+                </Text>
+              </View>
+            )}
 
           {hasImage && (
             <TouchableOpacity 
@@ -175,18 +265,7 @@ const MessageBubble = ({
             </TouchableOpacity>
           )}
 
-          {hasText && (
-            <Text style={[
-              styles.messageText,
-              { 
-                fontSize: fontSize(14),
-                color: isCurrentUser ? '#FFFFFF' : theme.text 
-              },
-              hasImage && styles.messageTextWithImage,
-            ]}>
-              {message.content}
-            </Text>
-          )}
+          {renderMessageContent()}
           
           <Text style={[
             styles.timeText,
@@ -200,7 +279,8 @@ const MessageBubble = ({
             {formatTime(message.createdAt || message.$createdAt)}
           </Text>
         </Pressable>
-      </Animated.View>
+        </Animated.View>
+      </View>
 
       {/* Swipe indicator */}
       <View style={[
@@ -288,8 +368,8 @@ const MessageBubble = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing.xs / 2,
-    paddingHorizontal: spacing.sm,
+    marginVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
     position: 'relative',
   },
   currentUserContainer: {
@@ -298,32 +378,62 @@ const styles = StyleSheet.create({
   otherUserContainer: {
     alignItems: 'flex-start',
   },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  avatarContainer: {
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs / 2,
+  },
+  bubbleWithAvatar: {
+    maxWidth: '80%',
+  },
   senderName: {
     fontWeight: '600',
     marginBottom: 2,
     marginLeft: spacing.xs,
   },
   bubble: {
-    maxWidth: '80%',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.lg,
+    maxWidth: '75%',
+    minWidth: moderateScale(70),
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.xl,
   },
   imageBubble: {
-    padding: spacing.xs / 2,
+    padding: spacing.xs,
   },
   currentUserBubble: {
-    borderBottomRightRadius: spacing.xs / 2,
+    borderBottomRightRadius: spacing.xs,
   },
   otherUserBubble: {
-    borderBottomLeftRadius: spacing.xs / 2,
+    borderBottomLeftRadius: spacing.xs,
+  },
+  pinnedBubble: {
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.5)',
+  },
+  pinnedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs / 2,
+    gap: 2,
+  },
+  pinnedText: {
+    fontWeight: '500',
+  },
+  mentionHighlight: {
+    backgroundColor: 'rgba(102, 126, 234, 0.3)',
+    borderRadius: 2,
+    fontWeight: '600',
   },
   replyContainer: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs / 2,
-    marginBottom: spacing.xs / 2,
-    borderLeftWidth: 2,
-    borderRadius: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+    borderLeftWidth: 3,
+    borderRadius: borderRadius.sm,
   },
   replyToSender: {
     fontWeight: '600',
@@ -333,23 +443,24 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   messageImage: {
-    width: moderateScale(180),
-    height: moderateScale(180),
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.xs / 2,
+    width: moderateScale(200),
+    height: moderateScale(200),
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.xs,
   },
   messageImageOnly: {
     marginBottom: 0,
   },
   messageText: {
-    lineHeight: fontSize(18),
+    lineHeight: fontSize(14) * 1.45,
+    flexWrap: 'wrap',
   },
   messageTextWithImage: {
     marginTop: spacing.xs / 2,
   },
   timeText: {
     alignSelf: 'flex-end',
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   swipeIndicator: {
     position: 'absolute',

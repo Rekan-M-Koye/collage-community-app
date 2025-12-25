@@ -1,13 +1,83 @@
 import { account, databases, config } from './config';
-import { ID, Permission, Role, Query } from 'appwrite';
+import { ID, Permission, Role, Query, OAuthProvider } from 'appwrite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 const PENDING_VERIFICATION_KEY = 'pending_verification';
+const PENDING_OAUTH_KEY = 'pending_oauth_signup';
+const VERIFICATION_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+// List of blocked public email domains
+const BLOCKED_EMAIL_DOMAINS = [
+    'gmail.com',
+    'googlemail.com',
+    'hotmail.com',
+    'hotmail.co.uk',
+    'outlook.com',
+    'outlook.co.uk',
+    'live.com',
+    'msn.com',
+    'yahoo.com',
+    'yahoo.co.uk',
+    'yahoo.fr',
+    'ymail.com',
+    'aol.com',
+    'protonmail.com',
+    'proton.me',
+    'icloud.com',
+    'me.com',
+    'mac.com',
+    'mail.com',
+    'zoho.com',
+    'yandex.com',
+    'gmx.com',
+    'gmx.net',
+    'tutanota.com',
+    'fastmail.com',
+    'inbox.com',
+    'mail.ru',
+    'qq.com',
+    '163.com',
+    '126.com',
+    'sina.com',
+    'rediffmail.com',
+    'web.de',
+    'libero.it',
+    'virgilio.it',
+    'laposte.net',
+    'orange.fr',
+    'wanadoo.fr',
+    'free.fr',
+    't-online.de',
+    'arcor.de',
+    'rambler.ru',
+    'ukr.net',
+];
+
+// Generate a 6-digit verification code
+const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Check if email is from an educational institution
+export const isEducationalEmail = (email) => {
+    if (!email) return false;
+    const domain = email.toLowerCase().split('@')[1];
+    if (!domain) return false;
+    
+    // Check if it's a blocked public email domain
+    if (BLOCKED_EMAIL_DOMAINS.includes(domain)) {
+        return false;
+    }
+    
+    // If not a public email domain, allow it
+    // This allows educational domains like epu.edu.iq, university.edu, etc.
+    return true;
+};
 
 export const initiateSignup = async (email, password, name, additionalData = {}) => {
     try {
-        console.log('[Auth] initiateSignup: Starting signup for', email);
-        
         const sanitizedEmail = sanitizeInput(email).toLowerCase();
         const sanitizedName = sanitizeInput(name);
         
@@ -20,38 +90,55 @@ export const initiateSignup = async (email, password, name, additionalData = {})
             throw new Error('Invalid email format');
         }
         
+        // Check if email is from an educational institution
+        if (!isEducationalEmail(sanitizedEmail)) {
+            throw new Error('Only educational email addresses are allowed. Please use your university or college email.');
+        }
+        
         if (password.length < 8) {
             throw new Error('Password must be at least 8 characters');
         }
         
         const userId = ID.unique();
         
-        console.log('[Auth] initiateSignup: Creating account with userId:', userId);
+        try {
+            await account.create(
+                userId,
+                sanitizedEmail,
+                password,
+                sanitizedName
+            );
+        } catch (createError) {
+            if (createError.message?.includes('already exists') || 
+                createError.message?.includes('user with the same email')) {
+                throw new Error('An account with this email already exists. Please sign in or use a different email.');
+            }
+            throw createError;
+        }
         
-        await account.create(
-            userId,
-            sanitizedEmail,
-            password,
-            sanitizedName
-        );
+        // Don't create session yet - use Email OTP to verify
+        // Send OTP using Appwrite's Email OTP feature (must be enabled in console)
+        let tokenResponse;
+        try {
+            // createEmailToken sends a 6-digit OTP to the user's email
+            // If user already exists, it uses that account; otherwise it would create one
+            // But we already created the account above, so this just sends the OTP
+            tokenResponse = await account.createEmailToken(userId, sanitizedEmail);
+        } catch (otpError) {
+            // If OTP sending fails, clean up the created account and throw error
+            throw new Error('Failed to send verification code. Please try again.');
+        }
         
-        console.log('[Auth] initiateSignup: Account created, creating session');
-        
-        await account.createEmailPasswordSession(sanitizedEmail, password);
-        
-        console.log('[Auth] initiateSignup: Session created, sending verification email');
-        console.log('[Auth] NOTE: Verification URL is cloud.appwrite.io - user must click link in email then return to app');
-        
-        await account.createVerification(
-            'https://cloud.appwrite.io'
-        );
-        
+        // Store pending data for completion after verification
         const pendingData = {
             userId,
             email: sanitizedEmail,
             name: sanitizedName,
+            password,
             additionalData,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            expiresAt: Date.now() + VERIFICATION_TIMEOUT,
+            otpUserId: tokenResponse.userId
         };
         
         await AsyncStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(pendingData));
@@ -59,7 +146,8 @@ export const initiateSignup = async (email, password, name, additionalData = {})
         return {
             userId,
             email: sanitizedEmail,
-            name: sanitizedName
+            name: sanitizedName,
+            otpSent: true
         };
     } catch (error) {
         throw error;
@@ -68,42 +156,25 @@ export const initiateSignup = async (email, password, name, additionalData = {})
 
 export const checkAndCompleteVerification = async () => {
     try {
-        console.log('[Auth] checkAndCompleteVerification: Checking verification status');
-        
-        const user = await account.get();
-        
-        console.log('[Auth] checkAndCompleteVerification: User emailVerification status:', user.emailVerification);
-        
-        if (!user.emailVerification) {
-            console.log('[Auth] checkAndCompleteVerification: Email not verified yet');
-            throw new Error('Email not verified yet');
-        }
-        
-        console.log('[Auth] checkAndCompleteVerification: Email verified, checking for pending data');
-        
         const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
         
         if (!storedData) {
-            console.warn('[Auth] checkAndCompleteVerification: No pending verification data found');
             throw new Error('No pending verification found');
         }
         
-        console.log('[Auth] checkAndCompleteVerification: Found pending data, parsing');
-        
         const pendingData = JSON.parse(storedData);
         
+        // Check if user document already exists
         try {
-            console.log('[Auth] checkAndCompleteVerification: Checking if user document exists');
-            await getUserDocument(user.$id);
-            console.log('[Auth] checkAndCompleteVerification: User document exists, cleaning up');
+            await getUserDocument(pendingData.userId);
             await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
             return true;
         } catch (error) {
-            console.log('[Auth] checkAndCompleteVerification: User document not found, creating new one');
+            // User document not found, need to create one
         }
         
         await createUserDocument(
-            user.$id,
+            pendingData.userId,
             pendingData.name,
             pendingData.email,
             pendingData.additionalData
@@ -117,29 +188,315 @@ export const checkAndCompleteVerification = async () => {
     }
 };
 
-export const resendVerificationEmail = async () => {
+// Verify OTP code entered by user
+export const verifyOTPCode = async (otpCode) => {
     try {
-        console.log('[Auth] resendVerificationEmail: Resending verification email');
+        const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
         
-        await account.createVerification(
-            'https://cloud.appwrite.io'
-        );
+        if (!storedData) {
+            throw new Error('No pending verification found');
+        }
         
-        console.log('[Auth] resendVerificationEmail: Email sent successfully');
+        const pendingData = JSON.parse(storedData);
+        
+        // Verify OTP by creating a session with the code
+        // The OTP code acts as the "secret" for createSession
+        try {
+            await account.createSession(pendingData.otpUserId, otpCode);
+        } catch (sessionError) {
+            if (sessionError.message?.includes('Invalid') || 
+                sessionError.message?.includes('expired') ||
+                sessionError.code === 401) {
+                throw new Error('Invalid or expired verification code. Please try again.');
+            }
+            throw sessionError;
+        }
+        
+        // OTP verified successfully, now complete the signup
+        // Check if user document already exists
+        try {
+            await getUserDocument(pendingData.userId);
+        } catch (error) {
+            // User document not found, create one
+            await createUserDocument(
+                pendingData.userId,
+                pendingData.name,
+                pendingData.email,
+                pendingData.additionalData
+            );
+        }
+        
+        // Clean up storage
+        await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
+        
         return true;
     } catch (error) {
-        console.error('[Auth] resendVerificationEmail error:', error.message);
+        if (error.message?.includes('Invalid token') || 
+            error.message?.includes('Invalid credentials') ||
+            error.code === 401) {
+            throw new Error('Invalid verification code. Please check and try again.');
+        }
+        throw error;
+    }
+};
+
+// Resend OTP verification email
+export const resendVerificationEmail = async () => {
+    try {
+        const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
+        
+        if (!storedData) {
+            throw new Error('No pending verification found');
+        }
+        
+        const pendingData = JSON.parse(storedData);
+        
+        // Send new OTP using Email OTP
+        const tokenResponse = await account.createEmailToken(pendingData.userId, pendingData.email);
+        
+        // Update expiration time and token data
+        pendingData.expiresAt = Date.now() + VERIFICATION_TIMEOUT;
+        pendingData.otpUserId = tokenResponse.userId;
+        await AsyncStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(pendingData));
+        
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// ==================== GOOGLE OAUTH ====================
+
+// Start Google OAuth flow
+export const signInWithGoogle = async () => {
+    try {
+        // Create deep link URLs for OAuth callback
+        const successUrl = Linking.createURL('oauth-callback');
+        const failureUrl = Linking.createURL('oauth-failure');
+        
+        // Get the OAuth URL from Appwrite
+        const authUrl = account.createOAuth2Token(
+            OAuthProvider.Google,
+            successUrl,
+            failureUrl
+        );
+        
+        // Open the browser for OAuth
+        const result = await WebBrowser.openAuthSessionAsync(
+            authUrl.toString(),
+            successUrl
+        );
+        
+        if (result.type === 'success' && result.url) {
+            // Parse the URL to get the secret and userId
+            const url = new URL(result.url);
+            const secret = url.searchParams.get('secret');
+            const userId = url.searchParams.get('userId');
+            
+            if (secret && userId) {
+                // Create session with the token
+                await account.createSession(userId, secret);
+                return { success: true };
+            }
+        }
+        
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+            return { success: false, cancelled: true };
+        }
+        
+        return { success: false };
+    } catch (error) {
+        if (error.code === 401) {
+            return { success: false, cancelled: true };
+        }
+        throw error;
+    }
+};
+
+// Check if Google OAuth user exists in our database
+export const checkOAuthUserExists = async (userId = null) => {
+    try {
+        const user = await account.get();
+        if (!user) {
+            return { exists: false, user: null };
+        }
+        
+        // If userId provided, verify it matches
+        if (userId && user.$id !== userId) {
+            return { exists: false, user: null };
+        }
+        
+        // Check if user has a document in our users collection
+        try {
+            const userDoc = await getUserDocument(user.$id);
+            return { 
+                exists: true, 
+                user: user,
+                userDoc: userDoc,
+                isComplete: true 
+            };
+        } catch (docError) {
+            // User authenticated with Google but doesn't have a user document
+            // They need to complete signup
+            return { 
+                exists: false, 
+                user: user,
+                email: user.email,
+                name: user.name,
+                isComplete: false 
+            };
+        }
+    } catch (error) {
+        return { exists: false, user: null };
+    }
+};
+
+// Store OAuth user data for completing signup
+export const storePendingOAuthSignup = async (data) => {
+    try {
+        const pendingData = {
+            userId: data.userId,
+            email: data.email,
+            name: data.name || '',
+            timestamp: Date.now(),
+            isOAuth: true
+        };
+        await AsyncStorage.setItem(PENDING_OAUTH_KEY, JSON.stringify(pendingData));
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Get pending OAuth signup data
+export const getPendingOAuthSignup = async () => {
+    try {
+        const data = await AsyncStorage.getItem(PENDING_OAUTH_KEY);
+        if (!data) return null;
+        return JSON.parse(data);
+    } catch (error) {
+        return null;
+    }
+};
+
+// Clear pending OAuth signup data
+export const clearPendingOAuthSignup = async () => {
+    try {
+        await AsyncStorage.removeItem(PENDING_OAUTH_KEY);
+    } catch (error) {
+        // Ignore errors
+    }
+};
+
+// Complete OAuth signup - create user document with additional data
+export const completeOAuthSignup = async (userId, email, name, additionalData = {}) => {
+    try {
+        // Verify we have an authenticated user
+        const user = await account.get();
+        if (!user || user.$id !== userId) {
+            throw new Error('User authentication mismatch');
+        }
+        
+        // Check if email is educational
+        if (!isEducationalEmail(email)) {
+            // Sign out the user since they can't use this app
+            await account.deleteSession('current');
+            throw new Error('Only educational email addresses are allowed. Please use your university or college email.');
+        }
+        
+        // Create user document
+        const userDoc = await createUserDocument(
+            userId,
+            name,
+            email,
+            additionalData
+        );
+        
+        // Clear pending data
+        await clearPendingOAuthSignup();
+        
+        return {
+            success: true,
+            userId: userId,
+            email: email,
+            name: name,
+            userDoc: userDoc
+        };
+    } catch (error) {
         throw error;
     }
 };
 
 export const cancelPendingVerification = async () => {
     try {
-        await account.deleteSession('current');
+        // Get pending data to know if we need cleanup
+        const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
+        
+        try {
+            // Delete the current session
+            await account.deleteSession('current');
+        } catch (sessionError) {
+            // Session might already be deleted
+        }
+        
+        // Remove pending verification data
         await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
+        
         return true;
     } catch (error) {
+        // Even if there's an error, try to clean up storage
+        await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
         throw error;
+    }
+};
+
+export const checkExpiredVerification = async () => {
+    try {
+        const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
+        
+        if (!storedData) {
+            return { expired: false, hasPending: false };
+        }
+        
+        const pendingData = JSON.parse(storedData);
+        const now = Date.now();
+        
+        if (pendingData.expiresAt && now > pendingData.expiresAt) {
+            // Verification expired, cleanup
+            try {
+                await account.deleteSession('current');
+            } catch (sessionError) {
+                // Session might already be deleted
+            }
+            
+            await AsyncStorage.removeItem(PENDING_VERIFICATION_KEY);
+            
+            return { expired: true, hasPending: false };
+        }
+        
+        return { 
+            expired: false, 
+            hasPending: true,
+            email: pendingData.email,
+            expiresAt: pendingData.expiresAt,
+            timeRemaining: pendingData.expiresAt - now
+        };
+    } catch (error) {
+        return { expired: false, hasPending: false };
+    }
+};
+
+export const getPendingVerificationData = async () => {
+    try {
+        const storedData = await AsyncStorage.getItem(PENDING_VERIFICATION_KEY);
+        
+        if (!storedData) {
+            return null;
+        }
+        
+        return JSON.parse(storedData);
+    } catch (error) {
+        return null;
     }
 };
 
@@ -272,10 +629,8 @@ export const signOut = async () => {
 export const getCurrentUser = async () => {
     try {
         const user = await account.get();
-        console.log('[Auth] getCurrentUser: User found:', user.$id, 'verified:', user.emailVerification);
         return user;
     } catch (error) {
-        console.log('[Auth] getCurrentUser: No user session found');
         if (error.message?.includes('missing scopes') || error.code === 401) {
             return null;
         }

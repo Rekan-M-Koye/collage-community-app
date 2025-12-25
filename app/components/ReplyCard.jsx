@@ -12,7 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
-import { GlassContainer } from './GlassComponents';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
@@ -99,12 +98,11 @@ const ReplyCard = ({
   };
 
   return (
-    <View>
-      <GlassContainer 
-        borderRadius={borderRadius.lg} 
+    <>
+      <View 
         style={[
           styles.replyCard,
-          reply.isAccepted && { borderWidth: 2, borderColor: '#10B981' }
+          reply.isAccepted && styles.acceptedCard
         ]}>
         
         {reply.isAccepted && (
@@ -211,7 +209,7 @@ const ReplyCard = ({
             </Text>
           </TouchableOpacity>
         </View>
-      </GlassContainer>
+      </View>
 
       <Modal
         visible={showMenu}
@@ -305,14 +303,22 @@ const ReplyCard = ({
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   replyCard: {
-    marginBottom: spacing.md,
-    padding: spacing.md,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(128,128,128,0.15)',
+  },
+  acceptedCard: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderBottomColor: '#10B981',
   },
   acceptedBadge: {
     position: 'absolute',

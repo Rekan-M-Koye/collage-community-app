@@ -60,15 +60,10 @@ export const createChat = async (chatData) => {
 export const getUserGroupChats = async (department, stage) => {
     try {
         if (!department || typeof department !== 'string') {
-            console.warn('[Chats] getUserGroupChats: Invalid department provided:', department);
             throw new Error('Invalid department');
         }
         
-        console.log('[Chats] getUserGroupChats: Fetching chats for department:', department, 'stage:', stage);
-        console.log('[Chats] Config check - chatsCollectionId:', config.chatsCollectionId ? 'SET' : 'MISSING');
-        
         if (!config.chatsCollectionId) {
-            console.error('[Chats] CRITICAL: chatsCollectionId is not configured in .env');
             throw new Error('Chat collection not configured. Please check your .env file.');
         }
         
@@ -101,14 +96,12 @@ export const getUserGroupChats = async (department, stage) => {
             allChats.push(...stageChats.documents);
         }
         
-        console.log('[Chats] getUserGroupChats: Found', allChats.length, 'chats');
         return allChats.sort((a, b) => {
             const dateA = new Date(a.lastMessageAt || a.createdAt);
             const dateB = new Date(b.lastMessageAt || b.createdAt);
             return dateB - dateA;
         });
     } catch (error) {
-        console.error('[Chats] getUserGroupChats error:', error.message);
         throw error;
     }
 };
@@ -198,20 +191,15 @@ export const canUserSendMessage = async (chatId, userId) => {
 
 export const sendMessage = async (chatId, messageData) => {
     try {
-        console.log('[Chats] sendMessage: Sending message to chat:', chatId);
-        
         if (!chatId || typeof chatId !== 'string') {
-            console.warn('[Chats] sendMessage: Invalid chatId:', chatId);
             throw new Error('Invalid chat ID');
         }
         
         if (!messageData || typeof messageData !== 'object') {
-            console.warn('[Chats] sendMessage: Invalid messageData');
             throw new Error('Invalid message data');
         }
         
         if (!messageData.senderId) {
-            console.warn('[Chats] sendMessage: Missing senderId');
             throw new Error('Missing required message fields');
         }
 
@@ -219,7 +207,6 @@ export const sendMessage = async (chatId, messageData) => {
         const hasImages = messageData.images && messageData.images.length > 0;
 
         if (!hasContent && !hasImages) {
-            console.warn('[Chats] sendMessage: No content or images');
             throw new Error('Message must have either content or an image');
         }
         
@@ -227,6 +214,9 @@ export const sendMessage = async (chatId, messageData) => {
         if (!canSend) {
             throw new Error('User does not have permission to send messages in this chat');
         }
+
+        // Check for @everyone mention
+        const mentionsAll = checkForEveryoneMention(messageData.content);
         
         // Build document with only valid fields matching Appwrite schema
         const documentData = {
@@ -234,11 +224,26 @@ export const sendMessage = async (chatId, messageData) => {
             senderId: messageData.senderId,
             senderName: messageData.senderName,
             content: messageData.content || '',
+            mentionsAll,
         };
         
-        // Only add images if provided (matches images[] field in Appwrite)
+        // Support both imageUrl (single) and images (array) for compatibility
         if (hasImages) {
-            documentData.images = messageData.images;
+            // Try to use images array first, fallback to imageUrl for single image
+            documentData.imageUrl = messageData.images[0];
+            // Only add images array if collection supports it
+            try {
+                documentData.images = messageData.images;
+            } catch (e) {
+                // images field might not exist, imageUrl is the fallback
+            }
+        }
+        
+        // Add reply fields if this is a reply
+        if (messageData.replyToId) {
+            documentData.replyToId = messageData.replyToId;
+            documentData.replyToContent = messageData.replyToContent || '';
+            documentData.replyToSender = messageData.replyToSender || '';
         }
         
         const message = await databases.createDocument(
@@ -278,15 +283,10 @@ export const sendMessage = async (chatId, messageData) => {
 export const getMessages = async (chatId, limit = 50, offset = 0) => {
     try {
         if (!chatId || typeof chatId !== 'string') {
-            console.warn('[Chats] getMessages: Invalid chatId:', chatId);
             throw new Error('Invalid chat ID');
         }
         
-        console.log('[Chats] getMessages: Fetching messages for chat:', chatId);
-        console.log('[Chats] Config check - messagesCollectionId:', config.messagesCollectionId ? 'SET' : 'MISSING');
-        
         if (!config.messagesCollectionId) {
-            console.error('[Chats] CRITICAL: messagesCollectionId is not configured in .env');
             throw new Error('Messages collection not configured. Please check your .env file.');
         }
         
@@ -300,10 +300,8 @@ export const getMessages = async (chatId, limit = 50, offset = 0) => {
                 Query.offset(offset)
             ]
         );
-        console.log('[Chats] getMessages: Found', messages.documents.length, 'messages');
         return messages.documents;
     } catch (error) {
-        console.error('[Chats] getMessages error:', error.message);
         throw error;
     }
 };
@@ -405,5 +403,355 @@ export const removeRepresentative = async (chatId, userId) => {
         return updatedChat;
     } catch (error) {
         throw error;
+    }
+};
+
+/**
+ * Pin a message in a chat
+ */
+export const pinMessage = async (chatId, messageId, userId) => {
+    try {
+        if (!chatId || !messageId || !userId) {
+            throw new Error('Chat ID, message ID, and user ID are required');
+        }
+
+        // Update the message to mark it as pinned
+        await databases.updateDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId,
+            {
+                isPinned: true,
+                pinnedBy: userId,
+                pinnedAt: new Date().toISOString(),
+            }
+        );
+
+        // Also update the chat's pinnedMessages array
+        const chat = await databases.getDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId
+        );
+
+        const pinnedMessages = chat.pinnedMessages || [];
+        if (!pinnedMessages.includes(messageId)) {
+            pinnedMessages.push(messageId);
+            await databases.updateDocument(
+                config.databaseId,
+                config.chatsCollectionId,
+                chatId,
+                { pinnedMessages }
+            );
+        }
+
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Unpin a message in a chat
+ */
+export const unpinMessage = async (chatId, messageId) => {
+    try {
+        if (!chatId || !messageId) {
+            throw new Error('Chat ID and message ID are required');
+        }
+
+        // Update the message to mark it as unpinned
+        await databases.updateDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId,
+            {
+                isPinned: false,
+                pinnedBy: null,
+                pinnedAt: null,
+            }
+        );
+
+        // Also update the chat's pinnedMessages array
+        const chat = await databases.getDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId
+        );
+
+        const pinnedMessages = (chat.pinnedMessages || []).filter(id => id !== messageId);
+        await databases.updateDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId,
+            { pinnedMessages }
+        );
+
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get all pinned messages in a chat
+ */
+export const getPinnedMessages = async (chatId) => {
+    try {
+        if (!chatId) {
+            throw new Error('Chat ID is required');
+        }
+
+        const messages = await databases.listDocuments(
+            config.databaseId,
+            config.messagesCollectionId,
+            [
+                Query.equal('chatId', chatId),
+                Query.equal('isPinned', true),
+                Query.orderDesc('pinnedAt'),
+                Query.limit(50)
+            ]
+        );
+
+        return messages.documents;
+    } catch (error) {
+        return [];
+    }
+};
+
+/**
+ * Check if user can pin messages in a chat
+ */
+export const canUserPinMessage = async (chatId, userId) => {
+    try {
+        const chat = await databases.getDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId
+        );
+
+        // In private chats, both users can pin
+        if (chat.type === 'private') {
+            return chat.participants?.includes(userId) || false;
+        }
+
+        // Parse settings
+        let settings = {};
+        try {
+            settings = chat.settings ? JSON.parse(chat.settings) : {};
+        } catch (e) {
+            settings = {};
+        }
+
+        // If onlyAdminsCanPin is set, check if user is admin
+        if (settings.onlyAdminsCanPin) {
+            return chat.admins?.includes(userId) || 
+                   chat.representatives?.includes(userId) || 
+                   false;
+        }
+
+        // Otherwise, all participants can pin
+        return chat.participants?.includes(userId) || true;
+    } catch (error) {
+        return false;
+    }
+};
+
+/**
+ * Check if message contains @everyone or @all mention
+ */
+export const checkForEveryoneMention = (content) => {
+    if (!content) return false;
+    const lowerContent = content.toLowerCase();
+    return lowerContent.includes('@everyone') || lowerContent.includes('@all');
+};
+
+/**
+ * Check if user can use @everyone mention
+ */
+export const canUserMentionEveryone = async (chatId, userId) => {
+    try {
+        const chat = await databases.getDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId
+        );
+
+        // Private chats don't have @everyone
+        if (chat.type === 'private') {
+            return false;
+        }
+
+        // Parse settings
+        let settings = {};
+        try {
+            settings = chat.settings ? JSON.parse(chat.settings) : {};
+        } catch (e) {
+            settings = {};
+        }
+
+        // Check if @everyone is allowed
+        if (settings.allowEveryoneMention === false) {
+            return false;
+        }
+
+        // If only admins can mention, check if user is admin
+        if (settings.onlyAdminsCanMention) {
+            return chat.admins?.includes(userId) || 
+                   chat.representatives?.includes(userId) || 
+                   false;
+        }
+
+        // Otherwise, all participants can use @everyone
+        return true;
+    } catch (error) {
+        return false;
+    }
+};
+
+/**
+ * Update chat settings
+ */
+export const updateChatSettings = async (chatId, settings) => {
+    try {
+        if (!chatId) {
+            throw new Error('Chat ID is required');
+        }
+
+        const settingsString = JSON.stringify(settings);
+        
+        const chat = await databases.updateDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId,
+            { settings: settingsString }
+        );
+
+        return chat;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get chat settings
+ */
+export const getChatSettings = async (chatId) => {
+    try {
+        if (!chatId) {
+            return {};
+        }
+
+        const chat = await databases.getDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId
+        );
+
+        try {
+            return chat.settings ? JSON.parse(chat.settings) : {};
+        } catch (e) {
+            return {};
+        }
+    } catch (error) {
+        return {};
+    }
+};
+
+/**
+ * Get unread message count for a specific chat
+ */
+export const getUnreadCount = async (chatId, userId) => {
+    try {
+        if (!chatId || !userId) {
+            return 0;
+        }
+
+        // Get recent messages that the user hasn't read
+        const messages = await databases.listDocuments(
+            config.databaseId,
+            config.messagesCollectionId,
+            [
+                Query.equal('chatId', chatId),
+                Query.limit(100),
+                Query.orderDesc('$createdAt')
+            ]
+        );
+
+        // Count messages not sent by user and not in readBy array
+        let unreadCount = 0;
+        for (const message of messages.documents) {
+            if (message.senderId !== userId) {
+                const readBy = message.readBy || [];
+                if (!readBy.includes(userId)) {
+                    unreadCount++;
+                }
+            }
+        }
+
+        return unreadCount;
+    } catch (error) {
+        return 0;
+    }
+};
+
+/**
+ * Mark all messages in a chat as read by user
+ */
+export const markChatAsRead = async (chatId, userId) => {
+    try {
+        if (!chatId || !userId) {
+            return;
+        }
+
+        // Get unread messages
+        const messages = await databases.listDocuments(
+            config.databaseId,
+            config.messagesCollectionId,
+            [
+                Query.equal('chatId', chatId),
+                Query.limit(100),
+                Query.orderDesc('$createdAt')
+            ]
+        );
+
+        // Update each unread message to include user in readBy
+        const updatePromises = messages.documents
+            .filter(msg => msg.senderId !== userId && !(msg.readBy || []).includes(userId))
+            .map(msg => {
+                const readBy = msg.readBy || [];
+                readBy.push(userId);
+                return databases.updateDocument(
+                    config.databaseId,
+                    config.messagesCollectionId,
+                    msg.$id,
+                    { readBy }
+                );
+            });
+
+        await Promise.all(updatePromises);
+    } catch (error) {
+        // Silently fail - reading messages is not critical
+    }
+};
+
+/**
+ * Get total unread count across all user chats
+ */
+export const getTotalUnreadCount = async (userId, chatIds) => {
+    try {
+        if (!userId || !chatIds || chatIds.length === 0) {
+            return 0;
+        }
+
+        let totalUnread = 0;
+        for (const chatId of chatIds) {
+            const count = await getUnreadCount(chatId, userId);
+            totalUnread += count;
+        }
+
+        return totalUnread;
+    } catch (error) {
+        return 0;
     }
 };

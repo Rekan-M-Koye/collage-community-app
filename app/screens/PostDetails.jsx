@@ -411,26 +411,26 @@ const PostDetails = ({ navigation, route }) => {
           
           <GlassContainer borderRadius={borderRadius.xl} style={styles.repliesSection}>
             <View style={styles.repliesHeader}>
-              <Ionicons name="chatbubbles-outline" size={moderateScale(24)} color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} />
-              <Text style={[styles.repliesTitle, { fontSize: fontSize(18) }]}>
+              <Ionicons name="chatbubbles-outline" size={moderateScale(24)} color={theme.text} />
+              <Text style={[styles.repliesTitle, { fontSize: fontSize(18), color: theme.text }]}>
                 {t('post.repliesCount').replace('{count}', replies.length)}
               </Text>
             </View>
 
             {isLoadingReplies ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
-                <Text style={[styles.loadingText, { fontSize: fontSize(14), color: 'rgba(255,255,255,0.7)' }]}>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={[styles.loadingText, { fontSize: fontSize(14), color: theme.textSecondary }]}>
                   {t('common.loading')}
                 </Text>
               </View>
             ) : replies.length === 0 ? (
               <View style={styles.emptyReplies}>
-                <Ionicons name="chatbubble-outline" size={moderateScale(50)} color="rgba(255,255,255,0.3)" />
-                <Text style={[styles.emptyText, { fontSize: fontSize(16), color: 'rgba(255,255,255,0.7)' }]}>
+                <Ionicons name="chatbubble-outline" size={moderateScale(50)} color={theme.textSecondary} />
+                <Text style={[styles.emptyText, { fontSize: fontSize(16), color: theme.textSecondary }]}>
                   {t('post.noReplies')}
                 </Text>
-                <Text style={[styles.emptySubtext, { fontSize: fontSize(13), color: 'rgba(255,255,255,0.5)' }]}>
+                <Text style={[styles.emptySubtext, { fontSize: fontSize(13), color: theme.textSecondary }]}>
                   {t('post.beFirstToReply')}
                 </Text>
               </View>
@@ -642,7 +642,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   repliesTitle: {
-    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   loadingContainer: {

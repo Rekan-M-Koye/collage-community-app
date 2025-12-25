@@ -20,7 +20,7 @@ import { useUser } from '../context/UserContext';
 import LanguageDropdown from '../components/LanguageDropdown';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { GlassContainer, GlassInput } from '../components/GlassComponents';
-import { signIn, getCurrentUser, signOut, getCompleteUserData } from '../../database/auth';
+import { signIn, getCurrentUser, signOut, getCompleteUserData, signInWithGoogle, checkOAuthUserExists, storePendingOAuthSignup } from '../../database/auth';
 import { 
   wp, 
   hp, 
@@ -38,6 +38,7 @@ const SignIn = ({ navigation }) => {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   const { t, theme, isDarkMode } = useAppSettings();
   const { setUserData } = useUser();
@@ -156,6 +157,72 @@ const SignIn = ({ navigation }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (isGoogleLoading) return;
+    
+    setIsGoogleLoading(true);
+    
+    try {
+      const result = await signInWithGoogle();
+      
+      if (result.success) {
+        const userCheck = await checkOAuthUserExists();
+        
+        if (userCheck.exists && userCheck.userDoc) {
+          const completeUserData = await getCompleteUserData();
+          
+          if (completeUserData) {
+            const userData = {
+              $id: completeUserData.$id,
+              email: completeUserData.email,
+              fullName: completeUserData.name,
+              bio: completeUserData.bio || '',
+              profilePicture: completeUserData.profilePicture || '',
+              university: completeUserData.university || '',
+              college: completeUserData.major || '',
+              department: completeUserData.department || '',
+              stage: completeUserData.year || '',
+              postsCount: completeUserData.postsCount || 0,
+              followersCount: completeUserData.followersCount || 0,
+              followingCount: completeUserData.followingCount || 0,
+              isEmailVerified: true,
+              lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
+            };
+            
+            await setUserData(userData);
+            navigation.replace('MainTabs');
+          }
+        } else if (userCheck.user) {
+          await storePendingOAuthSignup({
+            userId: userCheck.user.$id,
+            email: userCheck.email || userCheck.user.email,
+            name: userCheck.name || userCheck.user.name || '',
+          });
+          
+          navigation.navigate('SignUp', { 
+            oauthMode: true,
+            oauthEmail: userCheck.email || userCheck.user.email,
+            oauthName: userCheck.name || userCheck.user.name || '',
+            oauthUserId: userCheck.user.$id,
+          });
+        }
+      } else if (result.cancelled) {
+        setIsGoogleLoading(false);
+        return;
+      }
+    } catch (error) {
+      let errorMessage = t('auth.googleSignInError') || 'Failed to sign in with Google. Please try again.';
+      
+      if (error.message?.includes('network') || error.message?.includes('Network')) {
+        errorMessage = t('common.networkError') || 'Network error. Please check your connection.';
+      }
+      
+      Alert.alert(t('common.error'), errorMessage);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar 
@@ -233,6 +300,7 @@ const SignIn = ({ navigation }) => {
                     style={[styles.input, { 
                       color: theme.text,
                       fontSize: fontSize(14),
+                      textAlign: 'left',
                     }]}
                     placeholder={t('auth.collegeEmail')}
                     placeholderTextColor={theme.input.placeholder}
@@ -243,6 +311,9 @@ const SignIn = ({ navigation }) => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    caretHidden={false}
+                    contextMenuHidden={false}
+                    selectTextOnFocus={false}
                   />
                 </View>
               </GlassInput>
@@ -326,6 +397,37 @@ const SignIn = ({ navigation }) => {
                     </>
                   )}
                 </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={[styles.dividerText, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                  {t('auth.orContinueWith') || 'OR'}
+                </Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity 
+                style={styles.googleButton}
+                onPress={handleGoogleSignIn}
+                activeOpacity={0.8}
+                disabled={isGoogleLoading}>
+                <View style={[styles.googleButtonContent, { backgroundColor: theme.card }]}>
+                  {isGoogleLoading ? (
+                    <ActivityIndicator color={theme.text} size="small" />
+                  ) : (
+                    <>
+                      <Ionicons 
+                        name="logo-google" 
+                        size={moderateScale(20)} 
+                        color="#DB4437" 
+                      />
+                      <Text style={[styles.googleButtonText, { color: theme.text, fontSize: fontSize(14) }]}>
+                        {t('auth.continueWithGoogle') || 'Continue with Google'}
+                      </Text>
+                    </>
+                  )}
+                </View>
               </TouchableOpacity>
             </GlassContainer>
 
@@ -496,6 +598,24 @@ const styles = StyleSheet.create({
   signUpText: {
     fontWeight: 'bold',
     textDecorationLine: 'underline',
+  },
+  googleButton: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  googleButtonContent: {
+    paddingVertical: spacing.md + spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  googleButtonText: {
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });
 

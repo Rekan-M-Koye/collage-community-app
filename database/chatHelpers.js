@@ -1,6 +1,7 @@
 import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
 import { CHAT_TYPES, createGroupChat, getUserGroupChats } from './chats';
+import { getUserById } from './users';
 
 export const PRIVATE_CHAT_TYPE = 'private';
 export const CUSTOM_GROUP_TYPE = 'custom_group';
@@ -156,7 +157,8 @@ export const createPrivateChat = async (user1, user2) => {
 
         const existingChat = await getPrivateChat(user1.$id, user2.$id);
         if (existingChat) {
-            return existingChat;
+            // Return with otherUser populated for proper display
+            return { ...existingChat, otherUser: user2 };
         }
 
         const sortedIds = [user1.$id, user2.$id].sort();
@@ -177,7 +179,8 @@ export const createPrivateChat = async (user1, user2) => {
             }
         );
 
-        return chat;
+        // Return with otherUser populated for proper display
+        return { ...chat, otherUser: user2 };
     } catch (error) {
         throw error;
     }
@@ -285,7 +288,24 @@ export const getAllUserChats = async (userId, department, stage) => {
 
         results.defaultGroups = groupChats;
         results.customGroups = customGroups;
-        results.privateChats = privateChats;
+        
+        // Populate otherUser for private chats
+        const privateChatsWithOtherUser = await Promise.all(
+            privateChats.map(async (chat) => {
+                try {
+                    const otherUserId = chat.participants?.find(id => id !== userId);
+                    if (otherUserId) {
+                        const otherUser = await getUserById(otherUserId);
+                        return { ...chat, otherUser };
+                    }
+                    return chat;
+                } catch (error) {
+                    return chat;
+                }
+            })
+        );
+        
+        results.privateChats = privateChatsWithOtherUser;
 
         return results;
     } catch (error) {

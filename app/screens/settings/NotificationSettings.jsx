@@ -22,6 +22,8 @@ const NotificationSettings = ({ navigation }) => {
     isDarkMode,
     notificationsEnabled,
     toggleNotifications,
+    notificationSettings,
+    updateNotificationSetting,
   } = useAppSettings();
 
   const GlassCard = ({ children, style }) => (
@@ -99,6 +101,91 @@ const NotificationSettings = ({ navigation }) => {
             </View>
           </GlassCard>
         </View>
+
+        {notificationsEnabled && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              {t('settings.notificationCategories') || 'Categories'}
+            </Text>
+            <GlassCard>
+              <View style={styles.settingItem}>
+                <View style={[
+                  styles.iconContainer,
+                  { backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : 'rgba(10, 132, 255, 0.1)' },
+                ]}>
+                  <Ionicons name="chatbubble-outline" size={20} color="#0A84FF" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>
+                    {t('settings.directChatNotifications') || 'Direct Chats'}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                    {t('settings.directChatNotificationsDesc') || 'Notifications for private messages'}
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationSettings?.directChats !== false}
+                  onValueChange={(value) => updateNotificationSetting('directChats', value)}
+                  trackColor={{ false: theme.border, true: '#0A84FF' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={theme.border}
+                />
+              </View>
+              
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              
+              <View style={styles.settingItem}>
+                <View style={[
+                  styles.iconContainer,
+                  { backgroundColor: isDarkMode ? 'rgba(255, 159, 10, 0.15)' : 'rgba(255, 159, 10, 0.1)' },
+                ]}>
+                  <Ionicons name="people-outline" size={20} color="#FF9F0A" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>
+                    {t('settings.groupChatNotifications') || 'Group Chats'}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                    {t('settings.groupChatNotificationsDesc') || 'Notifications for group messages'}
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationSettings?.groupChats !== false}
+                  onValueChange={(value) => updateNotificationSetting('groupChats', value)}
+                  trackColor={{ false: theme.border, true: '#FF9F0A' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={theme.border}
+                />
+              </View>
+              
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              
+              <View style={styles.settingItem}>
+                <View style={[
+                  styles.iconContainer,
+                  { backgroundColor: isDarkMode ? 'rgba(191, 90, 242, 0.15)' : 'rgba(191, 90, 242, 0.1)' },
+                ]}>
+                  <Ionicons name="heart-outline" size={20} color="#BF5AF2" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>
+                    {t('settings.friendPostNotifications') || 'Friend Posts'}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                    {t('settings.friendPostNotificationsDesc') || 'Notifications when friends post'}
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationSettings?.friendPosts !== false}
+                  onValueChange={(value) => updateNotificationSetting('friendPosts', value)}
+                  trackColor={{ false: theme.border, true: '#BF5AF2' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={theme.border}
+                />
+              </View>
+            </GlassCard>
+          </View>
+        )}
 
         <View style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
@@ -192,6 +279,11 @@ const styles = StyleSheet.create({
   },
   settingDescription: {
     fontSize: responsiveFontSize(13),
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: spacing.md,
+    opacity: 0.3,
   },
   infoBox: {
     flexDirection: 'row',

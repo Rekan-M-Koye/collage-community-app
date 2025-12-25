@@ -114,40 +114,41 @@ const CreateGroup = ({ navigation }) => {
     return (
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => toggleUserSelection(item.$id)}>
-        <GlassContainer 
-          borderRadius={borderRadius.lg}
-          borderWidth={0}
-          style={[
-            styles.userCard,
-            isSelected && styles.userCardSelected,
-            isSelected && { borderColor: theme.primary }
-          ]}>
-          <ProfilePicture 
-            uri={item.profilePicture}
-            name={item.name}
-            size={moderateScale(44)}
-          />
-          <View style={styles.userInfo}>
-            <Text style={[styles.userName, { color: theme.text, fontSize: fontSize(14) }]} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text style={[styles.userDetails, { color: theme.textSecondary, fontSize: fontSize(11) }]} numberOfLines={1}>
-              {item.department}
-            </Text>
-          </View>
-          <View style={[
-            styles.checkbox,
-            { 
-              backgroundColor: isSelected ? theme.primary : 'transparent',
-              borderColor: isSelected ? theme.primary : theme.textSecondary,
-            }
-          ]}>
-            {isSelected && (
-              <Ionicons name="checkmark" size={moderateScale(16)} color="#FFFFFF" />
-            )}
-          </View>
-        </GlassContainer>
+        onPress={() => toggleUserSelection(item.$id)}
+        style={[
+          styles.userCard,
+          { 
+            backgroundColor: isDarkMode 
+              ? 'rgba(255, 255, 255, 0.08)' 
+              : 'rgba(255, 255, 255, 0.7)',
+          },
+          isSelected && styles.userCardSelected,
+          isSelected && { borderColor: theme.primary }
+        ]}>
+        <ProfilePicture 
+          uri={item.profilePicture}
+          name={item.name}
+          size={moderateScale(44)}
+        />
+        <View style={styles.userInfo}>
+          <Text style={[styles.userName, { color: theme.text, fontSize: fontSize(14) }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.userDetails, { color: theme.textSecondary, fontSize: fontSize(11) }]} numberOfLines={1}>
+            {item.department}
+          </Text>
+        </View>
+        <View style={[
+          styles.checkbox,
+          { 
+            backgroundColor: isSelected ? theme.primary : 'transparent',
+            borderColor: isSelected ? theme.primary : theme.textSecondary,
+          }
+        ]}>
+          {isSelected && (
+            <Ionicons name="checkmark" size={moderateScale(16)} color="#FFFFFF" />
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -380,6 +381,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.xs,
   },
   userCardSelected: {
     borderWidth: 2,

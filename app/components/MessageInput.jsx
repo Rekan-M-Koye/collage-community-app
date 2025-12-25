@@ -4,7 +4,6 @@ import {
   TextInput, 
   TouchableOpacity, 
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Image,
   ActivityIndicator,
@@ -22,11 +21,17 @@ import { borderRadius } from '../theme/designTokens';
 import { pickAndCompressImages, takePictureAndCompress } from '../utils/imageCompression';
 import { uploadToImgbb } from '../../services/imgbbService';
 
-const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCancelReply }) => {
+const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCancelReply, showMentionButton = false, canMentionEveryone = false }) => {
   const { theme, isDarkMode, t } = useAppSettings();
   const [message, setMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showMentionOptions, setShowMentionOptions] = useState(false);
+
+  const handleInsertMention = (mention) => {
+    setMessage(prev => prev + mention + ' ');
+    setShowMentionOptions(false);
+  };
 
   const handlePickImage = async () => {
     if (disabled || uploading) return;
@@ -119,20 +124,18 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-      <View style={[
-        styles.container,
-        {
-          backgroundColor: isDarkMode 
-            ? 'rgba(255,255,255,0.05)' 
-            : 'rgba(0,0,0,0.02)',
-          borderTopColor: isDarkMode 
-            ? 'rgba(255,255,255,0.1)' 
-            : 'rgba(0,0,0,0.1)',
-        }
-      ]}>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: isDarkMode 
+          ? 'rgba(255,255,255,0.05)' 
+          : 'rgba(0,0,0,0.02)',
+        borderTopColor: isDarkMode 
+          ? 'rgba(255,255,255,0.1)' 
+          : 'rgba(0,0,0,0.1)',
+        paddingBottom: Platform.OS === 'ios' ? spacing.sm : spacing.md,
+      }
+    ]}>
         {replyingTo && (
           <View style={[
             styles.replyPreview,
@@ -178,6 +181,23 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
           </View>
         )}
 
+        {/* Mention options popup */}
+        {showMentionOptions && canMentionEveryone && (
+          <View style={[
+            styles.mentionOptions,
+            { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
+          ]}>
+            <TouchableOpacity 
+              style={styles.mentionOption}
+              onPress={() => handleInsertMention('@everyone')}>
+              <Ionicons name="people" size={moderateScale(18)} color={theme.primary} />
+              <Text style={[styles.mentionOptionText, { color: theme.text, fontSize: fontSize(14) }]}>
+                @everyone
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.inputRow}>
           <TouchableOpacity
             style={[
@@ -193,6 +213,24 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
               color={theme.primary} 
             />
           </TouchableOpacity>
+
+          {/* @ mention button */}
+          {showMentionButton && canMentionEveryone && (
+            <TouchableOpacity
+              style={[
+                styles.iconButton,
+                { opacity: disabled || uploading ? 0.5 : 1 }
+              ]}
+              onPress={() => setShowMentionOptions(!showMentionOptions)}
+              disabled={disabled || uploading}
+              activeOpacity={0.7}>
+              <Ionicons 
+                name="at" 
+                size={moderateScale(24)} 
+                color={showMentionOptions ? theme.primary : theme.textSecondary} 
+              />
+            </TouchableOpacity>
+          )}
 
           <View style={[
             styles.inputContainer,
@@ -244,7 +282,6 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
           </TouchableOpacity>
         </View>
       </View>
-    </KeyboardAvoidingView>
   );
 };
 
@@ -321,6 +358,29 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(22),
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  mentionOptions: {
+    position: 'absolute',
+    bottom: moderateScale(60),
+    left: spacing.md,
+    borderRadius: borderRadius.md,
+    padding: spacing.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 10,
+  },
+  mentionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  mentionOptionText: {
+    fontWeight: '500',
   },
 });
 

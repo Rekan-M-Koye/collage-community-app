@@ -405,3 +405,53 @@ export const deleteImage = async (fileId) => {
         throw error;
     }
 };
+
+/**
+ * Enriches posts with user data for posts that are missing userName
+ * @param {Array} posts - Array of post documents
+ * @returns {Array} - Posts with enriched user data
+ */
+export const enrichPostsWithUserData = async (posts) => {
+    if (!posts || posts.length === 0) return posts;
+    
+    // Find posts missing userName
+    const postsNeedingUserData = posts.filter(post => !post.userName && post.userId);
+    
+    if (postsNeedingUserData.length === 0) return posts;
+    
+    // Get unique user IDs
+    const userIds = [...new Set(postsNeedingUserData.map(post => post.userId))];
+    
+    // Fetch user data for all unique users
+    const userDataMap = {};
+    await Promise.all(
+        userIds.map(async (userId) => {
+            try {
+                const user = await databases.getDocument(
+                    config.databaseId,
+                    config.usersCollectionId || '68fc7b42001bf7efbba3',
+                    userId
+                );
+                userDataMap[userId] = {
+                    name: user.name || user.fullName,
+                    profilePicture: user.profilePicture || null,
+                };
+            } catch (error) {
+                // User not found, skip
+            }
+        })
+    );
+    
+    // Enrich posts with user data
+    return posts.map(post => {
+        if (!post.userName && post.userId && userDataMap[post.userId]) {
+            return {
+                ...post,
+                userName: userDataMap[post.userId].name,
+                userProfilePicture: post.userProfilePicture || userDataMap[post.userId].profilePicture,
+            };
+        }
+        return post;
+    });
+};
+

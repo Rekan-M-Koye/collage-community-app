@@ -3,4 +3,5 @@ export * from './posts';
 export * from './replies';
 export * from './chats';
 export * from './users';
+export * from './userChatSettings';
 export { config } from './config';

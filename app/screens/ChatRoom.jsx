@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   TouchableOpacity,
   Alert,
   AppState,
+  KeyboardAvoidingView,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,8 +22,29 @@ import { useUser } from '../context/UserContext';
 import AnimatedBackground from '../components/AnimatedBackground';
 import MessageBubble from '../components/MessageBubble';
 import MessageInput from '../components/MessageInput';
-import { getMessages, sendMessage, canUserSendMessage, deleteMessage } from '../../database/chats';
+import { 
+  getMessages, 
+  sendMessage, 
+  canUserSendMessage, 
+  deleteMessage, 
+  pinMessage, 
+  unpinMessage, 
+  getPinnedMessages,
+  canUserPinMessage,
+  canUserMentionEveryone,
+  markChatAsRead,
+} from '../../database/chats';
 import { getUserById } from '../../database/users';
+import { 
+  muteChat, 
+  unmuteChat, 
+  getMuteStatus, 
+  bookmarkMessage, 
+  unbookmarkMessage, 
+  getBookmarkedMessages,
+  MUTE_TYPES,
+  MUTE_DURATIONS,
+} from '../../database/userChatSettings';
 import { 
   wp, 
   hp, 
@@ -40,10 +64,19 @@ const ChatRoom = ({ route, navigation }) => {
   const [canSend, setCanSend] = useState(false);
   const [userCache, setUserCache] = useState({});
   const [replyingTo, setReplyingTo] = useState(null);
+  const [muteStatus, setMuteStatus] = useState({ isMuted: false });
+  const [showMuteModal, setShowMuteModal] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [showPinnedModal, setShowPinnedModal] = useState(false);
+  const [bookmarkedMsgIds, setBookmarkedMsgIds] = useState([]);
+  const [canPin, setCanPin] = useState(false);
+  const [canMentionEveryone, setCanMentionEveryone] = useState(false);
   const flatListRef = useRef(null);
   const pollingInterval = useRef(null);
   const appState = useRef(AppState.currentState);
   const lastMessageId = useRef(null);
+  const userCacheRef = useRef({});
+  const [showChatOptionsModal, setShowChatOptionsModal] = useState(false);
 
   const POLLING_INTERVAL = 3000;
 
@@ -54,24 +87,183 @@ const ChatRoom = ({ route, navigation }) => {
     return chat.name;
   };
 
+  const handleChatHeaderPress = () => {
+    if (chat.type === 'custom_group') {
+      navigation.navigate('GroupSettings', { chat });
+    } else if (chat.type === 'private') {
+      setShowChatOptionsModal(true);
+    } else {
+      // For stage/department groups, show basic info modal
+      setShowChatOptionsModal(true);
+    }
+  };
+
+  const handleVisitProfile = () => {
+    setShowChatOptionsModal(false);
+    if (chat.type === 'private' && chat.otherUser) {
+      navigation.navigate('UserProfile', { userId: chat.otherUser.$id || chat.otherUser.id });
+    }
+  };
+
   useEffect(() => {
     navigation.setOptions({
-      title: getChatDisplayName(),
+      headerTitle: () => (
+        <TouchableOpacity onPress={handleChatHeaderPress} activeOpacity={0.7}>
+          <Text style={{ 
+            color: theme.text, 
+            fontSize: fontSize(17), 
+            fontWeight: '600',
+            textAlign: 'center',
+          }}>
+            {getChatDisplayName()}
+          </Text>
+          {chat.type === 'private' && (
+            <Text style={{ 
+              color: theme.textSecondary, 
+              fontSize: fontSize(11), 
+              textAlign: 'center',
+            }}>
+              {t('chats.tapForOptions')}
+            </Text>
+          )}
+        </TouchableOpacity>
+      ),
       headerStyle: {
         backgroundColor: isDarkMode ? '#1a1a2e' : '#f0f4ff',
       },
       headerTintColor: theme.text,
       headerRight: () => (
-        chat.type === 'custom_group' ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          {/* Mute button */}
           <TouchableOpacity
-            style={{ marginRight: spacing.md }}
-            onPress={() => navigation.navigate('GroupSettings', { chat })}>
-            <Ionicons name="settings-outline" size={moderateScale(22)} color={theme.text} />
+            style={{ padding: spacing.xs }}
+            onPress={() => setShowMuteModal(true)}>
+            <Ionicons 
+              name={muteStatus.isMuted ? 'notifications-off' : 'notifications-outline'} 
+              size={moderateScale(22)} 
+              color={muteStatus.isMuted ? '#F59E0B' : theme.text} 
+            />
           </TouchableOpacity>
-        ) : null
+          
+          {/* Pinned messages button */}
+          <TouchableOpacity
+            style={{ padding: spacing.xs }}
+            onPress={handleViewPinnedMessages}>
+            <Ionicons name="pin-outline" size={moderateScale(22)} color={theme.text} />
+          </TouchableOpacity>
+          
+          {/* Settings button for groups */}
+          {chat.type === 'custom_group' && (
+            <TouchableOpacity
+              style={{ marginRight: spacing.md }}
+              onPress={() => navigation.navigate('GroupSettings', { chat })}>
+              <Ionicons name="settings-outline" size={moderateScale(22)} color={theme.text} />
+            </TouchableOpacity>
+          )}
+        </View>
       ),
     });
-  }, [chat, isDarkMode, theme]);
+  }, [chat, isDarkMode, theme, muteStatus]);
+
+  // Load mute status, pinned messages, and bookmarks
+  useEffect(() => {
+    loadChatSettings();
+  }, [chat.$id, user.$id]);
+
+  const loadChatSettings = async () => {
+    try {
+      const [status, pinPermission, mentionPermission, bookmarks] = await Promise.all([
+        getMuteStatus(user.$id, chat.$id),
+        canUserPinMessage(chat.$id, user.$id),
+        canUserMentionEveryone(chat.$id, user.$id),
+        getBookmarkedMessages(user.$id, chat.$id),
+      ]);
+      setMuteStatus(status);
+      setCanPin(pinPermission);
+      setCanMentionEveryone(mentionPermission);
+      setBookmarkedMsgIds(bookmarks);
+    } catch (error) {
+      // Silently fail
+    }
+  };
+
+  const handleViewPinnedMessages = async () => {
+    try {
+      const pinned = await getPinnedMessages(chat.$id);
+      setPinnedMessages(pinned);
+      setShowPinnedModal(true);
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.pinError'));
+    }
+  };
+
+  const handleMuteChat = async (duration, muteType = MUTE_TYPES.ALL) => {
+    try {
+      await muteChat(user.$id, chat.$id, muteType, duration);
+      setMuteStatus({ isMuted: true, muteType, expiresAt: duration ? new Date(Date.now() + duration).toISOString() : null });
+      setShowMuteModal(false);
+      Alert.alert(t('common.success'), t('chats.chatMuted'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.muteError'));
+    }
+  };
+
+  const handleUnmuteChat = async () => {
+    try {
+      await unmuteChat(user.$id, chat.$id);
+      setMuteStatus({ isMuted: false, muteType: MUTE_TYPES.NONE, expiresAt: null });
+      setShowMuteModal(false);
+      Alert.alert(t('common.success'), t('chats.chatUnmuted'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.unmuteError'));
+    }
+  };
+
+  const handlePinMessage = async (message) => {
+    try {
+      await pinMessage(chat.$id, message.$id, user.$id);
+      // Update local state
+      setMessages(prev => prev.map(m => 
+        m.$id === message.$id ? { ...m, isPinned: true, pinnedBy: user.$id } : m
+      ));
+      Alert.alert(t('common.success'), t('chats.messagePinned'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.pinError'));
+    }
+  };
+
+  const handleUnpinMessage = async (message) => {
+    try {
+      await unpinMessage(chat.$id, message.$id);
+      // Update local state
+      setMessages(prev => prev.map(m => 
+        m.$id === message.$id ? { ...m, isPinned: false, pinnedBy: null } : m
+      ));
+      Alert.alert(t('common.success'), t('chats.messageUnpinned'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.unpinError'));
+    }
+  };
+
+  const handleBookmarkMessage = async (message) => {
+    try {
+      await bookmarkMessage(user.$id, chat.$id, message.$id);
+      setBookmarkedMsgIds(prev => [...prev, message.$id]);
+      Alert.alert(t('common.success'), t('chats.messageBookmarked'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.bookmarkError'));
+    }
+  };
+
+  const handleUnbookmarkMessage = async (message) => {
+    try {
+      await unbookmarkMessage(user.$id, chat.$id, message.$id);
+      setBookmarkedMsgIds(prev => prev.filter(id => id !== message.$id));
+      Alert.alert(t('common.success'), t('chats.messageUnbookmarked'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.unbookmarkError'));
+    }
+  };
 
   // Polling-based message fetching (fallback for Appwrite Realtime issues)
   const pollMessages = useCallback(async () => {
@@ -85,12 +277,12 @@ const ChatRoom = ({ route, navigation }) => {
         lastMessageId.current = newLastId;
         setMessages(reversedMessages);
         
-        // Cache new user data
+        // Cache new user data using ref to avoid re-render loop
         const uniqueSenderIds = [...new Set(reversedMessages.map(m => m.senderId))];
-        const newUsers = uniqueSenderIds.filter(id => !userCache[id]);
+        const newUsers = uniqueSenderIds.filter(id => !userCacheRef.current[id]);
         
         if (newUsers.length > 0) {
-          const newUserCache = { ...userCache };
+          const newUserCache = { ...userCacheRef.current };
           for (const senderId of newUsers) {
             try {
               const userData = await getUserById(senderId);
@@ -99,13 +291,14 @@ const ChatRoom = ({ route, navigation }) => {
               newUserCache[senderId] = { name: 'Unknown User' };
             }
           }
+          userCacheRef.current = newUserCache;
           setUserCache(newUserCache);
         }
       }
     } catch (error) {
       // Silent fail for polling
     }
-  }, [chat.$id, userCache]);
+  }, [chat.$id]);
 
   useEffect(() => {
     loadMessages();
@@ -155,8 +348,13 @@ const ChatRoom = ({ route, navigation }) => {
       lastMessageId.current = reversedMessages.length > 0 ? reversedMessages[reversedMessages.length - 1].$id : null;
       setMessages(reversedMessages);
       
+      // Mark messages as read when entering the chat
+      if (user?.$id) {
+        markChatAsRead(chat.$id, user.$id);
+      }
+      
       const uniqueSenderIds = [...new Set(reversedMessages.map(m => m.senderId))];
-      const newUserCache = { ...userCache };
+      const newUserCache = { ...userCacheRef.current };
       
       for (const senderId of uniqueSenderIds) {
         if (!newUserCache[senderId]) {
@@ -169,6 +367,7 @@ const ChatRoom = ({ route, navigation }) => {
         }
       }
       
+      userCacheRef.current = newUserCache;
       setUserCache(newUserCache);
     } catch (error) {
       Alert.alert(t('common.error'), error.message || t('chats.errorLoadingMessages'));
@@ -231,6 +430,7 @@ const ChatRoom = ({ route, navigation }) => {
         content: content || '',
         senderId: user.$id,
         senderName: user.fullName,
+        senderPhoto: user.profilePicture || null,
       };
       
       // Handle image URL from MessageInput (single URL string)
@@ -259,22 +459,47 @@ const ChatRoom = ({ route, navigation }) => {
 
   const renderMessage = ({ item, index }) => {
     const isCurrentUser = item.senderId === user.$id;
-    const senderName = userCache[item.senderId]?.name || item.senderName || 'Unknown';
+    const senderData = userCache[item.senderId];
+    const senderName = senderData?.name || item.senderName || 'Unknown';
+    const senderPhoto = senderData?.profilePicture || item.senderPhoto;
     
+    // Show sender name only for first message in a group from same sender
     const showSenderName = !isCurrentUser && (
       index === 0 || 
       messages[index - 1].senderId !== item.senderId
     );
+    
+    // Show avatar only for first message in a group from same sender
+    const showAvatar = !isCurrentUser && (
+      index === messages.length - 1 ||
+      messages[index + 1]?.senderId !== item.senderId
+    );
+
+    const isBookmarked = bookmarkedMsgIds.includes(item.$id);
+
+    const handleAvatarPress = (senderId) => {
+      if (senderId) {
+        navigation.navigate('UserProfile', { userId: senderId });
+      }
+    };
 
     return (
       <MessageBubble
         message={item}
         isCurrentUser={isCurrentUser}
         senderName={showSenderName ? senderName : null}
+        senderPhoto={senderPhoto}
+        showAvatar={showAvatar}
         onCopy={() => handleCopyMessage(item)}
         onDelete={isCurrentUser ? () => handleDeleteMessage(item) : null}
         onReply={() => handleReplyMessage(item)}
         onForward={() => handleForwardMessage(item)}
+        onPin={canPin ? () => handlePinMessage(item) : null}
+        onUnpin={canPin && item.isPinned ? () => handleUnpinMessage(item) : null}
+        onBookmark={() => handleBookmarkMessage(item)}
+        onUnbookmark={isBookmarked ? () => handleUnbookmarkMessage(item) : null}
+        isBookmarked={isBookmarked}
+        onAvatarPress={handleAvatarPress}
       />
     );
   };
@@ -318,6 +543,9 @@ const ChatRoom = ({ route, navigation }) => {
     );
   };
 
+  // Memoize messages list for performance - must be before any conditional returns
+  const memoizedMessages = useMemo(() => messages, [messages]);
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: isDarkMode ? '#1a1a2e' : '#f0f4ff' }]}>
@@ -350,41 +578,316 @@ const ChatRoom = ({ route, navigation }) => {
         
         <AnimatedBackground particleCount={15} />
         
-        {chat.requiresRepresentative && !canSend && (
-          <View style={[
-            styles.warningBanner,
-            { backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.15)' }
-          ]}>
-            <Ionicons name="information-circle" size={moderateScale(18)} color="#F59E0B" />
-            <Text style={[styles.warningText, { fontSize: fontSize(12), color: '#F59E0B' }]}>
-              {t('chats.representativeOnlyChat')}
-            </Text>
-          </View>
-        )}
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 95 : 85}>
+          
+          {chat.requiresRepresentative && !canSend && (
+            <View style={[
+              styles.warningBanner,
+              { backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.15)' }
+            ]}>
+              <Ionicons name="information-circle" size={moderateScale(18)} color="#F59E0B" />
+              <Text style={[styles.warningText, { fontSize: fontSize(12), color: '#F59E0B' }]}>
+                {t('chats.representativeOnlyChat')}
+              </Text>
+            </View>
+          )}
 
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item, index) => item.$id || `message-${index}`}
-          contentContainerStyle={styles.messagesList}
-          ListEmptyComponent={renderEmpty}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-        />
+          <FlatList
+            ref={flatListRef}
+            data={memoizedMessages}
+            renderItem={renderMessage}
+            keyExtractor={(item, index) => item.$id || `message-${index}`}
+            contentContainerStyle={styles.messagesList}
+            ListEmptyComponent={renderEmpty}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            removeClippedSubviews={Platform.OS === 'android'}
+            maxToRenderPerBatch={15}
+            windowSize={10}
+            initialNumToRender={20}
+          />
 
-        <MessageInput 
-          onSend={handleSendMessage}
-          disabled={sending || !canSend}
-          placeholder={
-            canSend 
-              ? t('chats.typeMessage')
-              : t('chats.cannotSendMessage')
-          }
-          replyingTo={replyingTo}
-          onCancelReply={cancelReply}
-        />
+          <MessageInput 
+            onSend={handleSendMessage}
+            disabled={sending || !canSend}
+            placeholder={
+              canSend 
+                ? t('chats.typeMessage')
+                : t('chats.cannotSendMessage')
+            }
+            replyingTo={replyingTo}
+            onCancelReply={cancelReply}
+            showMentionButton={chat.type === 'group'}
+            canMentionEveryone={canMentionEveryone}
+          />
+        </KeyboardAvoidingView>
       </LinearGradient>
+
+      {/* Mute Options Modal */}
+      <Modal
+        visible={showMuteModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMuteModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.modalContent,
+            { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
+          ]}>
+            <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize(18) }]}>
+              {t('chats.muteOptions')}
+            </Text>
+            
+            {muteStatus.isMuted ? (
+              <TouchableOpacity
+                style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                onPress={handleUnmuteChat}>
+                <Ionicons name="notifications-outline" size={moderateScale(22)} color="#10B981" />
+                <Text style={[styles.muteOptionText, { color: '#10B981', fontSize: fontSize(15) }]}>
+                  {t('chats.unmute')}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                  onPress={() => handleMuteChat(MUTE_DURATIONS.ONE_HOUR)}>
+                  <Ionicons name="time-outline" size={moderateScale(22)} color={theme.primary} />
+                  <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                    {t('chats.muteFor1Hour')}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                  onPress={() => handleMuteChat(MUTE_DURATIONS.EIGHT_HOURS)}>
+                  <Ionicons name="time-outline" size={moderateScale(22)} color={theme.primary} />
+                  <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                    {t('chats.muteFor8Hours')}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                  onPress={() => handleMuteChat(MUTE_DURATIONS.ONE_DAY)}>
+                  <Ionicons name="today-outline" size={moderateScale(22)} color={theme.primary} />
+                  <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                    {t('chats.muteFor1Day')}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                  onPress={() => handleMuteChat(MUTE_DURATIONS.ONE_WEEK)}>
+                  <Ionicons name="calendar-outline" size={moderateScale(22)} color={theme.primary} />
+                  <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                    {t('chats.muteFor1Week')}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                  onPress={() => handleMuteChat(MUTE_DURATIONS.FOREVER)}>
+                  <Ionicons name="notifications-off-outline" size={moderateScale(22)} color="#F59E0B" />
+                  <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                    {t('chats.muteForever')}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                  onPress={() => handleMuteChat(MUTE_DURATIONS.FOREVER, MUTE_TYPES.MENTIONS_ONLY)}>
+                  <Ionicons name="at-outline" size={moderateScale(22)} color={theme.primary} />
+                  <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                    {t('chats.muteMentionsOnly')}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+            
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowMuteModal(false)}>
+              <Text style={[styles.cancelButtonText, { color: theme.textSecondary, fontSize: fontSize(15) }]}>
+                {t('common.cancel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pinned Messages Modal */}
+      <Modal
+        visible={showPinnedModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPinnedModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.pinnedModalContent,
+            { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
+          ]}>
+            <View style={styles.pinnedModalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize(18) }]}>
+                {t('chats.pinnedMessages')}
+              </Text>
+              <TouchableOpacity onPress={() => setShowPinnedModal(false)}>
+                <Ionicons name="close" size={moderateScale(24)} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.pinnedList}>
+              {pinnedMessages.length === 0 ? (
+                <View style={styles.emptyPinned}>
+                  <Ionicons name="pin-outline" size={moderateScale(40)} color={theme.textSecondary} />
+                  <Text style={[styles.emptyPinnedText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
+                    {t('chats.noPinnedMessages')}
+                  </Text>
+                </View>
+              ) : (
+                pinnedMessages.map((msg) => (
+                  <View 
+                    key={msg.$id} 
+                    style={[
+                      styles.pinnedMessageItem,
+                      { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
+                    ]}>
+                    <View style={styles.pinnedMessageContent}>
+                      <Text style={[styles.pinnedSenderName, { color: theme.primary, fontSize: fontSize(12) }]}>
+                        {msg.senderName}
+                      </Text>
+                      <Text style={[styles.pinnedMessageText, { color: theme.text, fontSize: fontSize(14) }]} numberOfLines={2}>
+                        {msg.content || t('chats.image')}
+                      </Text>
+                    </View>
+                    {canPin && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          handleUnpinMessage(msg);
+                          setShowPinnedModal(false);
+                        }}>
+                        <Ionicons name="close-circle" size={moderateScale(20)} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Chat Options Modal for Direct Messages and Groups */}
+      <Modal
+        visible={showChatOptionsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowChatOptionsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.modalContent,
+            { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
+          ]}>
+            <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSize(18) }]}>
+              {getChatDisplayName()}
+            </Text>
+            
+            {/* Visit Profile - only for private chats */}
+            {chat.type === 'private' && chat.otherUser && (
+              <TouchableOpacity
+                style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                onPress={handleVisitProfile}>
+                <Ionicons name="person-outline" size={moderateScale(22)} color={theme.primary} />
+                <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                  {t('chats.visitProfile')}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Mute/Unmute */}
+            <TouchableOpacity
+              style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+              onPress={() => {
+                setShowChatOptionsModal(false);
+                setShowMuteModal(true);
+              }}>
+              <Ionicons 
+                name={muteStatus.isMuted ? 'notifications-outline' : 'notifications-off-outline'} 
+                size={moderateScale(22)} 
+                color={theme.primary} 
+              />
+              <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                {muteStatus.isMuted ? t('chats.unmute') : t('chats.mute')}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* View Pinned Messages */}
+            <TouchableOpacity
+              style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+              onPress={() => {
+                setShowChatOptionsModal(false);
+                handleViewPinnedMessages();
+              }}>
+              <Ionicons name="pin-outline" size={moderateScale(22)} color={theme.primary} />
+              <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                {t('chats.pinnedMessages')}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Search in Chat */}
+            <TouchableOpacity
+              style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+              onPress={() => {
+                setShowChatOptionsModal(false);
+                Alert.alert(t('common.info'), t('chats.searchComingSoon'));
+              }}>
+              <Ionicons name="search-outline" size={moderateScale(22)} color={theme.primary} />
+              <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                {t('chats.searchInChat')}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Clear Chat */}
+            <TouchableOpacity
+              style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+              onPress={() => {
+                setShowChatOptionsModal(false);
+                Alert.alert(t('common.info'), t('chats.clearChatComingSoon'));
+              }}>
+              <Ionicons name="trash-outline" size={moderateScale(22)} color="#EF4444" />
+              <Text style={[styles.muteOptionText, { color: '#EF4444', fontSize: fontSize(15) }]}>
+                {t('chats.clearChat')}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Block User - only for private chats */}
+            {chat.type === 'private' && (
+              <TouchableOpacity
+                style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+                onPress={() => {
+                  setShowChatOptionsModal(false);
+                  Alert.alert(t('common.info'), t('chats.blockComingSoon'));
+                }}>
+                <Ionicons name="ban-outline" size={moderateScale(22)} color="#EF4444" />
+                <Text style={[styles.muteOptionText, { color: '#EF4444', fontSize: fontSize(15) }]}>
+                  {t('chats.blockUser')}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowChatOptionsModal(false)}>
+              <Text style={[styles.cancelButtonText, { color: theme.textSecondary, fontSize: fontSize(15) }]}>
+                {t('common.cancel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -394,6 +897,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gradient: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   loadingContainer: {
@@ -436,6 +942,81 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     textAlign: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl + 20 : spacing.xl,
+  },
+  modalTitle: {
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  muteOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.md,
+    borderBottomWidth: 1,
+  },
+  muteOptionText: {
+    fontWeight: '500',
+  },
+  cancelButton: {
+    padding: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  cancelButtonText: {
+    fontWeight: '500',
+  },
+  pinnedModalContent: {
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl + 20 : spacing.xl,
+    maxHeight: '70%',
+  },
+  pinnedModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  pinnedList: {
+    paddingHorizontal: spacing.md,
+  },
+  emptyPinned: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyPinnedText: {
+    marginTop: spacing.md,
+  },
+  pinnedMessageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+  },
+  pinnedMessageContent: {
+    flex: 1,
+  },
+  pinnedSenderName: {
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  pinnedMessageText: {
+    fontWeight: '400',
   },
 });
 

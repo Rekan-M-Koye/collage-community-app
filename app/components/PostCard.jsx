@@ -57,8 +57,16 @@ const PostCard = ({
   const postIcon = POST_ICONS[post.postType] || 'document-outline';
   const stageColor = STAGE_COLORS[post.stage] || '#6B7280';
 
-  const postOwnerName = user && post.userId === user.$id ? user.fullName : (post.userName || 'Anonymous');
-  const postOwnerAvatar = user && post.userId === user.$id ? user.profilePicture : post.userProfilePicture;
+  // Determine post owner name and avatar
+  // For current user's posts, use fresh user context data
+  // For other users' posts, use post data with fallback
+  const isCurrentUserPost = user && post.userId === user.$id;
+  const postOwnerName = isCurrentUserPost 
+    ? user.fullName 
+    : (post.userName || post.authorName || t('common.user'));
+  const postOwnerAvatar = isCurrentUserPost 
+    ? user.profilePicture 
+    : (post.userProfilePicture || post.authorPhoto);
 
   useEffect(() => {
     setLiked(isLiked);

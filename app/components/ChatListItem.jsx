@@ -17,7 +17,7 @@ const CHAT_TYPES = {
   CUSTOM_GROUP: 'custom_group',
 };
 
-const ChatListItem = ({ chat, onPress, currentUserId }) => {
+const ChatListItem = ({ chat, onPress, currentUserId, unreadCount = 0 }) => {
   const { theme, isDarkMode, t } = useAppSettings();
 
   const getChatIcon = () => {
@@ -141,11 +141,20 @@ const ChatListItem = ({ chat, onPress, currentUserId }) => {
             numberOfLines={1}>
             {chatName}
           </Text>
-          {chat.lastMessageAt && (
-            <Text style={[styles.time, { fontSize: fontSize(11), color: theme.textSecondary }]}>
-              {formatTime(chat.lastMessageAt)}
-            </Text>
-          )}
+          <View style={styles.headerRight}>
+            {chat.lastMessageAt && (
+              <Text style={[styles.time, { fontSize: fontSize(11), color: theme.textSecondary }]}>
+                {formatTime(chat.lastMessageAt)}
+              </Text>
+            )}
+            {unreadCount > 0 && (
+              <View style={[styles.unreadBadge, { backgroundColor: theme.primary || '#667eea' }]}>
+                <Text style={styles.unreadBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <Text 
@@ -205,6 +214,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   chatName: {
     fontWeight: '600',
     flex: 1,
@@ -212,6 +226,19 @@ const styles = StyleSheet.create({
   },
   time: {
     fontWeight: '400',
+  },
+  unreadBadge: {
+    minWidth: moderateScale(20),
+    height: moderateScale(20),
+    borderRadius: moderateScale(10),
+    paddingHorizontal: moderateScale(6),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: fontSize(11),
+    fontWeight: '700',
   },
   lastMessage: {
     marginTop: 2,

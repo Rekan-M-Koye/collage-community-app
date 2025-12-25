@@ -19,7 +19,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../../context/AppSettingsContext';
 import { useUser } from '../../context/UserContext';
-import { GlassContainer, GlassInput } from '../../components/GlassComponents';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import ProfilePicture from '../../components/ProfilePicture';
 import { getUserById } from '../../../database/users';
@@ -60,6 +59,9 @@ const GroupSettings = ({ navigation, route }) => {
     allowMemberInvites: false,
     onlyAdminsCanPost: false,
     muteNotifications: false,
+    allowEveryoneMention: true,
+    onlyAdminsCanMention: false,
+    onlyAdminsCanPin: false,
   });
 
   const isAdmin = chat?.admins?.includes(currentUser?.$id) || 
@@ -380,7 +382,15 @@ const GroupSettings = ({ navigation, route }) => {
               <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
                 {t('chats.groupInfo')}
               </Text>
-              <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.sectionCard}>
+              <View style={[
+              styles.sectionCard,
+              { 
+                backgroundColor: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.08)' 
+                  : 'rgba(255, 255, 255, 0.7)',
+                borderRadius: borderRadius.lg,
+              }
+            ]}>
                 {/* Group Photo */}
                 <View style={styles.groupPhotoSection}>
                   <TouchableOpacity
@@ -461,7 +471,7 @@ const GroupSettings = ({ navigation, route }) => {
                     placeholderTextColor={theme.textSecondary}
                   />
                 </View>
-              </GlassContainer>
+              </View>
             </View>
 
             {/* Permissions Section */}
@@ -469,7 +479,15 @@ const GroupSettings = ({ navigation, route }) => {
               <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
                 {t('chats.permissions')}
               </Text>
-              <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.sectionCard}>
+              <View style={[
+                styles.sectionCard,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: borderRadius.lg,
+                }
+              ]}>
                 {renderSettingItem(
                   'chatbubble-ellipses',
                   t('chats.onlyAdminsCanPost'),
@@ -485,13 +503,34 @@ const GroupSettings = ({ navigation, route }) => {
                   (val) => setSettings(prev => ({ ...prev, allowMemberInvites: val }))
                 )}
                 {renderSettingItem(
+                  'at',
+                  t('chats.allowEveryoneMention'),
+                  t('chats.allowEveryoneMentionDesc'),
+                  settings.allowEveryoneMention !== false,
+                  (val) => setSettings(prev => ({ ...prev, allowEveryoneMention: val }))
+                )}
+                {renderSettingItem(
+                  'megaphone',
+                  t('chats.onlyAdminsCanMention'),
+                  t('chats.onlyAdminsCanMentionDesc'),
+                  settings.onlyAdminsCanMention,
+                  (val) => setSettings(prev => ({ ...prev, onlyAdminsCanMention: val }))
+                )}
+                {renderSettingItem(
+                  'pin',
+                  t('chats.onlyAdminsCanPin'),
+                  t('chats.onlyAdminsCanPinDesc'),
+                  settings.onlyAdminsCanPin,
+                  (val) => setSettings(prev => ({ ...prev, onlyAdminsCanPin: val }))
+                )}
+                {renderSettingItem(
                   'notifications-off',
                   t('chats.muteNotifications'),
                   t('chats.muteNotificationsDesc'),
                   settings.muteNotifications,
                   (val) => setSettings(prev => ({ ...prev, muteNotifications: val }))
                 )}
-              </GlassContainer>
+              </View>
             </View>
 
             {/* Members Section */}
@@ -517,7 +556,15 @@ const GroupSettings = ({ navigation, route }) => {
                   <ActivityIndicator size="large" color={theme.primary} />
                 </View>
               ) : (
-                <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.membersCard}>
+              <View style={[
+                  styles.membersCard,
+                  { 
+                    backgroundColor: isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.08)' 
+                      : 'rgba(255, 255, 255, 0.7)',
+                    borderRadius: borderRadius.lg,
+                  }
+                ]}>
                   <FlatList
                     data={members}
                     renderItem={renderMemberItem}
@@ -527,7 +574,7 @@ const GroupSettings = ({ navigation, route }) => {
                       <View style={[styles.separator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]} />
                     )}
                   />
-                </GlassContainer>
+                </View>
               )}
             </View>
 
@@ -536,7 +583,15 @@ const GroupSettings = ({ navigation, route }) => {
               <Text style={[styles.sectionTitle, { color: '#FF3B30', fontSize: fontSize(12) }]}>
                 {t('chats.dangerZone')}
               </Text>
-              <GlassContainer borderRadius={borderRadius.lg} borderWidth={0} style={styles.sectionCard}>
+              <View style={[
+                styles.sectionCard,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: borderRadius.lg,
+                }
+              ]}>
                 <TouchableOpacity 
                   style={styles.dangerButton}
                   onPress={handleLeaveGroup}>
@@ -559,7 +614,7 @@ const GroupSettings = ({ navigation, route }) => {
                     </TouchableOpacity>
                   </>
                 )}
-              </GlassContainer>
+              </View>
             </View>
 
             <View style={styles.bottomPadding} />

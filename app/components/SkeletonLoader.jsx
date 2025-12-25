@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
-import { GlassContainer } from './GlassComponents';
 import { wp, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
@@ -35,10 +34,22 @@ export const PostCardSkeleton = () => {
 
   const skeletonColor = isDarkMode 
     ? 'rgba(255, 255, 255, 0.1)' 
-    : 'rgba(0, 0, 0, 0.1)';
+    : 'rgba(0, 0, 0, 0.08)';
+    
+  const cardBackground = isDarkMode 
+    ? 'rgba(255, 255, 255, 0.05)' 
+    : 'rgba(255, 255, 255, 0.85)';
 
   return (
-    <GlassContainer borderRadius={borderRadius.lg} style={styles.container}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: cardBackground,
+        borderRadius: borderRadius.lg,
+        borderWidth: isDarkMode ? 0 : 1,
+        borderColor: 'rgba(0, 0, 0, 0.04)',
+      }
+    ]}>
       <View style={styles.header}>
         <Animated.View
           style={[
@@ -94,7 +105,7 @@ export const PostCardSkeleton = () => {
           />
         ))}
       </View>
-    </GlassContainer>
+    </View>
   );
 };
 

@@ -79,6 +79,22 @@ After creating collections, update these files:
 - `database/posts.js` - Replace `POSTS_COLLECTION_ID` and `REPLIES_COLLECTION_ID`
 - `database/chats.js` - Replace `CHATS_COLLECTION_ID` and `MESSAGES_COLLECTION_ID`
 
+### 6. follows (for friend system)
+
+| Attribute   | Type     | Size | Required | Array |
+| ----------- | -------- | ---- | -------- | ----- |
+| followerId  | String   | 255  | Yes      | No    |
+| followingId | String   | 255  | Yes      | No    |
+| createdAt   | DateTime | -    | Yes      | No    |
+
+**Indexes:**
+
+- followerId (for getting who user follows)
+- followingId (for getting user's followers)
+- followerId + followingId (unique, compound)
+
+**Friend Definition:** Two users are "friends" when they mutually follow each other (A follows B AND B follows A)
+
 ## Email Verification Setup
 
 The app uses Appwrite's built-in email verification:

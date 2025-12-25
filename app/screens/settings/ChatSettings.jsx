@@ -1,0 +1,646 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  Image,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useAppSettings } from '../../context/AppSettingsContext';
+import { borderRadius, shadows } from '../../theme/designTokens';
+import { wp, hp, fontSize as responsiveFontSize, spacing, moderateScale } from '../../utils/responsive';
+
+const BUBBLE_STYLES = [
+  { key: 'modern', label: 'Modern', icon: 'chatbubble', description: 'Rounded corners with shadow' },
+  { key: 'classic', label: 'Classic', icon: 'chatbubble-outline', description: 'Traditional chat style' },
+  { key: 'minimal', label: 'Minimal', icon: 'remove-outline', description: 'Clean, subtle design' },
+  { key: 'bubble', label: 'Bubble', icon: 'ellipse-outline', description: 'Soft rounded bubbles' },
+  { key: 'sharp', label: 'Sharp', icon: 'square-outline', description: 'Angular modern look' },
+];
+
+// Solid colors
+const BUBBLE_COLORS_SOLID = [
+  { key: '#667eea', label: 'Purple' },
+  { key: '#3B82F6', label: 'Blue' },
+  { key: '#10B981', label: 'Green' },
+  { key: '#F59E0B', label: 'Orange' },
+  { key: '#EF4444', label: 'Red' },
+  { key: '#EC4899', label: 'Pink' },
+  { key: '#6366F1', label: 'Indigo' },
+  { key: '#14B8A6', label: 'Teal' },
+];
+
+// Gradient colors (stored as JSON string)
+const BUBBLE_COLORS_GRADIENT = [
+  { key: 'gradient::#667eea,#764ba2', label: 'Purple Fade', colors: ['#667eea', '#764ba2'] },
+  { key: 'gradient::#f093fb,#f5576c', label: 'Pink Glow', colors: ['#f093fb', '#f5576c'] },
+  { key: 'gradient::#4facfe,#00f2fe', label: 'Ocean Wave', colors: ['#4facfe', '#00f2fe'] },
+  { key: 'gradient::#43e97b,#38f9d7', label: 'Mint Fresh', colors: ['#43e97b', '#38f9d7'] },
+  { key: 'gradient::#fa709a,#fee140', label: 'Sunset Glow', colors: ['#fa709a', '#fee140'] },
+  { key: 'gradient::#a18cd1,#fbc2eb', label: 'Lavender', colors: ['#a18cd1', '#fbc2eb'] },
+  { key: 'gradient::#ff9a9e,#fecfef', label: 'Soft Pink', colors: ['#ff9a9e', '#fecfef'] },
+  { key: 'gradient::#667eea,#43e97b', label: 'Aurora', colors: ['#667eea', '#43e97b'] },
+];
+
+const BACKGROUND_PRESETS = [
+  { key: null, label: 'Default', preview: null },
+  // Gradient backgrounds
+  { key: 'gradient_purple', label: 'Purple Night', colors: ['#667eea', '#764ba2'] },
+  { key: 'gradient_blue', label: 'Deep Space', colors: ['#1a1a2e', '#16213e'] },
+  { key: 'gradient_green', label: 'Forest', colors: ['#134e5e', '#71b280'] },
+  { key: 'gradient_sunset', label: 'Sunset', colors: ['#ff7e5f', '#feb47b'] },
+  { key: 'gradient_ocean', label: 'Ocean', colors: ['#2193b0', '#6dd5ed'] },
+  { key: 'gradient_midnight', label: 'Midnight', colors: ['#232526', '#414345'] },
+  { key: 'gradient_aurora', label: 'Aurora', colors: ['#00c6fb', '#005bea'] },
+  { key: 'gradient_rose', label: 'Rose Gold', colors: ['#f4c4f3', '#fc67fa'] },
+  // Pattern backgrounds (using color key to identify pattern type)
+  { key: 'pattern_dots', label: 'Dots', pattern: 'dots', baseColor: '#1a1a2e' },
+  { key: 'pattern_grid', label: 'Grid', pattern: 'grid', baseColor: '#1a1a2e' },
+  { key: 'pattern_waves', label: 'Waves', pattern: 'waves', baseColor: '#16213e' },
+];
+
+const ChatSettings = ({ navigation }) => {
+  const {
+    t,
+    theme,
+    isDarkMode,
+    chatSettings,
+    updateChatSetting,
+  } = useAppSettings();
+
+  const [selectedBackground, setSelectedBackground] = useState(chatSettings.backgroundImage);
+
+  const GlassCard = ({ children, style }) => (
+    <BlurView
+      intensity={isDarkMode ? 30 : 0}
+      tint={isDarkMode ? 'dark' : 'light'}
+      style={[
+        styles.glassCard,
+        {
+          backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.6)' : '#FFFFFF',
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+        },
+        style,
+      ]}>
+      {children}
+    </BlurView>
+  );
+
+  const handleBubbleStyleChange = (style) => {
+    updateChatSetting('bubbleStyle', style);
+  };
+
+  const handleBubbleColorChange = (color) => {
+    updateChatSetting('bubbleColor', color);
+  };
+
+  const handleBackgroundChange = (bg) => {
+    setSelectedBackground(bg);
+    updateChatSetting('backgroundImage', bg);
+  };
+
+  const getBubbleRadius = () => {
+    switch (chatSettings.bubbleStyle) {
+      case 'minimal':
+        return borderRadius.sm;
+      case 'sharp':
+        return borderRadius.xs;
+      case 'bubble':
+        return borderRadius.xxl || 24;
+      case 'classic':
+        return borderRadius.md;
+      default: // modern
+        return borderRadius.lg;
+    }
+  };
+
+  const pickCustomBackground = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [9, 16],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      handleBackgroundChange(uri);
+    }
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={isDarkMode
+          ? ['rgba(102, 126, 234, 0.15)', 'transparent']
+          : ['rgba(102, 126, 234, 0.1)', 'transparent']
+        }
+        style={styles.headerGradient}
+      />
+
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            {t('settings.chatCustomization') || 'Chat Customization'}
+          </Text>
+        </View>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
+
+        {/* Bubble Style */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.bubbleStyle') || 'Bubble Style'}
+          </Text>
+          <GlassCard>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.stylesScrollContent}>
+              {BUBBLE_STYLES.map((style) => (
+                <TouchableOpacity
+                  key={style.key}
+                  style={[
+                    styles.styleOption,
+                    chatSettings.bubbleStyle === style.key && styles.styleOptionSelected,
+                    chatSettings.bubbleStyle === style.key && { borderColor: theme.primary },
+                  ]}
+                  onPress={() => handleBubbleStyleChange(style.key)}>
+                  <Ionicons 
+                    name={style.icon} 
+                    size={moderateScale(24)} 
+                    color={chatSettings.bubbleStyle === style.key ? theme.primary : theme.textSecondary} 
+                  />
+                  <Text style={[
+                    styles.styleLabel,
+                    { 
+                      color: chatSettings.bubbleStyle === style.key ? theme.primary : theme.text,
+                      fontSize: responsiveFontSize(12),
+                    }
+                  ]}>
+                    {style.label}
+                  </Text>
+                  <Text style={[
+                    styles.styleDescription,
+                    { color: theme.textSecondary, fontSize: responsiveFontSize(9) }
+                  ]} numberOfLines={1}>
+                    {style.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </GlassCard>
+        </View>
+
+        {/* Bubble Color */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.solidColors') || 'Solid Colors'}
+          </Text>
+          <GlassCard>
+            <View style={styles.colorsGrid}>
+              {BUBBLE_COLORS_SOLID.map((color) => (
+                <TouchableOpacity
+                  key={color.key}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: color.key },
+                    chatSettings.bubbleColor === color.key && styles.colorOptionSelected,
+                  ]}
+                  onPress={() => handleBubbleColorChange(color.key)}>
+                  {chatSettings.bubbleColor === color.key && (
+                    <Ionicons name="checkmark" size={moderateScale(18)} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Gradient Bubble Colors */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.gradientColors') || 'Gradient Colors'}
+          </Text>
+          <GlassCard>
+            <View style={styles.colorsGrid}>
+              {BUBBLE_COLORS_GRADIENT.map((gradient) => (
+                <TouchableOpacity
+                  key={gradient.key}
+                  style={[
+                    styles.colorOption,
+                    chatSettings.bubbleColor === gradient.key && styles.colorOptionSelected,
+                  ]}
+                  onPress={() => handleBubbleColorChange(gradient.key)}>
+                  <LinearGradient
+                    colors={gradient.colors}
+                    style={styles.gradientColorFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  {chatSettings.bubbleColor === gradient.key && (
+                    <View style={styles.checkOverlay}>
+                      <Ionicons name="checkmark" size={moderateScale(18)} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Chat Background */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.chatBackground') || 'Chat Background'}
+          </Text>
+          <GlassCard>
+            <View style={styles.backgroundsGrid}>
+              {BACKGROUND_PRESETS.map((bg) => (
+                <TouchableOpacity
+                  key={bg.key || 'default'}
+                  style={[
+                    styles.backgroundOption,
+                    selectedBackground === bg.key && styles.backgroundOptionSelected,
+                    selectedBackground === bg.key && { borderColor: theme.primary },
+                  ]}
+                  onPress={() => handleBackgroundChange(bg.key)}>
+                  {bg.colors ? (
+                    <LinearGradient
+                      colors={bg.colors}
+                      style={styles.backgroundPreview}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={[styles.bgLabel, { fontSize: responsiveFontSize(8) }]} numberOfLines={1}>
+                        {bg.label}
+                      </Text>
+                    </LinearGradient>
+                  ) : bg.pattern ? (
+                    <View style={[styles.backgroundPreview, { backgroundColor: bg.baseColor }]}>
+                      {bg.pattern === 'dots' && (
+                        <View style={styles.patternDotsContainer}>
+                          {[...Array(12)].map((_, i) => (
+                            <View key={i} style={styles.patternDot} />
+                          ))}
+                        </View>
+                      )}
+                      {bg.pattern === 'grid' && (
+                        <View style={styles.patternGridContainer}>
+                          {[...Array(9)].map((_, i) => (
+                            <View key={i} style={styles.patternGridCell} />
+                          ))}
+                        </View>
+                      )}
+                      {bg.pattern === 'waves' && (
+                        <View style={styles.patternWavesContainer}>
+                          <View style={[styles.patternWave, { top: '20%' }]} />
+                          <View style={[styles.patternWave, { top: '50%' }]} />
+                          <View style={[styles.patternWave, { top: '80%' }]} />
+                        </View>
+                      )}
+                      <Text style={[styles.bgLabel, { fontSize: responsiveFontSize(8) }]} numberOfLines={1}>
+                        {bg.label}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[
+                      styles.backgroundPreview,
+                      { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }
+                    ]}>
+                      <Text style={[styles.defaultLabel, { color: theme.textSecondary, fontSize: responsiveFontSize(10) }]}>
+                        {t('common.default') || 'Default'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+              
+              {/* Custom image option */}
+              <TouchableOpacity
+                style={[
+                  styles.backgroundOption,
+                  selectedBackground && !BACKGROUND_PRESETS.find(b => b.key === selectedBackground) && styles.backgroundOptionSelected,
+                ]}
+                onPress={pickCustomBackground}>
+                {selectedBackground && !BACKGROUND_PRESETS.find(b => b.key === selectedBackground) ? (
+                  <Image 
+                    source={{ uri: selectedBackground }} 
+                    style={styles.backgroundPreview}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[
+                    styles.backgroundPreview,
+                    styles.customBackgroundOption,
+                    { borderColor: theme.border }
+                  ]}>
+                    <Ionicons name="add" size={moderateScale(24)} color={theme.textSecondary} />
+                    <Text style={[styles.customLabel, { color: theme.textSecondary, fontSize: responsiveFontSize(10) }]}>
+                      {t('settings.custom') || 'Custom'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Preview */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.preview') || 'Preview'}
+          </Text>
+          <GlassCard style={styles.previewCard}>
+            <View style={[
+              styles.previewContainer,
+              { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }
+            ]}>
+              {/* Received message */}
+              <View style={[styles.previewBubble, styles.receivedBubble, { 
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                borderRadius: getBubbleRadius(),
+              }]}>
+                <Text style={[styles.previewText, { color: theme.text }]}>
+                  {t('settings.sampleReceived') || 'Hey! How are you?'}
+                </Text>
+              </View>
+              
+              {/* Sent message */}
+              {chatSettings.bubbleColor?.startsWith('gradient::') ? (
+                <LinearGradient
+                  colors={chatSettings.bubbleColor.replace('gradient::', '').split(',')}
+                  style={[styles.previewBubble, styles.sentBubble, { 
+                    borderRadius: getBubbleRadius(),
+                  }]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+                    {t('settings.sampleSent') || "I'm good! Thanks for asking 😊"}
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.previewBubble, styles.sentBubble, { 
+                  backgroundColor: chatSettings.bubbleColor,
+                  borderRadius: getBubbleRadius(),
+                }]}>
+                  <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+                    {t('settings.sampleSent') || "I'm good! Thanks for asking 😊"}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </GlassCard>
+        </View>
+
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: hp(20),
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(2),
+    paddingHorizontal: wp(5),
+    paddingBottom: spacing.md,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: responsiveFontSize(20),
+    fontWeight: '600',
+  },
+  placeholder: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: wp(5),
+  },
+  section: {
+    marginBottom: spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: responsiveFontSize(13),
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+  },
+  glassCard: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    padding: spacing.md,
+    ...shadows.small,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  styleOption: {
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    minWidth: moderateScale(80),
+  },
+  styleOptionSelected: {
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+  },
+  styleLabel: {
+    marginTop: spacing.xs,
+    fontWeight: '500',
+  },
+  colorsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  colorOption: {
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: moderateScale(22),
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  gradientColorFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: moderateScale(22),
+  },
+  checkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  backgroundsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  backgroundOption: {
+    width: moderateScale(70),
+    height: moderateScale(100),
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  backgroundOptionSelected: {
+    borderWidth: 2,
+  },
+  backgroundPreview: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: spacing.xs,
+  },
+  bgLabel: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  defaultLabel: {
+    fontWeight: '500',
+  },
+  customBackgroundOption: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+  },
+  customLabel: {
+    marginTop: spacing.xs / 2,
+    fontWeight: '500',
+  },
+  // Pattern styles
+  patternDotsContainer: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    alignContent: 'space-around',
+    padding: spacing.xs,
+  },
+  patternDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  patternGridContainer: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  patternGridCell: {
+    width: '33.33%',
+    height: '33.33%',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  patternWavesContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  patternWave: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 1,
+  },
+  previewCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  previewContainer: {
+    padding: spacing.md,
+    minHeight: moderateScale(120),
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  previewBubble: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 4,
+    maxWidth: '75%',
+  },
+  receivedBubble: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: spacing.xs / 2,
+  },
+  sentBubble: {
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: spacing.xs / 2,
+  },
+  previewText: {
+    fontSize: responsiveFontSize(14),
+    lineHeight: responsiveFontSize(20),
+  },
+  stylesScrollContent: {
+    paddingHorizontal: spacing.xs,
+    gap: spacing.sm,
+  },
+  styleDescription: {
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  bottomPadding: {
+    height: hp(5),
+  },
+});
+
+export default ChatSettings;

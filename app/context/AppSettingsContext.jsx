@@ -94,6 +94,20 @@ export const AppSettingsProvider = ({ children }) => {
   const [themePreference, setThemePreference] = useState('system');
   const [isLoading, setIsLoading] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  
+  // Granular notification settings
+  const [notificationSettings, setNotificationSettings] = useState({
+    directChats: true,
+    groupChats: true,
+    friendPosts: true,
+  });
+  
+  // Chat customization settings
+  const [chatSettings, setChatSettings] = useState({
+    bubbleStyle: 'modern', // 'modern', 'classic', 'minimal'
+    bubbleColor: '#667eea', // Primary bubble color for sent messages
+    backgroundImage: null, // URL or null for default
+  });
 
   const theme = isDarkMode ? darkTheme : lightTheme;
 
@@ -113,10 +127,12 @@ export const AppSettingsProvider = ({ children }) => {
 
   const loadSettings = async () => {
     try {
-      const [savedLanguage, savedThemePreference, savedNotifications] = await Promise.all([
+      const [savedLanguage, savedThemePreference, savedNotifications, savedNotificationSettings, savedChatSettings] = await Promise.all([
         AsyncStorage.getItem('appLanguage'),
         AsyncStorage.getItem('themePreference'),
         AsyncStorage.getItem('notificationsEnabled'),
+        AsyncStorage.getItem('notificationSettings'),
+        AsyncStorage.getItem('chatSettings'),
       ]);
 
       if (savedLanguage) {
@@ -152,6 +168,24 @@ export const AppSettingsProvider = ({ children }) => {
 
       if (savedNotifications !== null) {
         setNotificationsEnabled(savedNotifications === 'true');
+      }
+      
+      if (savedNotificationSettings) {
+        try {
+          const parsed = JSON.parse(savedNotificationSettings);
+          setNotificationSettings(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          // Invalid JSON, use defaults
+        }
+      }
+      
+      if (savedChatSettings) {
+        try {
+          const parsed = JSON.parse(savedChatSettings);
+          setChatSettings(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          // Invalid JSON, use defaults
+        }
       }
     } catch (error) {
       // Failed to load settings, using defaults
@@ -216,12 +250,34 @@ export const AppSettingsProvider = ({ children }) => {
     }
   };
 
+  const updateNotificationSetting = async (key, value) => {
+    try {
+      const newSettings = { ...notificationSettings, [key]: value };
+      setNotificationSettings(newSettings);
+      await AsyncStorage.setItem('notificationSettings', JSON.stringify(newSettings));
+    } catch (error) {
+      // Failed to save notification setting
+    }
+  };
+
+  const updateChatSetting = async (key, value) => {
+    try {
+      const newSettings = { ...chatSettings, [key]: value };
+      setChatSettings(newSettings);
+      await AsyncStorage.setItem('chatSettings', JSON.stringify(newSettings));
+    } catch (error) {
+      // Failed to save chat setting
+    }
+  };
+
   const resetSettings = async () => {
     try {
       await AsyncStorage.multiRemove([
         'appLanguage',
         'themePreference',
         'notificationsEnabled',
+        'notificationSettings',
+        'chatSettings',
       ]);
       setCurrentLanguage('en');
       i18n.locale = 'en';
@@ -229,6 +285,16 @@ export const AppSettingsProvider = ({ children }) => {
       const systemColorScheme = Appearance.getColorScheme();
       setIsDarkMode(systemColorScheme === 'dark');
       setNotificationsEnabled(true);
+      setNotificationSettings({
+        directChats: true,
+        groupChats: true,
+        friendPosts: true,
+      });
+      setChatSettings({
+        bubbleStyle: 'modern',
+        bubbleColor: '#667eea',
+        backgroundImage: null,
+      });
     } catch (error) {
       // Failed to reset settings
     }
@@ -252,6 +318,11 @@ export const AppSettingsProvider = ({ children }) => {
 
     notificationsEnabled,
     toggleNotifications,
+    notificationSettings,
+    updateNotificationSetting,
+    
+    chatSettings,
+    updateChatSetting,
 
     isLoading,
     resetSettings,

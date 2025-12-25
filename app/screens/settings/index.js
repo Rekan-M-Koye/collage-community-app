@@ -34,12 +34,28 @@ const Settings = ({ navigation }) => {
       screen: 'PersonalizationSettings',
     },
     {
+      id: 'chat',
+      title: t('settings.chatCustomization') || 'Chat Customization',
+      description: t('settings.chatCustomizationDesc') || 'Bubble style, colors, and backgrounds',
+      icon: 'chatbubbles-outline',
+      color: '#AF52DE',
+      screen: 'ChatSettings',
+    },
+    {
       id: 'notifications',
       title: t('settings.notifications'),
       description: t('settings.notificationDesc'),
       icon: 'notifications-outline',
       color: '#34C759',
       screen: 'NotificationSettings',
+    },
+    {
+      id: 'blocklist',
+      title: t('settings.blockedUsers') || 'Blocked Users',
+      description: t('settings.blockedUsersDesc') || 'Manage your blocked users list',
+      icon: 'person-remove-outline',
+      color: '#8E8E93',
+      screen: 'BlockList',
     },
     {
       id: 'account',

@@ -22,6 +22,7 @@ import {
   initializeUserGroups,
   getAllUserChats,
 } from '../../database/chatHelpers';
+import { getUnreadCount } from '../../database/chats';
 import { 
   wp, 
   hp, 
@@ -40,6 +41,7 @@ const Chats = ({ navigation }) => {
   const [defaultGroups, setDefaultGroups] = useState([]);
   const [customGroups, setCustomGroups] = useState([]);
   const [privateChats, setPrivateChats] = useState([]);
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   const stageToValue = (stage) => {
     if (!stage) return null;
@@ -78,6 +80,19 @@ const Chats = ({ navigation }) => {
     }
   };
 
+  const loadUnreadCounts = async (allChats) => {
+    if (!user?.$id || allChats.length === 0) return;
+    
+    const counts = {};
+    await Promise.all(
+      allChats.map(async (chat) => {
+        const count = await getUnreadCount(chat.$id, user.$id);
+        counts[chat.$id] = count;
+      })
+    );
+    setUnreadCounts(counts);
+  };
+
   const loadChats = async () => {
     if (!user?.department) {
       setLoading(false);
@@ -93,6 +108,14 @@ const Chats = ({ navigation }) => {
       setDefaultGroups(chats.defaultGroups || []);
       setCustomGroups(chats.customGroups || []);
       setPrivateChats(chats.privateChats || []);
+      
+      // Load unread counts for all chats
+      const allChats = [
+        ...(chats.defaultGroups || []),
+        ...(chats.customGroups || []),
+        ...(chats.privateChats || []),
+      ];
+      loadUnreadCounts(allChats);
     } catch (error) {
       setDefaultGroups([]);
       setCustomGroups([]);
@@ -117,16 +140,16 @@ const Chats = ({ navigation }) => {
 
     if (defaultGroups.length > 0) {
       sections.push({
-        title: t('chats.yourGroups'),
+        title: t('chats.classGroups'),
         data: defaultGroups,
-        icon: 'people',
+        icon: 'school',
         color: '#3B82F6',
       });
     }
 
     if (customGroups.length > 0) {
       sections.push({
-        title: t('chats.groupChat'),
+        title: t('chats.myGroups'),
         data: customGroups,
         icon: 'people-circle',
         color: '#F59E0B',
@@ -135,9 +158,9 @@ const Chats = ({ navigation }) => {
 
     if (privateChats.length > 0) {
       sections.push({
-        title: t('chats.directMessage'),
+        title: t('chats.directChats'),
         data: privateChats,
-        icon: 'person',
+        icon: 'chatbubble',
         color: '#10B981',
       });
     }
@@ -147,14 +170,14 @@ const Chats = ({ navigation }) => {
 
   const renderSectionHeader = ({ section }) => (
     <View style={styles.sectionHeader}>
-      <View style={[styles.sectionIconContainer, { backgroundColor: `${section.color}20` }]}>
-        <Ionicons name={section.icon} size={moderateScale(16)} color={section.color} />
+      <View style={[styles.sectionIconContainer, { backgroundColor: `${section.color}15` }]}>
+        <Ionicons name={section.icon} size={moderateScale(14)} color={section.color} />
       </View>
-      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(13) }]}>
         {section.title}
       </Text>
-      <View style={[styles.sectionBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-        <Text style={[styles.sectionBadgeText, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+      <View style={[styles.sectionBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+        <Text style={[styles.sectionBadgeText, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
           {section.data.length}
         </Text>
       </View>
@@ -166,6 +189,7 @@ const Chats = ({ navigation }) => {
       chat={item} 
       onPress={() => handleChatPress(item)}
       currentUserId={user?.$id}
+      unreadCount={unreadCounts[item.$id] || 0}
     />
   );
 
@@ -436,17 +460,17 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
   },
   sectionIconContainer: {
-    width: moderateScale(28),
-    height: moderateScale(28),
-    borderRadius: moderateScale(14),
+    width: moderateScale(24),
+    height: moderateScale(24),
+    borderRadius: moderateScale(12),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   sectionTitle: {
     fontWeight: '600',
@@ -454,8 +478,8 @@ const styles = StyleSheet.create({
   },
   sectionBadge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: moderateScale(10),
+    paddingVertical: 2,
+    borderRadius: moderateScale(8),
   },
   sectionBadgeText: {
     fontWeight: '600',

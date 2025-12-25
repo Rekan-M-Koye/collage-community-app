@@ -26,12 +26,14 @@ import ProfileSettings from './screens/settings/ProfileSettings';
 import PersonalizationSettings from './screens/settings/PersonalizationSettings';
 import NotificationSettings from './screens/settings/NotificationSettings';
 import AccountSettings from './screens/settings/AccountSettings';
+import ChatSettings from './screens/settings/ChatSettings';
+import BlockList from './screens/settings/BlockList';
 import PostDetails from './screens/PostDetails';
 import EditPost from './screens/EditPost';
 import ChatRoom from './screens/ChatRoom';
 import UserProfile from './screens/UserProfile';
 import ManageRepresentatives from './screens/ManageRepresentatives';
-import { NewChat, UserSearch, CreateGroup, GroupSettings } from './screens/chats';
+import { NewChat, UserSearch, CreateGroup, GroupSettings, ForwardMessage } from './screens/chats';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -216,6 +218,16 @@ const MainStack = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen 
+        name="ChatSettings" 
+        component={ChatSettings}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="BlockList" 
+        component={BlockList}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
         name="ChangePassword" 
         component={ChangePassword}
         options={{ headerShown: false }}
@@ -253,6 +265,11 @@ const MainStack = () => {
       <Stack.Screen 
         name="GroupSettings" 
         component={GroupSettings}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="ForwardMessage" 
+        component={ForwardMessage}
         options={{ headerShown: false }}
       />
       <Stack.Screen 

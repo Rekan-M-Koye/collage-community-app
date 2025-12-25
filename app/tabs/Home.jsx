@@ -31,7 +31,7 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData } from '../../database/posts';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 
@@ -144,11 +144,14 @@ const Home = ({ navigation }) => {
         fetchedPosts = await getAllPublicPosts(selectedStage, POSTS_PER_PAGE, offset);
       }
 
+      // Enrich posts with user data for those missing userName
+      const enrichedPosts = await enrichPostsWithUserData(fetchedPosts);
+
       if (reset) {
-        setPosts(fetchedPosts);
+        setPosts(enrichedPosts);
         setPage(1);
       } else {
-        setPosts(prev => [...prev, ...fetchedPosts]);
+        setPosts(prev => [...prev, ...enrichedPosts]);
         setPage(prev => prev + 1);
       }
 

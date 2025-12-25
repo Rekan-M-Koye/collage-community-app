@@ -23,7 +23,7 @@ import SearchableDropdown from '../components/SearchableDropdownNew';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { GlassContainer, GlassInput } from '../components/GlassComponents';
 import { getUniversityKeys, getCollegesForUniversity, getDepartmentsForCollege } from '../data/universitiesData';
-import { initiateSignup, getCompleteUserData } from '../../database/auth';
+import { initiateSignup, getCompleteUserData, isEducationalEmail, completeOAuthSignup, getPendingOAuthSignup, clearPendingOAuthSignup } from '../../database/auth';
 import { 
   wp, 
   hp, 
@@ -34,10 +34,15 @@ import {
 } from '../utils/responsive';
 import { borderRadius, shadows } from '../theme/designTokens';
 
-const SignUp = ({ navigation }) => {
+const SignUp = ({ navigation, route }) => {
+  const oauthMode = route?.params?.oauthMode || false;
+  const oauthEmail = route?.params?.oauthEmail || '';
+  const oauthName = route?.params?.oauthName || '';
+  const oauthUserId = route?.params?.oauthUserId || '';
+  
   const { setUserData } = useUser();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState(oauthName);
+  const [email, setEmail] = useState(oauthEmail);
   const [age, setAge] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -58,6 +63,13 @@ const SignUp = ({ navigation }) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    if (oauthMode && oauthEmail) {
+      setEmail(oauthEmail);
+      if (oauthName) setFullName(oauthName);
+    }
+  }, [oauthMode, oauthEmail, oauthName]);
 
   useEffect(() => {
     Animated.parallel([
@@ -165,23 +177,26 @@ const SignUp = ({ navigation }) => {
       Alert.alert(t('common.error'), t('auth.stageRequired') || 'Please select your stage');
       return false;
     }
-    if (password.length < 8) {
-      Alert.alert(t('common.error'), t('auth.passwordTooShort') || 'Password must be at least 8 characters');
-      return false;
-    }
-    if (passwordStrength === 'weak') {
-      Alert.alert(t('common.error'), 'Password is too weak. Use a mix of letters, numbers, and symbols.');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
-      return false;
+    
+    if (!oauthMode) {
+      if (password.length < 8) {
+        Alert.alert(t('common.error'), t('auth.passwordTooShort') || 'Password must be at least 8 characters');
+        return false;
+      }
+      if (passwordStrength === 'weak') {
+        Alert.alert(t('common.error'), 'Password is too weak. Use a mix of letters, numbers, and symbols.');
+        return false;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert(t('common.error'), t('auth.passwordMismatch'));
+        return false;
+      }
     }
     return true;
   };
 
   const isFormValid = () => {
-    return (
+    const baseValid = (
       fullName.trim() !== '' &&
       email.trim() !== '' &&
       email.includes('@') &&
@@ -191,11 +206,17 @@ const SignUp = ({ navigation }) => {
       university !== '' &&
       college !== '' &&
       department !== '' &&
-      stage !== '' &&
+      stage !== ''
+    );
+    
+    if (oauthMode) {
+      return baseValid;
+    }
+    
+    return baseValid &&
       password.length >= 8 &&
       password === confirmPassword &&
-      confirmPassword.length > 0
-    );
+      confirmPassword.length > 0;
   };
 
   const handleSignUp = async () => {
@@ -213,15 +234,45 @@ const SignUp = ({ navigation }) => {
         stage: parseInt(stageNumber) || 1,
       };
 
-      const result = await initiateSignup(email, password, fullName, additionalData);
-      
-      setIsLoading(false);
-      
-      navigation.navigate('VerifyEmail', {
-        email: result.email,
-        userId: result.userId,
-        name: result.name
-      });
+      if (oauthMode && oauthUserId) {
+        const result = await completeOAuthSignup(oauthUserId, email, fullName, additionalData);
+        
+        await clearPendingOAuthSignup();
+        
+        if (result.success) {
+          const userData = {
+            $id: result.userDoc.$id,
+            email: result.userDoc.email,
+            fullName: result.userDoc.name,
+            bio: result.userDoc.bio || '',
+            profilePicture: result.userDoc.profilePicture || '',
+            university: result.userDoc.university || '',
+            college: result.userDoc.major || '',
+            department: result.userDoc.department || '',
+            stage: result.userDoc.year || '',
+            postsCount: result.userDoc.postsCount || 0,
+            followersCount: result.userDoc.followersCount || 0,
+            followingCount: result.userDoc.followingCount || 0,
+            isEmailVerified: true,
+            lastAcademicUpdate: result.userDoc.lastAcademicUpdate || null,
+          };
+          
+          await setUserData(userData);
+          navigation.replace('MainTabs');
+        }
+      } else {
+        const result = await initiateSignup(email, password, fullName, additionalData);
+        
+        setIsLoading(false);
+        
+        navigation.navigate('VerifyEmail', {
+          email: result.email,
+          userId: result.userId,
+          name: result.name,
+          expiresAt: Date.now() + (15 * 60 * 1000),
+          verificationCode: result.verificationCode
+        });
+      }
       
     } catch (error) {
       setIsLoading(false);
@@ -232,6 +283,8 @@ const SignUp = ({ navigation }) => {
         errorMessage = t('auth.emailAlreadyExists') || 'An account with this email already exists.';
       } else if (error.message?.includes('Password')) {
         errorMessage = t('auth.passwordRequirements') || 'Password must be at least 8 characters.';
+      } else if (error.message?.includes('educational email') || error.message?.includes('Only educational')) {
+        errorMessage = t('auth.educationalEmailRequired') || 'Only educational email addresses are allowed. Please use your university or college email (e.g., name@university.edu).';
       }
       
       Alert.alert(t('common.error'), errorMessage);
@@ -379,10 +432,10 @@ const SignUp = ({ navigation }) => {
             
             <View style={styles.headerContainer}>
               <Text style={[styles.headerText, { fontSize: fontSize(isTabletDevice ? 32 : 24) }]}>
-                {t('auth.createAccount')}
+                {oauthMode ? t('auth.completeYourProfile') : t('auth.createAccount')}
               </Text>
               <Text style={[styles.subHeaderText, { fontSize: fontSize(14) }]}>
-                {t('auth.joinCommunity')}
+                {oauthMode ? t('auth.finishSetup') : t('auth.joinCommunity')}
               </Text>
             </View>
 
@@ -425,21 +478,46 @@ const SignUp = ({ navigation }) => {
                   />
                   <TextInput
                     style={[styles.input, { 
-                      color: theme.text,
+                      color: oauthMode ? theme.textSecondary : theme.text,
                       fontSize: fontSize(15),
+                      textAlign: 'left',
                     }]}
-                    placeholder={t('auth.collegeEmail')}
+                    placeholder={oauthMode ? t('auth.emailFromGoogle') : t('auth.collegeEmail')}
                     placeholderTextColor={theme.input.placeholder}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={oauthMode ? null : setEmail}
                     onFocus={() => setEmailFocused(true)}
                     onBlur={() => setEmailFocused(false)}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    caretHidden={false}
+                    contextMenuHidden={false}
+                    selectTextOnFocus={false}
+                    editable={!oauthMode}
                   />
+                  {oauthMode ? (
+                    <Ionicons 
+                      name="lock-closed" 
+                      size={moderateScale(18)} 
+                      color={theme.textSecondary} 
+                    />
+                  ) : (
+                    email.length > 0 && (
+                      <Ionicons 
+                        name={isEducationalEmail(email) ? "checkmark-circle" : "close-circle"} 
+                        size={moderateScale(20)} 
+                        color={isEducationalEmail(email) ? "#10B981" : "#EF4444"} 
+                      />
+                    )
+                  )}
                 </View>
               </GlassInput>
+              {!oauthMode && email.length > 0 && !isEducationalEmail(email) && (
+                <Text style={[styles.emailWarning, { color: '#EF4444' }]}>
+                  {t('auth.useEducationalEmail') || 'Please use your educational email (e.g., name@university.edu)'}
+                </Text>
+              )}
 
               <SearchableDropdown
                 items={ageOptions}
@@ -488,124 +566,128 @@ const SignUp = ({ navigation }) => {
                 style={{ marginTop: spacing.md }}
               />
 
-              <GlassInput focused={passwordFocused} style={{ marginTop: spacing.md }}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons 
-                    name="lock-closed-outline" 
-                    size={moderateScale(20)} 
-                    color={passwordFocused ? theme.primary : theme.textSecondary} 
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, { 
-                      color: theme.text,
-                      fontSize: fontSize(15),
-                    }]}
-                    placeholder={t('auth.password')}
-                    placeholderTextColor={theme.input.placeholder}
-                    value={password}
-                    onChangeText={setPassword}
-                    onFocus={() => setPasswordFocused(true)}
-                    onBlur={() => setPasswordFocused(false)}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity 
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeIcon}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons 
-                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                      size={moderateScale(20)} 
-                      color={theme.textSecondary} 
-                    />
-                  </TouchableOpacity>
-                </View>
-              </GlassInput>
+              {!oauthMode && (
+                <>
+                  <GlassInput focused={passwordFocused} style={{ marginTop: spacing.md }}>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons 
+                        name="lock-closed-outline" 
+                        size={moderateScale(20)} 
+                        color={passwordFocused ? theme.primary : theme.textSecondary} 
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[styles.input, { 
+                          color: theme.text,
+                          fontSize: fontSize(15),
+                        }]}
+                        placeholder={t('auth.password')}
+                        placeholderTextColor={theme.input.placeholder}
+                        value={password}
+                        onChangeText={setPassword}
+                        onFocus={() => setPasswordFocused(true)}
+                        onBlur={() => setPasswordFocused(false)}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <TouchableOpacity 
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeIcon}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons 
+                          name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                          size={moderateScale(20)} 
+                          color={theme.textSecondary} 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </GlassInput>
 
-              {password.length > 0 && (
-                <View style={styles.passwordStrengthContainer}>
-                  <View style={styles.strengthBarContainer}>
-                    <View 
-                      style={[
-                        styles.strengthBar,
-                        { 
-                          width: getStrengthWidth(),
-                          backgroundColor: getStrengthColor(),
-                        }
-                      ]} 
-                    />
-                  </View>
-                  <Text 
-                    style={[
-                      styles.strengthText,
+                  {password.length > 0 && (
+                    <View style={styles.passwordStrengthContainer}>
+                      <View style={styles.strengthBarContainer}>
+                        <View 
+                          style={[
+                            styles.strengthBar,
+                            { 
+                              width: getStrengthWidth(),
+                              backgroundColor: getStrengthColor(),
+                            }
+                          ]} 
+                        />
+                      </View>
+                      <Text 
+                        style={[
+                          styles.strengthText,
+                          { 
+                            color: getStrengthColor(),
+                            fontSize: fontSize(12),
+                          }
+                        ]}>
+                        {t('auth.passwordStrength')}: {t(`auth.${passwordStrength}`)}
+                      </Text>
+                    </View>
+                  )}
+
+                  <GlassInput focused={confirmPasswordFocused} style={{ marginTop: spacing.md }}>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons 
+                        name="lock-closed-outline" 
+                        size={moderateScale(20)} 
+                        color={confirmPasswordFocused ? theme.primary : theme.textSecondary} 
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[styles.input, { 
+                          color: theme.text,
+                          fontSize: fontSize(15),
+                        }]}
+                        placeholder={t('auth.confirmPassword')}
+                        placeholderTextColor={theme.input.placeholder}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        onFocus={() => setConfirmPasswordFocused(true)}
+                        onBlur={() => setConfirmPasswordFocused(false)}
+                        secureTextEntry={!showConfirmPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <TouchableOpacity 
+                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={styles.eyeIcon}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons 
+                          name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
+                          size={moderateScale(20)} 
+                          color={theme.textSecondary} 
+                        />
+                      </TouchableOpacity>
+                      {confirmPassword.length > 0 && passwordsMatch && (
+                        <Ionicons 
+                          name="checkmark-circle" 
+                          size={moderateScale(20)} 
+                          color={theme.success} 
+                          style={styles.checkIcon}
+                        />
+                      )}
+                    </View>
+                  </GlassInput>
+
+                  {confirmPassword.length > 0 && !passwordsMatch && (
+                    <Text style={[
+                      styles.errorText, 
                       { 
-                        color: getStrengthColor(),
+                        color: theme.danger,
                         fontSize: fontSize(12),
                       }
                     ]}>
-                    {t('auth.passwordStrength')}: {t(`auth.${passwordStrength}`)}
-                  </Text>
-                </View>
-              )}
-
-              <GlassInput focused={confirmPasswordFocused} style={{ marginTop: spacing.md }}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons 
-                    name="lock-closed-outline" 
-                    size={moderateScale(20)} 
-                    color={confirmPasswordFocused ? theme.primary : theme.textSecondary} 
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, { 
-                      color: theme.text,
-                      fontSize: fontSize(15),
-                    }]}
-                    placeholder={t('auth.confirmPassword')}
-                    placeholderTextColor={theme.input.placeholder}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    onFocus={() => setConfirmPasswordFocused(true)}
-                    onBlur={() => setConfirmPasswordFocused(false)}
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity 
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={styles.eyeIcon}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons 
-                      name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
-                      size={moderateScale(20)} 
-                      color={theme.textSecondary} 
-                    />
-                  </TouchableOpacity>
-                  {confirmPassword.length > 0 && passwordsMatch && (
-                    <Ionicons 
-                      name="checkmark-circle" 
-                      size={moderateScale(20)} 
-                      color={theme.success} 
-                      style={styles.checkIcon}
-                    />
+                      {t('auth.passwordMismatch')}
+                    </Text>
                   )}
-                </View>
-              </GlassInput>
-
-              {confirmPassword.length > 0 && !passwordsMatch && (
-                <Text style={[
-                  styles.errorText, 
-                  { 
-                    color: theme.danger,
-                    fontSize: fontSize(12),
-                  }
-                ]}>
-                  {t('auth.passwordMismatch')}
-                </Text>
+                </>
               )}
 
               <TouchableOpacity
@@ -626,7 +708,7 @@ const SignUp = ({ navigation }) => {
                         styles.signUpButtonText,
                         { fontSize: fontSize(17), opacity: !isFormValid() ? 0.6 : 1 }
                       ]}>
-                        {t('auth.createAccount')}
+                        {oauthMode ? t('common.continue') : t('auth.createAccount')}
                       </Text>
                       <Ionicons 
                         name="arrow-forward" 
@@ -760,6 +842,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: spacing.sm,
+    fontWeight: '500',
+  },
+  emailWarning: {
+    marginTop: spacing.xs,
+    marginLeft: spacing.sm,
+    fontSize: fontSize(12),
     fontWeight: '500',
   },
   signUpButton: {
