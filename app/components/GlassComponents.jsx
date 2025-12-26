@@ -17,20 +17,17 @@ export const GlassContainer = ({
   const isAndroid = Platform.OS === 'android';
   
   // More transparent backgrounds to blend with gradient
-  // Light mode: semi-transparent to show gradient behind
+  // Light mode: more transparent to reduce layered appearance
   const glassBackground = theme.glass?.background || (
     isDarkMode 
       ? (isAndroid ? 'rgba(28, 28, 30, 0.85)' : 'rgba(28, 28, 30, 0.6)') 
-      : (isAndroid ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.6)')
+      : (isAndroid ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.4)')
   );
   const glassIntensity = intensity || (isAndroid ? 80 : 25);
   const glassTint = theme.glass?.tint || (isDarkMode ? 'dark' : 'light');
   
-  // Light mode border - subtle shadow instead of border lines
-  const lightModeBorder = !isDarkMode ? {
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
-  } : {};
+  // Light mode - no visible border to avoid layered look
+  const lightModeBorder = {};
   
   return (
     <View style={[styles.container, { borderRadius }, style]}>

@@ -34,7 +34,7 @@ import {
   canUserMentionEveryone,
   markChatAsRead,
 } from '../../database/chats';
-import { getUserById } from '../../database/users';
+import { getUserById, blockUser } from '../../database/users';
 import { 
   muteChat, 
   unmuteChat, 
@@ -53,6 +53,9 @@ import {
   moderateScale,
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
+import { useChatMessages } from '../hooks/useRealtimeSubscription';
+
+const SMART_POLL_INTERVAL = 10000; // Reduced polling, mostly rely on realtime
 
 const ChatRoom = ({ route, navigation }) => {
   const { chat } = route.params;
@@ -77,8 +80,54 @@ const ChatRoom = ({ route, navigation }) => {
   const lastMessageId = useRef(null);
   const userCacheRef = useRef({});
   const [showChatOptionsModal, setShowChatOptionsModal] = useState(false);
+  const isRealtimeActive = useRef(false);
 
-  const POLLING_INTERVAL = 3000;
+  // Smart realtime subscription for new messages
+  const handleRealtimeNewMessage = useCallback(async (payload) => {
+    isRealtimeActive.current = true;
+    
+    // Add new message to the list if it's for this chat
+    if (payload.chatId === chat.$id) {
+      setMessages(prev => {
+        // Check if message already exists
+        if (prev.some(m => m.$id === payload.$id)) {
+          return prev;
+        }
+        return [...prev, payload];
+      });
+      
+      // Cache sender info if not cached
+      if (payload.senderId && !userCacheRef.current[payload.senderId]) {
+        try {
+          const userData = await getUserById(payload.senderId);
+          userCacheRef.current[payload.senderId] = userData;
+          setUserCache({ ...userCacheRef.current });
+        } catch (e) {
+          userCacheRef.current[payload.senderId] = { name: payload.senderName || 'Unknown' };
+        }
+      }
+      
+      // Scroll to bottom for new messages
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [chat.$id]);
+
+  const handleRealtimeMessageDeleted = useCallback((payload) => {
+    isRealtimeActive.current = true;
+    setMessages(prev => prev.filter(m => m.$id !== payload.$id));
+  }, []);
+
+  // Use realtime subscription
+  useChatMessages(
+    chat.$id,
+    handleRealtimeNewMessage,
+    handleRealtimeMessageDeleted,
+    !!chat.$id && !!user?.$id
+  );
+
+  const POLLING_INTERVAL = SMART_POLL_INTERVAL;
 
   const getChatDisplayName = () => {
     if (chat.type === 'private' && chat.otherUser) {
@@ -438,10 +487,10 @@ const ChatRoom = ({ route, navigation }) => {
         messageData.images = [imageUrl];
       }
       
-      // Handle reply
+      // Handle reply - truncate content to prevent long quotes
       if (replyingTo) {
         messageData.replyToId = replyingTo.$id;
-        messageData.replyToContent = replyingTo.content?.substring(0, 100) || '';
+        messageData.replyToContent = replyingTo.content?.substring(0, 50) || '';
         messageData.replyToSender = replyingTo.senderName || '';
       }
       
@@ -869,7 +918,35 @@ const ChatRoom = ({ route, navigation }) => {
                 style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
                 onPress={() => {
                   setShowChatOptionsModal(false);
-                  Alert.alert(t('common.info'), t('chats.blockComingSoon'));
+                  const otherUserId = chat.otherUser?.$id || chat.otherUser?.id;
+                  const otherUserName = chat.otherUser?.name || chat.otherUser?.fullName || getChatDisplayName();
+                  if (!otherUserId) {
+                    Alert.alert(t('common.error'), t('chats.blockError') || 'Cannot block this user');
+                    return;
+                  }
+                  Alert.alert(
+                    t('chats.blockUser'),
+                    (t('chats.blockConfirm') || 'Are you sure you want to block {name}?').replace('{name}', otherUserName),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      {
+                        text: t('common.block') || 'Block',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await blockUser(user.$id, otherUserId);
+                            Alert.alert(
+                              t('common.success'),
+                              t('chats.userBlocked') || 'User has been blocked'
+                            );
+                            navigation.goBack();
+                          } catch (error) {
+                            Alert.alert(t('common.error'), t('chats.blockError') || 'Failed to block user');
+                          }
+                        }
+                      }
+                    ]
+                  );
                 }}>
                 <Ionicons name="ban-outline" size={moderateScale(22)} color="#EF4444" />
                 <Text style={[styles.muteOptionText, { color: '#EF4444', fontSize: fontSize(15) }]}>

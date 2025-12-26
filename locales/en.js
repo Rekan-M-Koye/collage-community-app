@@ -627,23 +627,22 @@ export default {
     blockUser: 'Block User',
     searchComingSoon: 'Search feature coming soon!',
     clearChatComingSoon: 'Clear chat feature coming soon!',
-    blockComingSoon: 'Block feature coming soon!',
+    blockConfirm: 'Are you sure you want to block {name}?',
+    userBlocked: 'User has been blocked',
+    blockError: 'Failed to block user',
     notifyOnMentionDesc: 'Get notified when mentioned',
     notifyOnAllMessages: 'Notify on All Messages',
     notifyOnAllMessagesDesc: 'Get notified for all messages',
-  },
-  
-  // Post Screen
-  post: {
-    createPost: 'Create Post',
-    whatsOnMind: "What's on your mind?",
-    postQuestion: 'Post Question',
-    shareKnowledge: 'Share Knowledge',
-    emptyTitle: 'Create a Post',
-    emptyMessage: 'Share questions, notes, or start a discussion with your peers',
-    details: 'Post Details',
-    comingSoon: 'Coming Soon',
-    detailsComingSoon: 'Post details view will be available once the database is ready.',
+    // Representative management
+    manageRepresentatives: 'Manage Representatives',
+    representatives: 'Representatives',
+    addRepresentative: 'Add Representative',
+    removeRepresentative: 'Remove Representative',
+    removeRepresentativeConfirm: 'Are you sure you want to remove this representative?',
+    representativeAdded: 'Representative added successfully',
+    representativeRemoved: 'Representative removed successfully',
+    representativeAddError: 'Failed to add representative',
+    representativeRemoveError: 'Failed to remove representative',
   },
   
   // Lecture Screen
@@ -684,6 +683,11 @@ export default {
     notSignedIn: 'Not Signed In',
     pleaseSignIn: 'Please sign in to view your profile',
     userNotFound: 'User not found',
+    followError: 'Failed to update follow status',
+    blockUser: 'Block User',
+    blockConfirm: 'Are you sure you want to block {name}?',
+    userBlocked: 'User has been blocked',
+    blockError: 'Failed to block user',
   },
   
   // Settings Screen
@@ -838,6 +842,7 @@ export default {
     reportReason: 'Reason for reporting',
     reportSuccess: 'Post reported successfully',
     reportError: 'Failed to report post',
+    alreadyReported: 'You have already reported this post',
     hidden: 'Hidden',
     hiddenByReports: 'This post has been hidden due to multiple reports',
     posts: 'Posts',
@@ -865,6 +870,11 @@ export default {
     bestAnswer: 'Best Answer',
     alreadyUpvoted: 'You already upvoted this reply',
     alreadyDownvoted: 'You already downvoted this reply',
+    postNotFound: 'Post not found',
+    deleteReplyError: 'Failed to delete reply',
+    updateReplyError: 'Failed to update reply',
+    upvoteError: 'Failed to upvote',
+    downvoteError: 'Failed to downvote',
   },
   
   // Search
@@ -921,6 +931,8 @@ export default {
     hide: 'Hide',
     user: 'User',
     remove: 'Remove',
+    block: 'Block',
+    unblock: 'Unblock',
   },
 
   error: {

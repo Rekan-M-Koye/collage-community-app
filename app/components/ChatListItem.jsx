@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ProfilePicture from './ProfilePicture';
@@ -257,4 +257,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ChatListItem;
+export default memo(ChatListItem);

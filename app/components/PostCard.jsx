@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -266,9 +266,9 @@ const PostCard = ({
               </Text>
             </TouchableOpacity>
             <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-              {formatTimeAgo(post.isEdited && post.$updatedAt ? post.$updatedAt : post.$createdAt)}
+              {formatTimeAgo(post.$createdAt)}
             </Text>
-            {post.isEdited && (
+            {post.isEdited === true && (
               <Text style={[styles.editedText, { color: theme.textTertiary }]}>
                 ({t('post.edited')})
               </Text>
@@ -818,4 +818,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PostCard;
+export default memo(PostCard);

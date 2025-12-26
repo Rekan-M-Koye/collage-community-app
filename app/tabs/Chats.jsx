@@ -10,7 +10,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   SectionList,
-  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +30,7 @@ import {
   moderateScale,
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
+import { useChatList } from '../hooks/useRealtimeSubscription';
 
 const Chats = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
@@ -55,6 +55,42 @@ const Chats = ({ navigation }) => {
     };
     return stageMap[stage] || stage;
   };
+
+  // Real-time subscription for chat updates (new messages, unread count changes)
+  const handleRealtimeChatUpdate = useCallback(async (payload) => {
+    // Update the chat in the appropriate list
+    const updateChatInList = (list, setList) => {
+      const index = list.findIndex(c => c.$id === payload.$id);
+      if (index >= 0) {
+        setList(prev => {
+          const updated = [...prev];
+          updated[index] = { ...updated[index], ...payload };
+          // Re-sort by lastMessageAt
+          return updated.sort((a, b) => 
+            new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)
+          );
+        });
+        return true;
+      }
+      return false;
+    };
+
+    // Try updating in each list
+    if (!updateChatInList(defaultGroups, setDefaultGroups)) {
+      if (!updateChatInList(customGroups, setCustomGroups)) {
+        updateChatInList(privateChats, setPrivateChats);
+      }
+    }
+
+    // Refresh unread count for this chat
+    if (user?.$id) {
+      const count = await getUnreadCount(payload.$id, user.$id);
+      setUnreadCounts(prev => ({ ...prev, [payload.$id]: count }));
+    }
+  }, [defaultGroups, customGroups, privateChats, user?.$id]);
+
+  // Subscribe to chat list updates
+  useChatList(user?.$id, handleRealtimeChatUpdate, !!user?.$id);
 
   useEffect(() => {
     if (user?.department) {

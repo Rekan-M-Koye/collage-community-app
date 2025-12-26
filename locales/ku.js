@@ -620,25 +620,24 @@ export default {
     blockUser: 'بلۆککردنی بەکارهێنەر',
     searchComingSoon: 'تایبەتمەندی گەڕان بەم زووانە دێت!',
     clearChatComingSoon: 'تایبەتمەندی سڕینەوەی گفتوگۆ بەم زووانە دێت!',
-    blockComingSoon: 'تایبەتمەندی بلۆککردن بەم زووانە دێت!',
+    blockConfirm: 'ئایا دڵنیایت لە بلۆککردنی {name}؟',
+    userBlocked: 'بەکارهێنەر بلۆک کرا',
+    blockError: 'شکستی هێنا لە بلۆککردنی بەکارهێنەر',
     // Message display
     pinnedMessage: 'نامەی هەڵواسکراو',
     repliedToYou: 'وەڵامی داوتەوە',
     mentionedYou: 'ئاماژەی پێتکرد',
     insertMention: 'دانانی ئاماژە',
-  },
-  
-  // Post Screen
-  post: {
-    createPost: 'دروستکردنی پۆست',
-    whatsOnMind: 'چی لە مێشکتدایە؟',
-    postQuestion: 'پۆستکردنی پرسیار',
-    shareKnowledge: 'هاوبەشکردنی زانیاری',
-    emptyTitle: 'پۆستێک دروست بکە',
-    emptyMessage: 'پرسیار، تێبینی هاوبەش بکە یان گفتوگۆیەک دەست پێبکە لەگەڵ هاوتەمەنەکانت',
-    details: 'وردەکارییەکانی پۆست',
-    comingSoon: 'بەم زووانە',
-    detailsComingSoon: 'بینینی وردەکارییەکانی پۆست بەردەست دەبێت کاتێک بنکەی زانیاری ئامادە بێت.',
+    // Representative management
+    manageRepresentatives: 'بەڕێوەبردنی نوێنەران',
+    representatives: 'نوێنەران',
+    addRepresentative: 'زیادکردنی نوێنەر',
+    removeRepresentative: 'سڕینەوەی نوێنەر',
+    removeRepresentativeConfirm: 'دڵنیایت لە سڕینەوەی ئەم نوێنەرە؟',
+    representativeAdded: 'نوێنەر بە سەرکەوتوویی زیادکرا',
+    representativeRemoved: 'نوێنەر بە سەرکەوتوویی سڕایەوە',
+    representativeAddError: 'نەتوانرا نوێنەر زیادبکرێت',
+    representativeRemoveError: 'نەتوانرا نوێنەر سڕدرێتەوە',
   },
   
   // Lecture Screen
@@ -679,6 +678,11 @@ export default {
     notSignedIn: 'چوونەژوورەوە نەکراوە',
     pleaseSignIn: 'تکایە بچۆژوورەوە بۆ بینینی پرۆفایلەکەت',
     userNotFound: 'بەکارهێنەر نەدۆزرایەوە',
+    followError: 'شکستی هێنا لە نوێکردنەوەی دۆخی شوێنکەوتن',
+    blockUser: 'بلۆککردنی بەکارهێنەر',
+    blockConfirm: 'ئایا دڵنیایت لە بلۆککردنی {name}؟',
+    userBlocked: 'بەکارهێنەر بلۆک کرا',
+    blockError: 'شکستی هێنا لە بلۆککردنی بەکارهێنەر',
   },
   
   // Settings Screen
@@ -833,6 +837,7 @@ export default {
     reportReason: 'هۆکاری گوزارشتکردن',
     reportSuccess: 'پۆستەکە بە سەرکەوتوویی گوزارشت کرا',
     reportError: 'گوزارشتکردنی پۆست سەرکەوتوو نەبوو',
+    alreadyReported: 'تۆ پێشتر گوزارشتت کردووە لەم پۆستە',
     hidden: 'شاراوە',
     hiddenByReports: 'ئەم پۆستە بەهۆی چەند گوزارشتێکەوە شاردراوەتەوە',
     posts: 'پۆستەکان',
@@ -860,6 +865,11 @@ export default {
     bestAnswer: 'باشترین وەڵام',
     alreadyUpvoted: 'تۆ پێشتر دەنگت بەرز کردووەتەوە بۆ ئەم وەڵامە',
     alreadyDownvoted: 'تۆ پێشتر دەنگت نزم کردووەتەوە بۆ ئەم وەڵامە',
+    postNotFound: 'پۆستەکە نەدۆزرایەوە',
+    deleteReplyError: 'سڕینەوەی وەڵام سەرکەوتوو نەبوو',
+    updateReplyError: 'نوێکردنەوەی وەڵام سەرکەوتوو نەبوو',
+    upvoteError: 'دەنگبەرزکردنەوە سەرکەوتوو نەبوو',
+    downvoteError: 'دەنگنزمکردنەوە سەرکەوتوو نەبوو',
   },
   
   // Search
@@ -916,6 +926,8 @@ export default {
     hide: 'شاردنەوە',
     user: 'بەکارهێنەر',
     remove: 'لابردن',
+    block: 'بلۆک',
+    unblock: 'لابردنی بلۆک',
   },
 
   error: {

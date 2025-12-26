@@ -132,7 +132,7 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
           : 'rgba(0,0,0,0.02)',
         borderTopColor: isDarkMode 
           ? 'rgba(255,255,255,0.1)' 
-          : 'rgba(0,0,0,0.1)',
+          : 'rgba(0,0,0,0.05)',
         paddingBottom: Platform.OS === 'ios' ? spacing.sm : spacing.md,
       }
     ]}>
@@ -140,7 +140,7 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
           <View style={[
             styles.replyPreview,
             { 
-              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              backgroundColor: 'transparent',
               borderLeftColor: theme.primary,
             }
           ]}>

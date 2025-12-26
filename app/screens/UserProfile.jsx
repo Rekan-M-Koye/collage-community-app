@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, Alert } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,9 +8,10 @@ import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import PostCard from '../components/PostCard';
 import { getPostsByUser, togglePostLike } from '../../database/posts';
-import { getUserById } from '../../database/users';
+import { getUserById, followUser, unfollowUser, isFollowing as checkIsFollowing, blockUser } from '../../database/users';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
+import { useUserProfile } from '../hooks/useRealtimeSubscription';
 
 const UserProfile = ({ route, navigation }) => {
   const { userId, userData: initialUserData } = route.params;
@@ -26,31 +27,59 @@ const UserProfile = ({ route, navigation }) => {
   const [userData, setUserData] = useState(initialUserData || null);
   const [loadingUser, setLoadingUser] = useState(!initialUserData);
   const [userError, setUserError] = useState(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockLoading, setBlockLoading] = useState(false);
+
+  // Smart realtime subscription for user profile updates (followers, etc.)
+  const handleProfileUpdate = useCallback((payload) => {
+    if (payload.$id === userId) {
+      setUserData(prev => ({
+        ...prev,
+        followersCount: payload.followersCount ?? prev?.followersCount ?? 0,
+        followingCount: payload.followingCount ?? prev?.followingCount ?? 0,
+        postsCount: payload.postsCount ?? prev?.postsCount ?? 0,
+        bio: payload.bio ?? prev?.bio ?? '',
+        profilePicture: payload.profilePicture ?? prev?.profilePicture ?? '',
+      }));
+    }
+  }, [userId]);
+
+  useUserProfile(userId, handleProfileUpdate, !!userId);
+
+  // Check follow status on mount
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!currentUser?.$id || !userId || currentUser.$id === userId) return;
+      try {
+        const following = await checkIsFollowing(currentUser.$id, userId);
+        setIsFollowing(following);
+      } catch (error) {
+        // Silently fail
+      }
+    };
+    checkFollowStatus();
+  }, [currentUser?.$id, userId]);
 
   // Fetch user data if not provided
   useEffect(() => {
     const fetchUserData = async () => {
       if (initialUserData) {
-        console.log('[UserProfile] Using initial userData:', initialUserData);
         setUserData(initialUserData);
         setLoadingUser(false);
         return;
       }
 
       if (!userId) {
-        console.log('[UserProfile] No userId provided');
         setUserError('No user ID provided');
         setLoadingUser(false);
         return;
       }
 
-      console.log('[UserProfile] Fetching user data for userId:', userId);
       setLoadingUser(true);
       setUserError(null);
 
       try {
         const fetchedUser = await getUserById(userId);
-        console.log('[UserProfile] Fetched user data:', fetchedUser);
         
         // Map the database fields to expected format
         const mappedUser = {
@@ -68,10 +97,8 @@ const UserProfile = ({ route, navigation }) => {
           followingCount: fetchedUser.followingCount || 0,
         };
         
-        console.log('[UserProfile] Mapped user data:', mappedUser);
         setUserData(mappedUser);
       } catch (error) {
-        console.log('[UserProfile] Error fetching user:', error.message);
         setUserError(error.message);
       } finally {
         setLoadingUser(false);
@@ -84,21 +111,19 @@ const UserProfile = ({ route, navigation }) => {
   const loadUserPosts = useCallback(async () => {
     if (!userId) return;
     
-    console.log('[UserProfile] Loading posts for userId:', userId);
     setLoadingPosts(true);
     setPostsError(null);
     try {
       const posts = await getPostsByUser(userId, 20, 0);
-      console.log('[UserProfile] Loaded posts:', posts.length);
       setUserPosts(posts);
       setPostsLoaded(true);
     } catch (error) {
-      console.log('[UserProfile] Error loading posts:', error.message);
       setPostsError(error.message);
     } finally {
       setLoadingPosts(false);
     }
   }, [userId]);
+
 
   useEffect(() => {
     if (userId && !postsLoaded) {
@@ -113,16 +138,72 @@ const UserProfile = ({ route, navigation }) => {
   }, [activeTab, postsLoaded, userId, loadUserPosts]);
 
   const handleFollowToggle = async () => {
-    if (followLoading) return;
+    if (followLoading || !currentUser?.$id || !userId || currentUser.$id === userId) return;
     
     setFollowLoading(true);
+    const wasFollowing = isFollowing;
+    
     try {
-      setIsFollowing(!isFollowing);
+      // Optimistic update
+      setIsFollowing(!wasFollowing);
+      setUserData(prev => ({
+        ...prev,
+        followersCount: wasFollowing 
+          ? Math.max(0, (prev?.followersCount || 0) - 1)
+          : (prev?.followersCount || 0) + 1
+      }));
+      
+      if (wasFollowing) {
+        await unfollowUser(currentUser.$id, userId);
+      } else {
+        await followUser(currentUser.$id, userId);
+      }
     } catch (error) {
-      setIsFollowing(!isFollowing);
+      // Revert on error
+      setIsFollowing(wasFollowing);
+      setUserData(prev => ({
+        ...prev,
+        followersCount: wasFollowing 
+          ? (prev?.followersCount || 0) + 1
+          : Math.max(0, (prev?.followersCount || 0) - 1)
+      }));
+      Alert.alert(t('common.error'), t('profile.followError') || 'Failed to update follow status');
     } finally {
       setFollowLoading(false);
     }
+  };
+
+  const handleBlockUser = async () => {
+    if (blockLoading || !currentUser?.$id || !userId || currentUser.$id === userId) return;
+    
+    Alert.alert(
+      t('profile.blockUser') || 'Block User',
+      (t('profile.blockConfirm') || 'Are you sure you want to block {name}?').replace('{name}', userData?.fullName || 'this user'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.block') || 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            setBlockLoading(true);
+            try {
+              await blockUser(currentUser.$id, userId);
+              setIsBlocked(true);
+              setIsFollowing(false);
+              Alert.alert(
+                t('common.success'),
+                t('profile.userBlocked') || 'User has been blocked'
+              );
+              navigation.goBack();
+            } catch (error) {
+              Alert.alert(t('common.error'), t('profile.blockError') || 'Failed to block user');
+            } finally {
+              setBlockLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleLike = async (postId) => {
@@ -425,6 +506,29 @@ const UserProfile = ({ route, navigation }) => {
               </LinearGradient>
             </TouchableOpacity>
             
+            {/* Block User Button - Only show for other users */}
+            {currentUser?.$id && userId && currentUser.$id !== userId && (
+              <TouchableOpacity 
+                onPress={handleBlockUser} 
+                activeOpacity={0.8}
+                disabled={blockLoading}
+                style={styles.blockButtonContainer}
+              >
+                <View style={[styles.blockButton, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                  {blockLoading ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <>
+                      <Ionicons name="ban-outline" size={moderateScale(16)} color="#EF4444" />
+                      <Text style={[styles.blockButtonText, { fontSize: fontSize(12), color: '#EF4444' }]}>
+                        {t('profile.blockUser')}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
+            )}
+            
             <View style={[styles.statsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)' }]}>
               <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.posts}</Text>
@@ -523,6 +627,23 @@ const styles = StyleSheet.create({
   followButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  blockButtonContainer: {
+    marginBottom: spacing.sm,
+  },
+  blockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    gap: spacing.xs,
+  },
+  blockButtonText: {
+    fontWeight: '600',
   },
   statsContainer: { 
     flexDirection: 'row', 

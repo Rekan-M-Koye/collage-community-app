@@ -80,7 +80,7 @@ const ManageRepresentatives = ({ navigation }) => {
       const fetchedChats = await getUserGroupChats(user.department, stageValue);
       setChats(fetchedChats);
     } catch (error) {
-      Alert.alert(t('common.error'), 'Failed to load chats');
+      Alert.alert(t('common.error'), t('chats.errorLoadingChats'));
     } finally {
       setLoading(false);
     }
@@ -114,9 +114,9 @@ const ManageRepresentatives = ({ navigation }) => {
       
       setSearchQuery('');
       setSearchResults([]);
-      Alert.alert(t('common.success'), 'Representative added successfully');
+      Alert.alert(t('common.success'), t('chats.representativeAdded'));
     } catch (error) {
-      Alert.alert(t('common.error'), 'Failed to add representative');
+      Alert.alert(t('common.error'), t('chats.representativeAddError'));
     }
   };
 
@@ -124,8 +124,8 @@ const ManageRepresentatives = ({ navigation }) => {
     if (!selectedChat) return;
 
     Alert.alert(
-      'Remove Representative',
-      'Are you sure you want to remove this representative?',
+      t('chats.removeRepresentative'),
+      t('chats.removeRepresentativeConfirm'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -143,9 +143,9 @@ const ManageRepresentatives = ({ navigation }) => {
               );
               setChats(updatedChats);
               
-              Alert.alert(t('common.success'), 'Representative removed successfully');
+              Alert.alert(t('common.success'), t('chats.representativeRemoved'));
             } catch (error) {
-              Alert.alert(t('common.error'), 'Failed to remove representative');
+              Alert.alert(t('common.error'), t('chats.representativeRemoveError'));
             }
           },
         },

@@ -149,31 +149,48 @@ export const searchPosts = async (searchQuery, userDepartment = null, userMajor 
             return [];
         }
 
+        // Use server-side search with Query.search for full-text search
+        // Falls back to Query.contains if search index not available
         const queries = [
-            Query.limit(500),
+            Query.limit(limit),
+            Query.orderDesc('$createdAt')
+        ];
+
+        // Try full-text search on topic field (most commonly searched)
+        try {
+            const searchQueries = [
+                Query.search('topic', sanitizedQuery),
+                Query.limit(limit),
+                Query.orderDesc('$createdAt')
+            ];
+
+            const posts = await databases.listDocuments(
+                config.databaseId,
+                config.postsCollectionId,
+                searchQueries
+            );
+            
+            if (posts.documents.length > 0) {
+                return posts.documents;
+            }
+        } catch (searchError) {
+            // Full-text search not available, fall back to contains query
+        }
+
+        // Fallback: Use contains query on topic (still server-side)
+        const containsQueries = [
+            Query.contains('topic', [sanitizedQuery]),
+            Query.limit(limit),
             Query.orderDesc('$createdAt')
         ];
 
         const posts = await databases.listDocuments(
             config.databaseId,
             config.postsCollectionId,
-            queries
+            containsQueries
         );
         
-        const searchLower = sanitizedQuery.toLowerCase();
-        const filtered = posts.documents.filter(post => {
-            const matchesSearch = 
-                post.title?.toLowerCase().includes(searchLower) ||
-                post.topic?.toLowerCase().includes(searchLower) ||
-                post.content?.toLowerCase().includes(searchLower) ||
-                post.text?.toLowerCase().includes(searchLower) ||
-                post.description?.toLowerCase().includes(searchLower) ||
-                post.userName?.toLowerCase().includes(searchLower);
-            
-            return matchesSearch;
-        }).slice(0, limit);
-        
-        return filtered;
+        return posts.documents;
     } catch (error) {
         return [];
     }
@@ -453,5 +470,41 @@ export const enrichPostsWithUserData = async (posts) => {
         }
         return post;
     });
+};
+
+export const reportPost = async (postId, userId, reason = '') => {
+    try {
+        if (!postId || typeof postId !== 'string') {
+            throw new Error('Invalid post ID');
+        }
+        if (!userId || typeof userId !== 'string') {
+            throw new Error('Invalid user ID');
+        }
+
+        const post = await getPost(postId);
+        const reportedBy = post.reportedBy || [];
+
+        if (reportedBy.includes(userId)) {
+            return { alreadyReported: true };
+        }
+
+        const newReportedBy = [...reportedBy, userId];
+        const reportCount = newReportedBy.length;
+
+        await databases.updateDocument(
+            config.databaseId,
+            config.postsCollectionId,
+            postId,
+            {
+                reportedBy: newReportedBy,
+                reportCount: reportCount,
+                isHidden: reportCount >= 5,
+            }
+        );
+
+        return { success: true, reportCount };
+    } catch (error) {
+        throw error;
+    }
 };
 

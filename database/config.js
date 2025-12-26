@@ -1,20 +1,50 @@
 import { Client, Account, Databases, Storage } from 'appwrite';
 
+// Suppress Appwrite SDK realtime connection errors from console
+const originalConsoleError = console.error;
+console.error = (...args) => {
+    const message = args[0];
+    // Filter out Appwrite realtime reconnection messages
+    if (typeof message === 'string' && message.includes('Realtime got disconnected')) {
+        return;
+    }
+    // Filter out WebSocket error objects from Appwrite
+    if (typeof message === 'object' && message?.code === 1008) {
+        return;
+    }
+    originalConsoleError.apply(console, args);
+};
+
 const client = new Client();
 
-// Log config for debugging (will be removed in production)
 const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
 const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
 
 if (!endpoint || !projectId) {
-    console.error('[Config] CRITICAL: Missing Appwrite endpoint or project ID!');
-    console.error('[Config] EXPO_PUBLIC_APPWRITE_ENDPOINT:', endpoint ? 'SET' : 'MISSING');
-    console.error('[Config] EXPO_PUBLIC_APPWRITE_PROJECT_ID:', projectId ? 'SET' : 'MISSING');
+    originalConsoleError('Missing Appwrite endpoint or project ID in environment variables');
 }
 
 client
     .setEndpoint(endpoint)
     .setProject(projectId);
+
+// Create a wrapper for realtime subscription with error handling
+export const safeSubscribe = (channel, callback) => {
+    try {
+        const unsubscribe = client.subscribe(channel, (response) => {
+            // Silently ignore error responses from WebSocket
+            if (response.code && response.message) {
+                return;
+            }
+            callback(response);
+        });
+        
+        return unsubscribe;
+    } catch (error) {
+        // Return no-op unsubscribe function on error
+        return () => {};
+    }
+};
 
 export const account = new Account(client);
 export const databases = new Databases(client);
@@ -31,15 +61,7 @@ export const config = {
     chatsCollectionId: process.env.EXPO_PUBLIC_APPWRITE_CHATS_COLLECTION_ID,
     messagesCollectionId: process.env.EXPO_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID,
     userChatSettingsCollectionId: process.env.EXPO_PUBLIC_APPWRITE_USER_CHAT_SETTINGS_COLLECTION_ID,
-    followsCollectionId: process.env.EXPO_PUBLIC_APPWRITE_FOLLOWS_COLLECTION_ID || 'follows',
+    followsCollectionId: process.env.EXPO_PUBLIC_APPWRITE_FOLLOWS_COLLECTION_ID,
 };
-
-// Log missing collection configs for debugging
-if (!config.chatsCollectionId) {
-    console.warn('[Config] EXPO_PUBLIC_APPWRITE_CHATS_COLLECTION_ID is not set - Chat features will not work');
-}
-if (!config.messagesCollectionId) {
-    console.warn('[Config] EXPO_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID is not set - Messages will not work');
-}
 
 export default client;

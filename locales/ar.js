@@ -620,25 +620,24 @@ export default {
     blockUser: 'حظر المستخدم',
     searchComingSoon: 'ميزة البحث قادمة قريباً!',
     clearChatComingSoon: 'ميزة مسح المحادثة قادمة قريباً!',
-    blockComingSoon: 'ميزة الحظر قادمة قريباً!',
+    blockConfirm: 'هل أنت متأكد من حظر {name}؟',
+    userBlocked: 'تم حظر المستخدم',
+    blockError: 'فشل في حظر المستخدم',
     // Message display
     pinnedMessage: 'رسالة مثبتة',
     repliedToYou: 'رد عليك',
     mentionedYou: 'أشار إليك',
     insertMention: 'إدراج إشارة',
-  },
-  
-  // Post Screen
-  post: {
-    createPost: 'إنشاء منشور',
-    whatsOnMind: 'ما الذي يدور في ذهنك؟',
-    postQuestion: 'نشر سؤال',
-    shareKnowledge: 'مشاركة المعرفة',
-    emptyTitle: 'إنشاء منشور',
-    emptyMessage: 'شارك الأسئلة أو الملاحظات أو ابدأ نقاشاً مع أقرانك',
-    details: 'تفاصيل المنشور',
-    comingSoon: 'قريباً',
-    detailsComingSoon: 'سيكون عرض تفاصيل المنشور متاحاً بمجرد أن تكون قاعدة البيانات جاهزة.',
+    // Representative management
+    manageRepresentatives: 'إدارة الممثلين',
+    representatives: 'الممثلون',
+    addRepresentative: 'إضافة ممثل',
+    removeRepresentative: 'إزالة الممثل',
+    removeRepresentativeConfirm: 'هل أنت متأكد من إزالة هذا الممثل؟',
+    representativeAdded: 'تمت إضافة الممثل بنجاح',
+    representativeRemoved: 'تمت إزالة الممثل بنجاح',
+    representativeAddError: 'فشل في إضافة الممثل',
+    representativeRemoveError: 'فشل في إزالة الممثل',
   },
   
   // Lecture Screen
@@ -679,6 +678,11 @@ export default {
     notSignedIn: 'غير مسجل الدخول',
     pleaseSignIn: 'الرجاء تسجيل الدخول لعرض ملفك الشخصي',
     userNotFound: 'المستخدم غير موجود',
+    followError: 'فشل في تحديث حالة المتابعة',
+    blockUser: 'حظر المستخدم',
+    blockConfirm: 'هل أنت متأكد من حظر {name}؟',
+    userBlocked: 'تم حظر المستخدم',
+    blockError: 'فشل في حظر المستخدم',
   },
   
   // Settings Screen
@@ -833,6 +837,7 @@ export default {
     reportReason: 'سبب الإبلاغ',
     reportSuccess: 'تم الإبلاغ عن المنشور بنجاح',
     reportError: 'فشل الإبلاغ عن المنشور',
+    alreadyReported: 'لقد قمت بالإبلاغ عن هذا المنشور مسبقاً',
     hidden: 'مخفي',
     hiddenByReports: 'تم إخفاء هذا المنشور بسبب عدة تقارير',
     posts: 'المنشورات',
@@ -860,6 +865,11 @@ export default {
     bestAnswer: 'أفضل إجابة',
     alreadyUpvoted: 'لقد صوت بالفعل لصالح هذا الرد',
     alreadyDownvoted: 'لقد صوت بالفعل ضد هذا الرد',
+    postNotFound: 'المنشور غير موجود',
+    deleteReplyError: 'فشل حذف الرد',
+    updateReplyError: 'فشل تحديث الرد',
+    upvoteError: 'فشل التصويت لصالح',
+    downvoteError: 'فشل التصويت ضد',
   },
   
   // Search
@@ -916,6 +926,8 @@ export default {
     hide: 'إخفاء',
     user: 'مستخدم',
     remove: 'إزالة',
+    block: 'حظر',
+    unblock: 'إلغاء الحظر',
   },
 
   error: {

@@ -153,7 +153,7 @@ const SignUp = ({ navigation, route }) => {
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert(t('common.error'), 'Please enter a valid email address');
+      Alert.alert(t('common.error'), t('auth.validEmailRequired'));
       return false;
     }
     
@@ -184,7 +184,7 @@ const SignUp = ({ navigation, route }) => {
         return false;
       }
       if (passwordStrength === 'weak') {
-        Alert.alert(t('common.error'), 'Password is too weak. Use a mix of letters, numbers, and symbols.');
+        Alert.alert(t('common.error'), t('auth.passwordGuideWeak'));
         return false;
       }
       if (password !== confirmPassword) {

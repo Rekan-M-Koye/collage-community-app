@@ -31,9 +31,10 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost } from '../../database/posts';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
+import { usePosts } from '../hooks/useRealtimeSubscription';
 
 const POSTS_PER_PAGE = 15;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
@@ -58,6 +59,43 @@ const Home = ({ navigation }) => {
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const lastTapTime = useRef(0);
+
+  // Real-time subscription for new/updated posts
+  const handleRealtimePostUpdate = useCallback(async (payload) => {
+    // Check if this post matches current filters
+    const matchesFeed = 
+      selectedFeed === FEED_TYPES.PUBLIC ||
+      (selectedFeed === FEED_TYPES.DEPARTMENT && payload.department === user?.department) ||
+      (selectedFeed === FEED_TYPES.MAJOR && getDepartmentsInSameMajor(user?.department).includes(payload.department));
+    
+    const matchesStage = selectedStage === 'all' || payload.stage === selectedStage;
+
+    if (matchesFeed && matchesStage) {
+      setPosts(prev => {
+        // Check if post already exists (update case)
+        const existingIndex = prev.findIndex(p => p.$id === payload.$id);
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = { ...prev[existingIndex], ...payload };
+          return updated;
+        }
+        // New post - add to beginning
+        return [payload, ...prev];
+      });
+    }
+  }, [selectedFeed, selectedStage, user?.department]);
+
+  const handleRealtimePostDelete = useCallback((payload) => {
+    setPosts(prev => prev.filter(p => p.$id !== payload.$id));
+  }, []);
+
+  // Subscribe to real-time post updates
+  usePosts(
+    user?.department,
+    handleRealtimePostUpdate,
+    handleRealtimePostDelete,
+    !!user?.department
+  );
 
   useEffect(() => {
     if (user && user.department) {
@@ -285,6 +323,42 @@ const Home = ({ navigation }) => {
     );
   };
 
+  const handleReportPost = async (post) => {
+    if (!user?.$id) return;
+
+    showAlert(
+      t('post.reportPost'),
+      t('post.reportReason'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('post.report'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await reportPost(post.$id, user.$id);
+              if (result.alreadyReported) {
+                showAlert(t('common.info'), t('post.alreadyReported') || 'You have already reported this post', 'info');
+              } else {
+                showAlert(t('common.success'), t('post.reportSuccess'), 'success');
+              }
+            } catch (error) {
+              const errorInfo = handleNetworkError(error);
+              showAlert(
+                errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
+                t('post.reportError'),
+                [{ text: t('common.ok') }]
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderFooter = () => {
     if (!isLoadingMore) return null;
 
@@ -392,6 +466,7 @@ const Home = ({ navigation }) => {
               onReply={() => handlePostPress(item)}
               onEdit={() => handleEditPost(item)}
               onDelete={() => handleDeletePost(item)}
+              onReport={() => handleReportPost(item)}
               isLiked={item.likedBy?.includes(user?.$id)}
               isOwner={item.userId === user?.$id}
             />

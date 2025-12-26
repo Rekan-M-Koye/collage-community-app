@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, memo } from 'react';
 import { 
   View, 
   Text, 
@@ -221,9 +221,6 @@ const MessageBubble = ({
               <View style={[
                 styles.replyContainer,
                 { 
-                  backgroundColor: isCurrentUser 
-                    ? 'rgba(255,255,255,0.15)' 
-                    : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
                   borderLeftColor: isCurrentUser ? 'rgba(255,255,255,0.5)' : theme.primary,
                 }
               ]}>
@@ -234,7 +231,7 @@ const MessageBubble = ({
                     color: isCurrentUser ? 'rgba(255,255,255,0.9)' : theme.primary 
                   }
                 ]}>
-                  {message.replyToSender}
+                  {message.replyToSender || t('common.user')}
                 </Text>
                 <Text 
                   style={[
@@ -368,8 +365,8 @@ const MessageBubble = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    marginVertical: spacing.xs / 2,
+    paddingHorizontal: spacing.sm,
     position: 'relative',
   },
   currentUserContainer: {
@@ -395,14 +392,14 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   bubble: {
-    maxWidth: '75%',
-    minWidth: moderateScale(70),
-    paddingHorizontal: spacing.md,
+    maxWidth: '80%',
+    minWidth: moderateScale(100),
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
   },
   imageBubble: {
-    padding: spacing.xs,
+    padding: spacing.xs / 2,
   },
   currentUserBubble: {
     borderBottomRightRadius: spacing.xs,
@@ -431,36 +428,36 @@ const styles = StyleSheet.create({
   replyContainer: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
     borderLeftWidth: 3,
     borderRadius: borderRadius.sm,
+    backgroundColor: 'transparent',
   },
   replyToSender: {
     fontWeight: '600',
-    marginBottom: 1,
+    marginBottom: 2,
   },
   replyToContent: {
     fontWeight: '400',
   },
   messageImage: {
-    width: moderateScale(200),
-    height: moderateScale(200),
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.xs,
+    width: moderateScale(180),
+    height: moderateScale(180),
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xs / 2,
   },
   messageImageOnly: {
     marginBottom: 0,
   },
   messageText: {
-    lineHeight: fontSize(14) * 1.45,
-    flexWrap: 'wrap',
+    lineHeight: fontSize(14) * 1.5,
   },
   messageTextWithImage: {
-    marginTop: spacing.xs / 2,
+    marginTop: spacing.xs,
   },
   timeText: {
     alignSelf: 'flex-end',
-    marginTop: spacing.xs,
+    marginTop: spacing.xs / 2,
   },
   swipeIndicator: {
     position: 'absolute',
@@ -534,4 +531,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MessageBubble;
+export default memo(MessageBubble);

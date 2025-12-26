@@ -80,7 +80,7 @@ const Post = () => {
 
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('common.error'), 'Permission to access gallery is required');
+        Alert.alert(t('common.error'), t('settings.cameraPermissionRequired'));
         return;
       }
 
@@ -105,7 +105,7 @@ const Post = () => {
         setImages([...images, ...compressedImages]);
       }
     } catch (error) {
-      Alert.alert(t('common.error'), 'Failed to pick images');
+      Alert.alert(t('common.error'), t('post.imagePickError'));
     }
   };
 

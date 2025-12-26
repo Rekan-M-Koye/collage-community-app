@@ -1,5 +1,6 @@
 import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
+import { userCacheManager } from '../app/utils/cacheManager';
 
 const sanitizeSearchQuery = (query) => {
     if (typeof query !== 'string') return '';
@@ -17,32 +18,59 @@ export const searchUsers = async (searchQuery, limit = 10) => {
             return [];
         }
 
+        // Use server-side search with Query.search for full-text search
+        // Falls back to Query.contains if search index not available
+        try {
+            const searchQueries = [
+                Query.search('name', sanitizedQuery),
+                Query.limit(limit),
+                Query.orderDesc('$createdAt')
+            ];
+
+            const users = await databases.listDocuments(
+                config.databaseId,
+                config.usersCollectionId || '68fc7b42001bf7efbba3',
+                searchQueries
+            );
+            
+            if (users.documents.length > 0) {
+                return users.documents;
+            }
+        } catch (searchError) {
+            // Full-text search not available, fall back to contains query
+        }
+
+        // Fallback: Use contains query on name (still server-side)
+        const containsQueries = [
+            Query.contains('name', [sanitizedQuery]),
+            Query.limit(limit),
+            Query.orderDesc('$createdAt')
+        ];
+
         const users = await databases.listDocuments(
             config.databaseId,
             config.usersCollectionId || '68fc7b42001bf7efbba3',
-            [
-                Query.limit(100),
-                Query.orderDesc('$createdAt')
-            ]
+            containsQueries
         );
         
-        const searchLower = sanitizedQuery.toLowerCase();
-        const filtered = users.documents.filter(user => 
-            user.name?.toLowerCase().includes(searchLower) ||
-            user.email?.toLowerCase().includes(searchLower) ||
-            user.department?.toLowerCase().includes(searchLower)
-        ).slice(0, limit);
-        
-        return filtered;
+        return users.documents;
     } catch (error) {
         return [];
     }
 };
 
-export const getUserById = async (userId) => {
+export const getUserById = async (userId, skipCache = false) => {
     try {
         if (!userId || typeof userId !== 'string') {
             throw new Error('Invalid user ID');
+        }
+        
+        // Check cache first (unless explicitly skipped)
+        if (!skipCache) {
+            const cachedUser = await userCacheManager.getCachedUserData(userId);
+            if (cachedUser) {
+                return cachedUser;
+            }
         }
         
         const user = await databases.getDocument(
@@ -50,6 +78,10 @@ export const getUserById = async (userId) => {
             config.usersCollectionId || '68fc7b42001bf7efbba3',
             userId
         );
+        
+        // Cache the user data for future requests
+        await userCacheManager.cacheUserData(userId, user);
+        
         return user;
     } catch (error) {
         throw error;

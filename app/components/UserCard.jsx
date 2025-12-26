@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import ProfilePicture from './ProfilePicture';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -95,4 +95,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserCard;
+export default memo(UserCard);

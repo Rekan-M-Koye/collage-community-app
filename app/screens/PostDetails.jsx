@@ -106,7 +106,7 @@ const PostDetails = ({ navigation, route }) => {
     }
 
     if (!post?.$id) {
-      showAlert(t('common.error'), 'Post not found', 'error');
+      showAlert(t('common.error'), t('post.postNotFound'), 'error');
       return;
     }
 
@@ -134,6 +134,7 @@ const PostDetails = ({ navigation, route }) => {
           text: replyText.trim(),
           images: uploadedImageUrls.length > 0 ? uploadedImageUrls : (editingReply.images || []),
           imageDeleteUrls: uploadedImageDeleteUrls.length > 0 ? uploadedImageDeleteUrls : (editingReply.imageDeleteUrls || []),
+          links: linksArray.length > 0 ? linksArray : (editingReply.links || []),
           isEdited: true,
         };
 
@@ -148,6 +149,7 @@ const PostDetails = ({ navigation, route }) => {
           isAccepted: false,
           images: uploadedImageUrls,
           imageDeleteUrls: uploadedImageDeleteUrls,
+          links: linksArray,
           likeCount: 0,
           isEdited: false,
           parentReplyId: null,
@@ -202,7 +204,7 @@ const PostDetails = ({ navigation, route }) => {
               await loadReplies();
               showAlert(t('common.success'), t('post.replyDeleted'), 'success');
             } catch (error) {
-              showAlert(t('common.error'), 'Failed to delete reply', 'error');
+              showAlert(t('common.error'), t('post.deleteReplyError'), 'error');
             }
           },
         },
@@ -219,7 +221,7 @@ const PostDetails = ({ navigation, route }) => {
       }
       await loadReplies();
     } catch (error) {
-      showAlert(t('common.error'), 'Failed to update reply', 'error');
+      showAlert(t('common.error'), t('post.updateReplyError'), 'error');
     }
   };
 
@@ -255,7 +257,7 @@ const PostDetails = ({ navigation, route }) => {
       
       await loadReplies();
     } catch (error) {
-      showAlert(t('common.error'), 'Failed to upvote', 'error');
+      showAlert(t('common.error'), t('post.upvoteError'), 'error');
     }
   };
 
@@ -287,7 +289,7 @@ const PostDetails = ({ navigation, route }) => {
       
       await loadReplies();
     } catch (error) {
-      showAlert(t('common.error'), 'Failed to downvote', 'error');
+      showAlert(t('common.error'), t('post.downvoteError'), 'error');
     }
   };
 
@@ -472,7 +474,7 @@ const PostDetails = ({ navigation, route }) => {
                 { 
                   fontSize: fontSize(14),
                   color: theme.text,
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  backgroundColor: 'transparent',
                 }
               ]}
               placeholder={t('post.writeReply')}
@@ -486,7 +488,7 @@ const PostDetails = ({ navigation, route }) => {
             <TouchableOpacity
               style={[
                 styles.toggleLinksButton,
-                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }
+                { backgroundColor: 'transparent' }
               ]}
               onPress={() => setShowLinksInput(!showLinksInput)}
               activeOpacity={0.7}>
@@ -507,7 +509,7 @@ const PostDetails = ({ navigation, route }) => {
                   { 
                     fontSize: fontSize(12),
                     color: theme.text,
-                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    backgroundColor: 'transparent',
                   }
                 ]}
                 placeholder={t('post.linksPlaceholder')}
@@ -537,7 +539,7 @@ const PostDetails = ({ navigation, route }) => {
               <TouchableOpacity
                 style={[
                   styles.imageButton,
-                  { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+                  { backgroundColor: 'transparent' }
                 ]}
                 onPress={handleImagesSelected}
                 disabled={replyImages.length >= 3}
@@ -632,14 +634,14 @@ const styles = StyleSheet.create({
     paddingBottom: hp(12),
   },
   repliesSection: {
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   repliesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
   },
   repliesTitle: {
     fontWeight: 'bold',
@@ -663,10 +665,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   repliesList: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   replyInputSection: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   editingBanner: {
     flexDirection: 'row',
@@ -683,10 +685,10 @@ const styles = StyleSheet.create({
   },
   replyInput: {
     borderRadius: borderRadius.md,
-    padding: spacing.md,
-    minHeight: moderateScale(100),
+    padding: spacing.sm,
+    minHeight: moderateScale(80),
     textAlignVertical: 'top',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   toggleLinksButton: {
     flexDirection: 'row',

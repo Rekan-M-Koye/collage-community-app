@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import {
   View,
   Text,
@@ -309,12 +309,10 @@ const ReplyCard = ({
 
 const styles = StyleSheet.create({
   replyCard: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.15)',
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
   },
   acceptedCard: {
     backgroundColor: 'rgba(16, 185, 129, 0.08)',
@@ -339,7 +337,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   userInfo: {
     flexDirection: 'row',
@@ -347,18 +345,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: moderateScale(36),
-    height: moderateScale(36),
-    borderRadius: moderateScale(18),
+    width: moderateScale(32),
+    height: moderateScale(32),
+    borderRadius: moderateScale(16),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   avatarImage: {
-    width: moderateScale(36),
-    height: moderateScale(36),
-    borderRadius: moderateScale(18),
-    marginRight: spacing.sm,
+    width: moderateScale(32),
+    height: moderateScale(32),
+    borderRadius: moderateScale(16),
+    marginRight: spacing.xs,
   },
   avatarText: {
     fontWeight: '600',
@@ -377,49 +375,50 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   replyText: {
-    lineHeight: fontSize(14) * 1.5,
-    marginBottom: spacing.sm,
+    lineHeight: fontSize(14) * 1.4,
+    marginBottom: spacing.xs,
   },
   voteContainer: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   voteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    gap: spacing.xs / 2,
   },
   voteCount: {
     fontWeight: '600',
   },
   linksContainer: {
     borderRadius: borderRadius.sm,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
-    gap: spacing.xs,
+    padding: spacing.xs,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    gap: spacing.xs / 2,
   },
   linkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.sm,
+    padding: spacing.xs,
     borderRadius: borderRadius.xs,
-    gap: spacing.xs,
+    gap: spacing.xs / 2,
   },
   linkText: {
     flex: 1,
   },
   imagesScroll: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   replyImage: {
-    width: moderateScale(120),
-    height: moderateScale(120),
-    borderRadius: borderRadius.md,
-    marginRight: spacing.sm,
+    width: moderateScale(100),
+    height: moderateScale(100),
+    borderRadius: borderRadius.sm,
+    marginRight: spacing.xs,
   },
   menuOverlay: {
     flex: 1,
@@ -472,4 +471,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ReplyCard;
+export default memo(ReplyCard);

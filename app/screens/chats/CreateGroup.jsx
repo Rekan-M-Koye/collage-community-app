@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../../context/AppSettingsContext';
 import { useUser } from '../../context/UserContext';
-import { GlassContainer, GlassInput } from '../../components/GlassComponents';
+import { GlassInput } from '../../components/GlassComponents';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import ProfilePicture from '../../components/ProfilePicture';
 import { getUsersByDepartment } from '../../../database/users';
