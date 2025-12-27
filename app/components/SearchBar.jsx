@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   View,
   TextInput,
@@ -22,7 +22,7 @@ import PostCard from './PostCard';
 import { searchUsers } from '../../database/users';
 import { searchPosts } from '../../database/posts';
 
-const SearchBar = ({ onUserPress, onPostPress, iconOnly = false }) => {
+const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, ref) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +33,18 @@ const SearchBar = ({ onUserPress, onPostPress, iconOnly = false }) => {
     posts: [],
   });
   const searchTimeout = useRef(null);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    openWithQuery: (query) => {
+      setSearchQuery(query);
+      setIsModalVisible(true);
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        performSearch(query);
+      }, 100);
+    },
+  }));
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -318,7 +330,7 @@ const SearchBar = ({ onUserPress, onPostPress, iconOnly = false }) => {
       </Modal>
     </>
   );
-};
+});
 
 const styles = StyleSheet.create({
   iconOnlyButton: {

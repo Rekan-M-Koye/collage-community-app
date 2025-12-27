@@ -42,8 +42,10 @@ const CreatePost = ({ navigation, route }) => {
   const [stage, setStage] = useState('');
   const [visibility, setVisibility] = useState('department');
   const [images, setImages] = useState([]);
-  const [tags, setTags] = useState('');
-  const [links, setLinks] = useState('');
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [links, setLinks] = useState([]);
+  const [linkInput, setLinkInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const convertUserStageToStageValue = (userStage) => {
@@ -155,15 +157,9 @@ const CreatePost = ({ navigation, route }) => {
         }
       }
 
-      const tagArray = tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0);
+      const tagArray = tags.filter(tag => tag.length > 0);
 
-      const linkArray = links
-        .split('\n')
-        .map(link => link.trim())
-        .filter(link => link.length > 0);
+      const linkArray = links.filter(link => link.length > 0);
 
       const postData = {
         userId: user.$id,
@@ -286,7 +282,7 @@ const CreatePost = ({ navigation, route }) => {
 
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>
-              {t('post.topic')} *
+              {t('post.topic')}
             </Text>
             <TextInput
               style={styles.topicInput}
@@ -304,7 +300,7 @@ const CreatePost = ({ navigation, route }) => {
 
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>
-              {t('post.description')} *
+              {t('post.description')}
             </Text>
             <TextInput
               style={styles.textInput}
@@ -437,14 +433,61 @@ const CreatePost = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>
               {t('post.tags')} {t('common.optional')}
             </Text>
-            <TextInput
-              style={styles.topicInput}
-              value={tags}
-              onChangeText={setTags}
-              placeholder={t('post.tagsPlaceholder')}
-              placeholderTextColor="#9CA3AF"
-              editable={!loading}
-            />
+            <View style={styles.chipsInputContainer}>
+              {tags.map((tag, index) => (
+                <View key={index} style={styles.chip}>
+                  <Text style={styles.chipText}>#{tag}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const newTags = [...tags];
+                      newTags.splice(index, 1);
+                      setTags(newTags);
+                    }}
+                    style={styles.chipDelete}
+                    disabled={loading}
+                  >
+                    <Ionicons name="close" size={14} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TextInput
+                style={styles.chipInput}
+                value={tagInput}
+                onChangeText={(text) => {
+                  // Check for space, comma, or newline to create tag
+                  if (text.includes(' ') || text.includes(',') || text.includes('\n')) {
+                    const parts = text.split(/[\s,\n]+/).filter(Boolean);
+                    const newTags = [];
+                    parts.forEach(part => {
+                      const cleanTag = part.trim().replace(/^#/, '');
+                      if (cleanTag && !tags.includes(cleanTag) && !newTags.includes(cleanTag)) {
+                        newTags.push(cleanTag);
+                      }
+                    });
+                    if (newTags.length > 0) {
+                      setTags([...tags, ...newTags]);
+                    }
+                    setTagInput('');
+                    return;
+                  }
+                  setTagInput(text);
+                }}
+                onSubmitEditing={() => {
+                  const newTag = tagInput.trim().replace(/^#/, '');
+                  if (newTag && !tags.includes(newTag)) {
+                    setTags([...tags, newTag]);
+                  }
+                  setTagInput('');
+                }}
+                placeholder={tags.length === 0 ? t('post.tagsPlaceholder') : ''}
+                placeholderTextColor="#9CA3AF"
+                editable={!loading}
+                blurOnSubmit={false}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+              />
+            </View>
             <Text style={styles.helperText}>
               {t('post.tagsHelper')}
             </Text>
@@ -454,19 +497,76 @@ const CreatePost = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>
               {t('post.links')} {t('common.optional')}
             </Text>
-            <TextInput
-              style={[styles.textInput, { minHeight: 100 }]}
-              value={links}
-              onChangeText={setLinks}
-              placeholder={t('post.linksPlaceholder')}
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              editable={!loading}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
+            <View style={styles.linksChipsContainer}>
+              {links.map((link, index) => (
+                <View key={index} style={styles.linkChip}>
+                  <Text style={styles.linkChipText} numberOfLines={1}>{link}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const newLinks = [...links];
+                      newLinks.splice(index, 1);
+                      setLinks(newLinks);
+                    }}
+                    style={styles.chipDelete}
+                    disabled={loading}
+                  >
+                    <Ionicons name="close" size={14} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+            <View style={styles.linkInputRow}>
+              <TextInput
+                style={[styles.topicInput, { flex: 1 }]}
+                value={linkInput}
+                onChangeText={(text) => {
+                  // Check for space or newline to add link
+                  if (text.includes(' ') || text.includes('\n')) {
+                    const parts = text.split(/[\s\n]+/).filter(Boolean);
+                    const newLinks = [];
+                    parts.forEach(part => {
+                      const cleanLink = part.trim();
+                      if (cleanLink && !links.includes(cleanLink) && !newLinks.includes(cleanLink)) {
+                        newLinks.push(cleanLink);
+                      }
+                    });
+                    if (newLinks.length > 0) {
+                      setLinks([...links, ...newLinks]);
+                    }
+                    setLinkInput('');
+                    return;
+                  }
+                  setLinkInput(text);
+                }}
+                placeholder={t('post.linksPlaceholder')}
+                placeholderTextColor="#9CA3AF"
+                editable={!loading}
+                autoCapitalize="none"
+                keyboardType="url"
+                blurOnSubmit={false}
+                autoCorrect={false}
+                onSubmitEditing={() => {
+                  const newLink = linkInput.trim();
+                  if (newLink && !links.includes(newLink)) {
+                    setLinks([...links, newLink]);
+                  }
+                  setLinkInput('');
+                }}
+              />
+              <TouchableOpacity
+                style={styles.addLinkButton}
+                onPress={() => {
+                  const newLink = linkInput.trim();
+                  if (newLink && !links.includes(newLink)) {
+                    setLinks([...links, newLink]);
+                  }
+                  setLinkInput('');
+                }}
+                disabled={loading || !linkInput.trim()}
+              >
+                <Ionicons name="add-circle" size={28} color={linkInput.trim() ? '#3B82F6' : '#D1D5DB'} />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.helperText}>
               {t('post.linksHelper')}
             </Text>
@@ -619,6 +719,82 @@ const styles = StyleSheet.create({
   visibilityTextSelected: {
     color: '#fff',
     fontWeight: '600',
+  },
+  chipsInputContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F9FAFB',
+    minHeight: 48,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DBEAFE',
+    borderRadius: 20,
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1D4ED8',
+  },
+  chipDelete: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(29, 78, 216, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipInput: {
+    flex: 1,
+    minWidth: 80,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 4,
+  },
+  linksChipsContainer: {
+    flexDirection: 'column',
+    gap: 8,
+    marginBottom: 8,
+  },
+  linkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DBEAFE',
+    borderRadius: 12,
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  linkChipText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1D4ED8',
+  },
+  linkInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addLinkButton: {
+    padding: 4,
   },
   bottomSpace: {
     height: 40,

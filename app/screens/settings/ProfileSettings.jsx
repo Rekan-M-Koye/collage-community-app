@@ -207,7 +207,7 @@ const ProfileSettings = ({ navigation }) => {
       const result = await uploadProfilePicture();
       
       if (result) {
-        const success = await updateProfilePicture(result.displayUrl);
+        const success = await updateProfilePicture(result.displayUrl, result.deleteUrl);
         
         if (success) {
           setProfileData({ ...profileData, profilePicture: result.displayUrl });

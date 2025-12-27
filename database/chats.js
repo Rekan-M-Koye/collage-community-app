@@ -227,16 +227,9 @@ export const sendMessage = async (chatId, messageData) => {
             mentionsAll,
         };
         
-        // Support both imageUrl (single) and images (array) for compatibility
+        // Handle image - use imageUrl field only (most reliable)
         if (hasImages) {
-            // Try to use images array first, fallback to imageUrl for single image
             documentData.imageUrl = messageData.images[0];
-            // Only add images array if collection supports it
-            try {
-                documentData.images = messageData.images;
-            } catch (e) {
-                // images field might not exist, imageUrl is the fallback
-            }
         }
         
         // Add reply fields if this is a reply

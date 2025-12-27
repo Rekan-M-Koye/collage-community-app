@@ -31,7 +31,7 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost, incrementPostViewCount } from '../../database/posts';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 import { usePosts } from '../hooks/useRealtimeSubscription';
@@ -55,6 +55,7 @@ const Home = ({ navigation }) => {
   const [showStageModal, setShowStageModal] = useState(false);
 
   const flatListRef = useRef(null);
+  const searchBarRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
@@ -252,12 +253,43 @@ const Home = ({ navigation }) => {
     return selectedStage.replace('stage_', '');
   };
 
+  const viewedPostsRef = useRef(new Set());
+
   const markPostAsViewed = async (postId) => {
+    if (!user?.$id || !postId || viewedPostsRef.current.has(postId)) return;
+    
+    viewedPostsRef.current.add(postId);
+    
     setUserInteractions(prev => ({
       ...prev,
       [postId]: { ...prev[postId], viewed: true }
     }));
+
+    try {
+      await incrementPostViewCount(postId, user.$id);
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.$id === postId
+            ? { ...post, viewCount: (post.viewCount || 0) + 1 }
+            : post
+        )
+      );
+    } catch (error) {
+    }
   };
+
+  const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+    viewableItems.forEach(({ item }) => {
+      if (item?.$id && item.userId !== user?.$id) {
+        markPostAsViewed(item.$id);
+      }
+    });
+  }, [user?.$id]);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 1000,
+  }).current;
 
   const handleLike = async (postId) => {
     if (!user?.$id) return;
@@ -457,16 +489,13 @@ const Home = ({ navigation }) => {
           <View style={styles.postContainer}>
             <PostCard
               post={item}
-              onPress={() => {
-                markPostAsViewed(item.$id);
-                handlePostPress(item);
-              }}
               onUserPress={() => handleUserPress({ $id: item.userId })}
               onLike={() => handleLike(item.$id)}
               onReply={() => handlePostPress(item)}
               onEdit={() => handleEditPost(item)}
               onDelete={() => handleDeletePost(item)}
               onReport={() => handleReportPost(item)}
+              onTagPress={(tag) => searchBarRef.current?.openWithQuery(`#${tag}`)}
               isLiked={item.likedBy?.includes(user?.$id)}
               isOwner={item.userId === user?.$id}
             />
@@ -487,6 +516,8 @@ const Home = ({ navigation }) => {
         ListFooterComponent={renderFooter}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
       />
     );
   };
@@ -521,6 +552,7 @@ const Home = ({ navigation }) => {
           >
             <View style={styles.searchIconButton}>
               <SearchBar
+                ref={searchBarRef}
                 iconOnly={true}
                 onUserPress={handleUserPress}
                 onPostPress={handlePostPress}

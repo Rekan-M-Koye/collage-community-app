@@ -142,7 +142,7 @@ export const pickAndCompressImages = async (options = {}) => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['image'],
       allowsMultipleSelection,
       quality: 1,
       selectionLimit: maxImages,
@@ -158,18 +158,29 @@ export const pickAndCompressImages = async (options = {}) => {
       throw new Error(`Maximum ${maxImages} images allowed`);
     }
 
-    const compressionQuality = COMPRESSION_QUALITY[quality.toUpperCase()] || COMPRESSION_QUALITY.MEDIUM;
-
+    // Compress images and get base64 for upload
     const compressedImages = await Promise.all(
-      selectedImages.map(asset => smartCompress(asset.uri))
+      selectedImages.map(async (asset) => {
+        const compressed = await manipulateAsync(
+          asset.uri,
+          [{ resize: { width: MAX_DIMENSION } }],
+          {
+            compress: COMPRESSION_QUALITY[quality.toUpperCase()] || COMPRESSION_QUALITY.MEDIUM,
+            format: SaveFormat.JPEG,
+            base64: true,
+          }
+        );
+        return {
+          uri: compressed.uri,
+          width: compressed.width,
+          height: compressed.height,
+          originalUri: asset.uri,
+          base64: compressed.base64,
+        };
+      })
     );
 
-    return compressedImages.map((compressed, index) => ({
-      uri: compressed.uri,
-      width: compressed.width,
-      height: compressed.height,
-      originalUri: selectedImages[index].uri,
-    }));
+    return compressedImages;
   } catch (error) {
     throw error;
   }
@@ -186,7 +197,7 @@ export const takePictureAndCompress = async (options = {}) => {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['image'],
       quality: 1,
       allowsEditing: false,
     });
@@ -195,15 +206,23 @@ export const takePictureAndCompress = async (options = {}) => {
       return null;
     }
 
-    const compressionQuality = COMPRESSION_QUALITY[quality.toUpperCase()] || COMPRESSION_QUALITY.MEDIUM;
-
-    const compressed = await smartCompress(result.assets[0].uri);
+    // Compress and get base64 for upload
+    const compressed = await manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: MAX_DIMENSION } }],
+      {
+        compress: COMPRESSION_QUALITY[quality.toUpperCase()] || COMPRESSION_QUALITY.MEDIUM,
+        format: SaveFormat.JPEG,
+        base64: true,
+      }
+    );
 
     return {
       uri: compressed.uri,
       width: compressed.width,
       height: compressed.height,
       originalUri: result.assets[0].uri,
+      base64: compressed.base64,
     };
   } catch (error) {
     throw error;

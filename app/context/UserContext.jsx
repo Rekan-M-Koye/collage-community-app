@@ -181,8 +181,24 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const updateProfilePicture = async (imageUrl) => {
+  const updateProfilePicture = async (imageUrl, deleteUrl = null) => {
     try {
+      // Delete old profile picture if exists
+      const oldDeleteUrl = await AsyncStorage.getItem('profilePictureDeleteUrl');
+      if (oldDeleteUrl) {
+        try {
+          const { deleteImageFromImgbb } = require('../../services/imgbbService');
+          await deleteImageFromImgbb(oldDeleteUrl);
+        } catch (deleteError) {
+          // Ignore delete errors, proceed with update
+        }
+      }
+      
+      // Store new delete URL if provided
+      if (deleteUrl) {
+        await AsyncStorage.setItem('profilePictureDeleteUrl', deleteUrl);
+      }
+      
       const appwriteUser = await getCurrentUser();
       if (appwriteUser) {
         const { updateUserDocument } = require('../../database/auth');

@@ -122,7 +122,7 @@ const ChatSettings = ({ navigation }) => {
 
   const pickCustomBackground = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['image'],
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.8,
@@ -162,6 +162,81 @@ const ChatSettings = ({ navigation }) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
+
+        {/* Bubble Settings Section with Preview */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.bubbleSettings') || 'Bubble Settings'}
+          </Text>
+          
+          {/* Bubble Preview - Shows actual bubble appearance */}
+          <GlassCard style={styles.previewCard}>
+            <View style={[
+              styles.bubblePreviewContainer,
+              { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }
+            ]}>
+              {/* Received message bubble */}
+              <View style={[
+                styles.previewBubbleWrapper,
+                { alignSelf: 'flex-start' }
+              ]}>
+                <View style={[
+                  styles.previewBubble,
+                  { 
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    borderRadius: getBubbleRadius(),
+                    borderBottomLeftRadius: spacing.xs / 2,
+                  }
+                ]}>
+                  <Text style={[styles.previewText, { color: theme.text }]}>
+                    {t('settings.sampleReceived') || 'Hey! How are you?'}
+                  </Text>
+                  <Text style={[styles.previewTime, { color: theme.textSecondary }]}>10:30</Text>
+                </View>
+              </View>
+              
+              {/* Sent message bubble - with current settings */}
+              <View style={[
+                styles.previewBubbleWrapper,
+                { alignSelf: 'flex-end' }
+              ]}>
+                {chatSettings.bubbleColor?.startsWith('gradient::') ? (
+                  <LinearGradient
+                    colors={chatSettings.bubbleColor.replace('gradient::', '').split(',')}
+                    style={[
+                      styles.previewBubble,
+                      { 
+                        borderRadius: getBubbleRadius(),
+                        borderBottomRightRadius: spacing.xs / 2,
+                      }
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+                      {t('settings.sampleSent') || "I'm doing great! 😊"}
+                    </Text>
+                    <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:31</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={[
+                    styles.previewBubble,
+                    { 
+                      backgroundColor: chatSettings.bubbleColor || '#667eea',
+                      borderRadius: getBubbleRadius(),
+                      borderBottomRightRadius: spacing.xs / 2,
+                    }
+                  ]}>
+                    <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+                      {t('settings.sampleSent') || "I'm doing great! 😊"}
+                    </Text>
+                    <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:31</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </GlassCard>
+        </View>
 
         {/* Bubble Style */}
         <View style={styles.section}>
@@ -358,54 +433,6 @@ const ChatSettings = ({ navigation }) => {
                   </View>
                 )}
               </TouchableOpacity>
-            </View>
-          </GlassCard>
-        </View>
-
-        {/* Preview */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-            {t('settings.preview') || 'Preview'}
-          </Text>
-          <GlassCard style={styles.previewCard}>
-            <View style={[
-              styles.previewContainer,
-              { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }
-            ]}>
-              {/* Received message */}
-              <View style={[styles.previewBubble, styles.receivedBubble, { 
-                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                borderRadius: getBubbleRadius(),
-              }]}>
-                <Text style={[styles.previewText, { color: theme.text }]}>
-                  {t('settings.sampleReceived') || 'Hey! How are you?'}
-                </Text>
-              </View>
-              
-              {/* Sent message */}
-              {chatSettings.bubbleColor?.startsWith('gradient::') ? (
-                <LinearGradient
-                  colors={chatSettings.bubbleColor.replace('gradient::', '').split(',')}
-                  style={[styles.previewBubble, styles.sentBubble, { 
-                    borderRadius: getBubbleRadius(),
-                  }]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
-                    {t('settings.sampleSent') || "I'm good! Thanks for asking 😊"}
-                  </Text>
-                </LinearGradient>
-              ) : (
-                <View style={[styles.previewBubble, styles.sentBubble, { 
-                  backgroundColor: chatSettings.bubbleColor,
-                  borderRadius: getBubbleRadius(),
-                }]}>
-                  <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
-                    {t('settings.sampleSent') || "I'm good! Thanks for asking 😊"}
-                  </Text>
-                </View>
-              )}
             </View>
           </GlassCard>
         </View>
@@ -607,16 +634,35 @@ const styles = StyleSheet.create({
     padding: 0,
     overflow: 'hidden',
   },
+  bubblePreviewContainer: {
+    padding: spacing.lg,
+    minHeight: moderateScale(140),
+    justifyContent: 'center',
+    gap: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  previewBubbleWrapper: {
+    maxWidth: '80%',
+  },
+  previewBubble: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    overflow: 'hidden',
+  },
+  previewText: {
+    fontSize: responsiveFontSize(14),
+    lineHeight: responsiveFontSize(20),
+  },
+  previewTime: {
+    fontSize: responsiveFontSize(9),
+    alignSelf: 'flex-end',
+    marginTop: spacing.xs / 2,
+  },
   previewContainer: {
     padding: spacing.md,
     minHeight: moderateScale(120),
     justifyContent: 'center',
     gap: spacing.sm,
-  },
-  previewBubble: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 4,
-    maxWidth: '75%',
   },
   receivedBubble: {
     alignSelf: 'flex-start',
@@ -625,10 +671,6 @@ const styles = StyleSheet.create({
   sentBubble: {
     alignSelf: 'flex-end',
     borderBottomRightRadius: spacing.xs / 2,
-  },
-  previewText: {
-    fontSize: responsiveFontSize(14),
-    lineHeight: responsiveFontSize(20),
   },
   stylesScrollContent: {
     paddingHorizontal: spacing.xs,

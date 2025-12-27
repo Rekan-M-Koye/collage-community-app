@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   ScrollView,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +60,7 @@ const SMART_POLL_INTERVAL = 10000; // Reduced polling, mostly rely on realtime
 
 const ChatRoom = ({ route, navigation }) => {
   const { chat } = route.params;
-  const { t, theme, isDarkMode } = useAppSettings();
+  const { t, theme, isDarkMode, chatSettings } = useAppSettings();
   const { user } = useUser();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -610,6 +611,39 @@ const ChatRoom = ({ route, navigation }) => {
     );
   }
 
+  // Get background colors based on chatSettings
+  const getBackgroundColors = () => {
+    const bgSetting = chatSettings?.backgroundImage;
+    
+    // Check if it's a gradient preset
+    if (bgSetting?.startsWith('gradient_')) {
+      const gradientMap = {
+        'gradient_purple': ['#667eea', '#764ba2'],
+        'gradient_blue': ['#1a1a2e', '#16213e'],
+        'gradient_green': ['#134e5e', '#71b280'],
+        'gradient_sunset': ['#ff7e5f', '#feb47b'],
+        'gradient_ocean': ['#2193b0', '#6dd5ed'],
+        'gradient_midnight': ['#232526', '#414345'],
+        'gradient_aurora': ['#00c6fb', '#005bea'],
+        'gradient_rose': ['#f4c4f3', '#fc67fa'],
+      };
+      return gradientMap[bgSetting] || (isDarkMode 
+        ? ['#1a1a2e', '#16213e', '#0f3460'] 
+        : ['#f0f4ff', '#d8e7ff', '#c0deff']);
+    }
+    
+    // Default gradient
+    return isDarkMode 
+      ? ['#1a1a2e', '#16213e', '#0f3460'] 
+      : ['#f0f4ff', '#d8e7ff', '#c0deff'];
+  };
+
+  // Check if using custom image background
+  const isCustomImageBackground = chatSettings?.backgroundImage && 
+    !chatSettings.backgroundImage.startsWith('gradient_') &&
+    !chatSettings.backgroundImage.startsWith('pattern_') &&
+    chatSettings.backgroundImage !== null;
+
   return (
     <View style={styles.container}>
       <StatusBar 
@@ -618,14 +652,68 @@ const ChatRoom = ({ route, navigation }) => {
         translucent
       />
       
-      <LinearGradient
-        colors={isDarkMode 
-          ? ['#1a1a2e', '#16213e', '#0f3460'] 
-          : ['#f0f4ff', '#d8e7ff', '#c0deff']
-        }
-        style={styles.gradient}>
+      {isCustomImageBackground ? (
+        <ImageBackground 
+          source={{ uri: chatSettings.backgroundImage }} 
+          style={styles.gradient}
+          resizeMode="cover">
+          <View style={styles.backgroundOverlay}>
+            <AnimatedBackground particleCount={15} />
+            
+            <KeyboardAvoidingView 
+              style={styles.keyboardAvoidingView}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 95 : 85}>
+              
+              {chat.requiresRepresentative && !canSend && (
+                <View style={[
+                  styles.warningBanner,
+                  { backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.15)' }
+                ]}>
+                  <Ionicons name="information-circle" size={moderateScale(18)} color="#F59E0B" />
+                  <Text style={[styles.warningText, { fontSize: fontSize(12), color: '#F59E0B' }]}>
+                    {t('chats.representativeOnlyChat')}
+                  </Text>
+                </View>
+              )}
+
+              <FlatList
+                ref={flatListRef}
+                data={memoizedMessages}
+                renderItem={renderMessage}
+                keyExtractor={(item, index) => item.$id || `message-${index}`}
+                contentContainerStyle={styles.messagesList}
+                ListEmptyComponent={renderEmpty}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                removeClippedSubviews={Platform.OS === 'android'}
+                maxToRenderPerBatch={15}
+                windowSize={10}
+                initialNumToRender={20}
+              />
+
+              <MessageInput 
+                onSend={handleSendMessage}
+                disabled={sending || !canSend}
+                placeholder={
+                  canSend 
+                    ? t('chats.typeMessage')
+                    : t('chats.cannotSendMessage')
+                }
+                replyingTo={replyingTo}
+                onCancelReply={cancelReply}
+                showMentionButton={chat.type === 'group'}
+                canMentionEveryone={canMentionEveryone}
+              />
+            </KeyboardAvoidingView>
+          </View>
+        </ImageBackground>
+      ) : (
+        <LinearGradient
+          colors={getBackgroundColors()}
+          style={styles.gradient}>
         
-        <AnimatedBackground particleCount={15} />
+          <AnimatedBackground particleCount={15} />
         
         <KeyboardAvoidingView 
           style={styles.keyboardAvoidingView}
@@ -674,6 +762,7 @@ const ChatRoom = ({ route, navigation }) => {
           />
         </KeyboardAvoidingView>
       </LinearGradient>
+      )}
 
       {/* Mute Options Modal */}
       <Modal
@@ -975,6 +1064,10 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+  },
+  backgroundOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   keyboardAvoidingView: {
     flex: 1,

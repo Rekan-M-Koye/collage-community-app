@@ -323,7 +323,7 @@ const PostDetails = ({ navigation, route }) => {
   const handlePickImages = async () => {
     try {
       const result = await ExpoImagePicker.launchImageLibraryAsync({
-        mediaTypes: ExpoImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['image'],
         allowsMultipleSelection: true,
         quality: 0.7,
       });
@@ -346,7 +346,7 @@ const PostDetails = ({ navigation, route }) => {
       }
 
       const result = await ExpoImagePicker.launchCameraAsync({
-        mediaTypes: ExpoImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['image'],
         quality: 0.7,
       });
 

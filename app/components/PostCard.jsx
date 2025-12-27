@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,22 @@ import {
   Modal,
   Share,
   Dimensions,
+  Linking,
+  Platform,
+  Alert,
+  ActivityIndicator,
+  Animated,
 } from 'react-native';
+import { PinchGestureHandler, State } from 'react-native-gesture-handler';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { POST_COLORS, POST_ICONS } from '../constants/postConstants';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const STAGE_COLORS = {
   stage_1: '#3B82F6',
@@ -29,9 +37,252 @@ const STAGE_COLORS = {
   all: '#6B7280',
 };
 
+const sanitizeTag = (tag) => {
+  if (!tag) return '';
+  return String(tag).replace(/[^a-zA-Z0-9\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s_-]/g, '').trim();
+};
+
+// Zoomable Image component with pinch gesture
+const ZoomableImage = ({ uri }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const baseScale = useRef(1);
+
+  const onPinchEvent = Animated.event(
+    [{ nativeEvent: { scale: scale } }],
+    { useNativeDriver: true }
+  );
+
+  const onPinchStateChange = (event) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      const newScale = baseScale.current * event.nativeEvent.scale;
+      baseScale.current = Math.min(Math.max(newScale, 1), 5);
+      
+      if (baseScale.current <= 1) {
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+        }).start();
+        baseScale.current = 1;
+      } else {
+        scale.setValue(baseScale.current);
+      }
+    }
+  };
+
+  return (
+    <PinchGestureHandler
+      onGestureEvent={onPinchEvent}
+      onHandlerStateChange={onPinchStateChange}
+    >
+      <Animated.View style={galleryStyles.imageWrapper}>
+        <Animated.Image
+          source={{ uri }}
+          style={[
+            galleryStyles.image,
+            { transform: [{ scale: Animated.multiply(scale, baseScale.current > 1 ? 1 : scale) }] }
+          ]}
+          resizeMode="contain"
+        />
+      </Animated.View>
+    </PinchGestureHandler>
+  );
+};
+
+// Image Gallery Component with pinch zoom, download, and proper counter
+const ImageGallery = ({ images, initialIndex, onClose, t }) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const scrollViewRef = useRef(null);
+
+  const handleScroll = (event) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const newIndex = Math.round(offsetX / SCREEN_WIDTH);
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < images.length) {
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('common.error'),
+          t('post.permissionDenied') || 'Permission to access media library is required'
+        );
+        return;
+      }
+
+      const imageUrl = images[currentIndex];
+      const filename = `collage_image_${Date.now()}.jpg`;
+      const fileUri = FileSystem.cacheDirectory + filename;
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        imageUrl,
+        fileUri,
+        {},
+        () => {}
+      );
+
+      const result = await downloadResumable.downloadAsync();
+      
+      if (result && result.uri) {
+        const asset = await MediaLibrary.createAssetAsync(result.uri);
+        if (asset) {
+          Alert.alert(
+            t('common.success'),
+            t('post.imageSaved') || 'Image saved to gallery'
+          );
+        }
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (error) {
+      Alert.alert(
+        t('common.error'),
+        t('post.downloadFailed') || 'Failed to download image'
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleShareImage = async () => {
+    try {
+      await Share.share({
+        url: images[currentIndex],
+        message: images[currentIndex],
+      });
+    } catch (error) {
+      // Share cancelled or failed
+    }
+  };
+
+  return (
+    <View style={galleryStyles.container}>
+      {/* Header */}
+      <View style={galleryStyles.header}>
+        <TouchableOpacity 
+          style={galleryStyles.headerButton}
+          onPress={onClose}
+        >
+          <Ionicons name="close" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        <Text style={galleryStyles.counter}>
+          {currentIndex + 1} / {images.length}
+        </Text>
+        
+        <View style={galleryStyles.headerActions}>
+          <TouchableOpacity 
+            style={galleryStyles.headerButton}
+            onPress={handleShareImage}
+          >
+            <Ionicons name="share-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={galleryStyles.headerButton}
+            onPress={handleDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="download-outline" size={24} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Images with pinch zoom */}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScroll}
+        contentOffset={{ x: initialIndex * SCREEN_WIDTH, y: 0 }}
+        scrollEventThrottle={16}
+      >
+        {images.map((img, index) => (
+          <ZoomableImage key={index} uri={img} />
+        ))}
+      </ScrollView>
+
+      {/* Zoom hint */}
+      <View style={galleryStyles.hintContainer}>
+        <Text style={galleryStyles.hintText}>
+          {t('post.pinchToZoom') || 'Pinch to zoom'}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const galleryStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  counter: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  imageWrapper: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  image: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.8,
+  },
+  hintContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  hintText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+  },
+});
+
 const PostCard = ({ 
   post, 
-  onPress, 
   onUserPress,
   onLike,
   onReply,
@@ -39,6 +290,7 @@ const PostCard = ({
   onDelete,
   onReport,
   onMarkResolved,
+  onTagPress,
   showImages = true,
   isLiked = false,
   isOwner = false,
@@ -52,6 +304,7 @@ const PostCard = ({
   const [likeCount, setLikeCount] = useState(post.likeCount || 0);
   const [isLiking, setIsLiking] = useState(false);
   const [resolved, setResolved] = useState(post.isResolved || false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const postColor = POST_COLORS[post.postType] || '#6B7280';
   const postIcon = POST_ICONS[post.postType] || 'document-outline';
@@ -237,11 +490,6 @@ const PostCard = ({
   };
 
   return (
-    <TouchableOpacity 
-      onPress={onPress}
-      activeOpacity={0.95}
-      disabled={!onPress}
-    >
       <View 
         style={[
           styles.card, 
@@ -302,22 +550,69 @@ const PostCard = ({
           {post.topic}
         </Text>
         {post.text && (
-          <Text style={[styles.text, { color: theme.textSecondary }]} numberOfLines={4} selectable>
+          <Text 
+            style={[styles.text, { color: theme.textSecondary }]} 
+            numberOfLines={isExpanded ? undefined : 3} 
+            selectable
+          >
             {post.text}
           </Text>
         )}
 
+        {post.links && post.links.length > 0 && (
+          <View style={styles.linksContainer}>
+            {(isExpanded ? post.links : post.links.slice(0, 2)).map((link, index) => {
+              const isEmail = link.includes('@') && !link.startsWith('http');
+              const linkUrl = isEmail ? `mailto:${link}` : link;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => Linking.openURL(linkUrl)}
+                  activeOpacity={0.7}
+                  style={styles.linkChipDisplay}
+                >
+                  <Ionicons 
+                    name={isEmail ? 'mail-outline' : 'link-outline'} 
+                    size={14} 
+                    color="#3B82F6" 
+                  />
+                  <Text style={styles.linkText} numberOfLines={1}>
+                    {link}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         {post.tags && post.tags.length > 0 && (
           <View style={styles.tagsContainer}>
-            {post.tags.slice(0, 3).map((tag, index) => (
-              <View key={index} style={[styles.tag, { backgroundColor: isDarkMode ? theme.border : theme.borderSecondary }]}>
-                <Text style={[styles.tagText, { color: theme.textSecondary }]}>#{sanitizeTag(tag)}</Text>
-              </View>
+            {(isExpanded ? post.tags : post.tags.slice(0, 4)).map((tag, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={[styles.tag, { backgroundColor: isDarkMode ? `${theme.primary}20` : `${theme.primary}15` }]}
+                onPress={() => onTagPress && onTagPress(sanitizeTag(tag))}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tagText, { color: theme.primary || '#3B82F6' }]}>#{sanitizeTag(tag)}</Text>
+              </TouchableOpacity>
             ))}
-            {post.tags.length > 3 && (
-              <Text style={[styles.moreTagsText, { color: theme.textTertiary }]}>+{post.tags.length - 3}</Text>
-            )}
           </View>
+        )}
+
+        {/* See More / See Less Button */}
+        {((post.text && post.text.length > 150) || 
+          (post.links && post.links.length > 2) || 
+          (post.tags && post.tags.length > 4)) && (
+          <TouchableOpacity 
+            onPress={() => setIsExpanded(!isExpanded)}
+            style={styles.seeMoreButton}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.seeMoreText, { color: theme.primary || '#3B82F6' }]}>
+              {isExpanded ? t('common.seeLess') : t('common.seeMore')}
+            </Text>
+          </TouchableOpacity>
         )}
 
         {showImages && renderImageLayout()}
@@ -467,42 +762,14 @@ const PostCard = ({
         animationType="fade"
         onRequestClose={() => setImageGalleryVisible(false)}
       >
-        <View style={styles.galleryContainer}>
-          <TouchableOpacity 
-            style={styles.galleryCloseButton}
-            onPress={() => setImageGalleryVisible(false)}
-          >
-            <Ionicons name="close" size={30} color="#fff" />
-          </TouchableOpacity>
-          
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: selectedImageIndex * SCREEN_WIDTH, y: 0 }}
-          >
-            {post.images && post.images.map((img, index) => (
-              <View key={index} style={styles.galleryImageWrapper}>
-                <Image 
-                  source={{ uri: img }}
-                  style={styles.galleryImage}
-                  resizeMode="contain"
-                />
-              </View>
-            ))}
-          </ScrollView>
-          
-          {post.images && post.images.length > 1 && (
-            <View style={styles.galleryCounter}>
-              <Text style={styles.galleryCounterText}>
-                {selectedImageIndex + 1} / {post.images.length}
-              </Text>
-            </View>
-          )}
-        </View>
+        <ImageGallery
+          images={post.images || []}
+          initialIndex={selectedImageIndex}
+          onClose={() => setImageGalleryVisible(false)}
+          t={t}
+        />
       </Modal>
     </View>
-    </TouchableOpacity>
   );
 };
 
@@ -606,26 +873,50 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     marginBottom: 10,
   },
+  linksContainer: {
+    marginTop: 8,
+    marginBottom: 4,
+    gap: 6,
+  },
+  linkChipDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+    alignSelf: 'flex-start',
+  },
+  linkText: {
+    fontSize: 13,
+    color: '#3B82F6',
+    flex: 1,
+  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 6,
+    marginTop: 8,
     alignItems: 'center',
   },
   tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginRight: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
     marginBottom: 6,
   },
   tagText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  moreTagsText: {
-    fontSize: 13,
-    fontWeight: '500',
+  seeMoreButton: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  seeMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   singleImage: {
     width: '100%',
@@ -774,47 +1065,6 @@ const styles = StyleSheet.create({
   },
   menuDivider: {
     height: 1,
-  },
-  galleryContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-  },
-  galleryCloseButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  galleryImageWrapper: {
-    width: SCREEN_WIDTH,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  galleryImage: {
-    width: SCREEN_WIDTH,
-    height: '100%',
-  },
-  galleryCounter: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  galleryCounterText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

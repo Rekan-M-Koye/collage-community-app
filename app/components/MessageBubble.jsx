@@ -11,6 +11,7 @@ import {
   PanResponder,
   Pressable,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import ProfilePicture from './ProfilePicture';
@@ -40,7 +41,7 @@ const MessageBubble = ({
   isBookmarked = false,
   onAvatarPress,
 }) => {
-  const { theme, isDarkMode, t } = useAppSettings();
+  const { theme, isDarkMode, t, chatSettings } = useAppSettings();
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [actionsVisible, setActionsVisible] = useState(false);
   
@@ -155,6 +156,80 @@ const MessageBubble = ({
     { icon: 'trash-outline', label: t('common.delete'), action: onDelete, show: isCurrentUser && onDelete, danger: true },
   ].filter(btn => btn.show);
 
+  // Render bubble content (used by both gradient and solid bubbles)
+  const renderBubbleContent = () => (
+    <>
+      {/* Pinned indicator */}
+      {isPinned && (
+        <View style={styles.pinnedIndicator}>
+          <Ionicons name="pin" size={moderateScale(12)} color={isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.primary} />
+          <Text style={[styles.pinnedText, { color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.primary, fontSize: fontSize(9) }]}>
+            {t('chats.pinnedMessages').split(' ')[0]}
+          </Text>
+        </View>
+      )}
+      
+      {hasReply && (
+        <View style={[
+          styles.replyContainer,
+          { 
+            borderLeftColor: isCurrentUser ? 'rgba(255,255,255,0.5)' : theme.primary,
+          }
+        ]}>
+          <Text style={[
+            styles.replyToSender, 
+            { 
+              fontSize: fontSize(10), 
+              color: isCurrentUser ? 'rgba(255,255,255,0.9)' : theme.primary 
+            }
+          ]}>
+            {message.replyToSender || t('common.user')}
+          </Text>
+          <Text 
+            style={[
+              styles.replyToContent, 
+              { 
+                fontSize: fontSize(11), 
+                color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.textSecondary 
+              }
+            ]}
+            numberOfLines={1}>
+            {message.replyToContent}
+          </Text>
+        </View>
+      )}
+
+      {hasImage && (
+        <TouchableOpacity 
+          onPress={() => setImageModalVisible(true)}
+          activeOpacity={0.9}>
+          <Image 
+            source={{ uri: imageUrl }}
+            style={[
+              styles.messageImage,
+              !hasText && styles.messageImageOnly,
+            ]}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      )}
+
+      {renderMessageContent()}
+      
+      <Text style={[
+        styles.timeText,
+        { 
+          fontSize: fontSize(9),
+          color: isCurrentUser 
+            ? 'rgba(255,255,255,0.6)' 
+            : theme.textSecondary
+        }
+      ]}>
+        {formatTime(message.createdAt || message.$createdAt)}
+      </Text>
+    </>
+  );
+
   return (
     <View style={[
       styles.container,
@@ -192,90 +267,44 @@ const MessageBubble = ({
             !isCurrentUser && showAvatar && styles.bubbleWithAvatar,
           ]}
           {...panResponder.panHandlers}>
-          <Pressable
-            onLongPress={handleLongPress}
-            delayLongPress={300}
-            style={[
-              styles.bubble,
-              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
-              {
-                backgroundColor: isCurrentUser 
-                  ? '#667eea'
-                  : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
-              },
-              hasImage && !hasText && styles.imageBubble,
-              isPinned && styles.pinnedBubble,
-            ]}>
-            
-            {/* Pinned indicator */}
-            {isPinned && (
-              <View style={styles.pinnedIndicator}>
-                <Ionicons name="pin" size={moderateScale(12)} color={isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.primary} />
-                <Text style={[styles.pinnedText, { color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.primary, fontSize: fontSize(9) }]}>
-                  {t('chats.pinnedMessages').split(' ')[0]}
-                </Text>
-              </View>
-            )}
-            
-            {hasReply && (
-              <View style={[
-                styles.replyContainer,
-                { 
-                  borderLeftColor: isCurrentUser ? 'rgba(255,255,255,0.5)' : theme.primary,
-                }
-              ]}>
-                <Text style={[
-                  styles.replyToSender, 
-                  { 
-                    fontSize: fontSize(10), 
-                    color: isCurrentUser ? 'rgba(255,255,255,0.9)' : theme.primary 
-                  }
-                ]}>
-                  {message.replyToSender || t('common.user')}
-                </Text>
-                <Text 
-                  style={[
-                    styles.replyToContent, 
-                    { 
-                      fontSize: fontSize(11), 
-                      color: isCurrentUser ? 'rgba(255,255,255,0.7)' : theme.textSecondary 
-                    }
-                  ]}
-                  numberOfLines={1}>
-                  {message.replyToContent}
-                </Text>
-              </View>
-            )}
-
-          {hasImage && (
-            <TouchableOpacity 
-              onPress={() => setImageModalVisible(true)}
-              activeOpacity={0.9}>
-              <Image 
-                source={{ uri: imageUrl }}
+          {/* Render bubble with gradient or solid color based on chatSettings */}
+          {isCurrentUser && chatSettings?.bubbleColor?.startsWith('gradient::') ? (
+            <Pressable
+              onLongPress={handleLongPress}
+              delayLongPress={300}>
+              <LinearGradient
+                colors={chatSettings.bubbleColor.replace('gradient::', '').split(',')}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={[
-                  styles.messageImage,
-                  !hasText && styles.messageImageOnly,
-                ]}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
+                  styles.bubble,
+                  styles.currentUserBubble,
+                  getBubbleStyleRadius(chatSettings?.bubbleStyle),
+                  hasImage && !hasText && styles.imageBubble,
+                  isPinned && styles.pinnedBubble,
+                ]}>
+                {renderBubbleContent()}
+              </LinearGradient>
+            </Pressable>
+          ) : (
+            <Pressable
+              onLongPress={handleLongPress}
+              delayLongPress={300}
+              style={[
+                styles.bubble,
+                isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+                getBubbleStyleRadius(chatSettings?.bubbleStyle),
+                {
+                  backgroundColor: isCurrentUser 
+                    ? (chatSettings?.bubbleColor || '#667eea')
+                    : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+                },
+                hasImage && !hasText && styles.imageBubble,
+                isPinned && styles.pinnedBubble,
+              ]}>
+              {renderBubbleContent()}
+            </Pressable>
           )}
-
-          {renderMessageContent()}
-          
-          <Text style={[
-            styles.timeText,
-            { 
-              fontSize: fontSize(9),
-              color: isCurrentUser 
-                ? 'rgba(255,255,255,0.6)' 
-                : theme.textSecondary
-            }
-          ]}>
-            {formatTime(message.createdAt || message.$createdAt)}
-          </Text>
-        </Pressable>
         </Animated.View>
       </View>
 
@@ -363,6 +392,22 @@ const MessageBubble = ({
   );
 };
 
+// Helper function to get bubble radius based on style
+const getBubbleStyleRadius = (bubbleStyle) => {
+  switch (bubbleStyle) {
+    case 'minimal':
+      return { borderRadius: borderRadius.sm };
+    case 'sharp':
+      return { borderRadius: borderRadius.xs };
+    case 'bubble':
+      return { borderRadius: borderRadius.xxl || 24 };
+    case 'classic':
+      return { borderRadius: borderRadius.md };
+    default: // modern
+      return { borderRadius: borderRadius.lg };
+  }
+};
+
 const styles = StyleSheet.create({
   container: {
     marginVertical: spacing.xs / 2,
@@ -384,7 +429,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs / 2,
   },
   bubbleWithAvatar: {
-    maxWidth: '80%',
+    maxWidth: '85%',
   },
   senderName: {
     fontWeight: '600',
@@ -392,11 +437,12 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   bubble: {
-    maxWidth: '80%',
-    minWidth: moderateScale(100),
-    paddingHorizontal: spacing.md + 2,
+    maxWidth: moderateScale(280),
+    minWidth: moderateScale(60),
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
+    overflow: 'hidden',
   },
   imageBubble: {
     padding: spacing.xs / 2,
