@@ -1,0 +1,468 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Alert, AppState } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { 
+  getMessages, 
+  sendMessage, 
+  canUserSendMessage, 
+  deleteMessage, 
+  pinMessage, 
+  unpinMessage, 
+  getPinnedMessages,
+  canUserPinMessage,
+  canUserMentionEveryone,
+  markChatAsRead,
+} from '../../../database/chats';
+import { getUserById, blockUser } from '../../../database/users';
+import { 
+  muteChat, 
+  unmuteChat, 
+  getMuteStatus, 
+  bookmarkMessage, 
+  unbookmarkMessage, 
+  getBookmarkedMessages,
+  MUTE_TYPES,
+} from '../../../database/userChatSettings';
+import { useChatMessages } from '../../hooks/useRealtimeSubscription';
+
+const SMART_POLL_INTERVAL = 10000;
+
+export const useChatRoom = ({ chat, user, t, navigation }) => {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [canSend, setCanSend] = useState(false);
+  const [userCache, setUserCache] = useState({});
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [muteStatus, setMuteStatus] = useState({ isMuted: false });
+  const [showMuteModal, setShowMuteModal] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [showPinnedModal, setShowPinnedModal] = useState(false);
+  const [bookmarkedMsgIds, setBookmarkedMsgIds] = useState([]);
+  const [canPin, setCanPin] = useState(false);
+  const [canMentionEveryone, setCanMentionEveryone] = useState(false);
+  const [showChatOptionsModal, setShowChatOptionsModal] = useState(false);
+  
+  const flatListRef = useRef(null);
+  const pollingInterval = useRef(null);
+  const appState = useRef(AppState.currentState);
+  const lastMessageId = useRef(null);
+  const userCacheRef = useRef({});
+  const isRealtimeActive = useRef(false);
+
+  const getChatDisplayName = useCallback(() => {
+    if (chat.type === 'private' && chat.otherUser) {
+      return chat.otherUser.name || chat.otherUser.fullName || chat.name;
+    }
+    return chat.name;
+  }, [chat]);
+
+  const handleRealtimeNewMessage = useCallback(async (payload) => {
+    isRealtimeActive.current = true;
+    
+    if (payload.chatId === chat.$id) {
+      setMessages(prev => {
+        if (prev.some(m => m.$id === payload.$id)) {
+          return prev;
+        }
+        return [...prev, payload];
+      });
+      
+      if (payload.senderId && !userCacheRef.current[payload.senderId]) {
+        try {
+          const userData = await getUserById(payload.senderId);
+          userCacheRef.current[payload.senderId] = userData;
+          setUserCache({ ...userCacheRef.current });
+        } catch (e) {
+          userCacheRef.current[payload.senderId] = { name: payload.senderName || 'Unknown' };
+        }
+      }
+      
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [chat.$id]);
+
+  const handleRealtimeMessageDeleted = useCallback((payload) => {
+    isRealtimeActive.current = true;
+    setMessages(prev => prev.filter(m => m.$id !== payload.$id));
+  }, []);
+
+  useChatMessages(
+    chat.$id,
+    handleRealtimeNewMessage,
+    handleRealtimeMessageDeleted,
+    !!chat.$id && !!user?.$id
+  );
+
+  const pollMessages = useCallback(async () => {
+    try {
+      const fetchedMessages = await getMessages(chat.$id, 100);
+      const reversedMessages = fetchedMessages.reverse();
+      
+      const newLastId = reversedMessages.length > 0 ? reversedMessages[reversedMessages.length - 1].$id : null;
+      if (newLastId !== lastMessageId.current) {
+        lastMessageId.current = newLastId;
+        setMessages(reversedMessages);
+        
+        const uniqueSenderIds = [...new Set(reversedMessages.map(m => m.senderId))];
+        const newUsers = uniqueSenderIds.filter(id => !userCacheRef.current[id]);
+        
+        if (newUsers.length > 0) {
+          const newUserCache = { ...userCacheRef.current };
+          for (const senderId of newUsers) {
+            try {
+              const userData = await getUserById(senderId);
+              newUserCache[senderId] = userData;
+            } catch (error) {
+              newUserCache[senderId] = { name: 'Unknown User' };
+            }
+          }
+          userCacheRef.current = newUserCache;
+          setUserCache(newUserCache);
+        }
+      }
+    } catch (error) {
+      // Silent fail for polling
+    }
+  }, [chat.$id]);
+
+  const loadChatSettings = async () => {
+    try {
+      const [status, pinPermission, mentionPermission, bookmarks] = await Promise.all([
+        getMuteStatus(user.$id, chat.$id),
+        canUserPinMessage(chat.$id, user.$id),
+        canUserMentionEveryone(chat.$id, user.$id),
+        getBookmarkedMessages(user.$id, chat.$id),
+      ]);
+      setMuteStatus(status);
+      setCanPin(pinPermission);
+      setCanMentionEveryone(mentionPermission);
+      setBookmarkedMsgIds(bookmarks);
+    } catch (error) {
+      // Silently fail
+    }
+  };
+
+  const checkPermissions = async () => {
+    try {
+      const hasPermission = await canUserSendMessage(chat.$id, user.$id);
+      setCanSend(hasPermission);
+    } catch (error) {
+      setCanSend(false);
+    }
+  };
+
+  const loadMessages = async () => {
+    try {
+      setLoading(true);
+      const fetchedMessages = await getMessages(chat.$id, 100);
+      const reversedMessages = fetchedMessages.reverse();
+      lastMessageId.current = reversedMessages.length > 0 ? reversedMessages[reversedMessages.length - 1].$id : null;
+      setMessages(reversedMessages);
+      
+      if (user?.$id) {
+        markChatAsRead(chat.$id, user.$id);
+      }
+      
+      const uniqueSenderIds = [...new Set(reversedMessages.map(m => m.senderId))];
+      const newUserCache = { ...userCacheRef.current };
+      
+      for (const senderId of uniqueSenderIds) {
+        if (!newUserCache[senderId]) {
+          try {
+            const userData = await getUserById(senderId);
+            newUserCache[senderId] = userData;
+          } catch (error) {
+            newUserCache[senderId] = { name: 'Unknown User' };
+          }
+        }
+      }
+      
+      userCacheRef.current = newUserCache;
+      setUserCache(newUserCache);
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message || t('chats.errorLoadingMessages'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMessages();
+    checkPermissions();
+    
+    pollingInterval.current = setInterval(pollMessages, SMART_POLL_INTERVAL);
+    
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        pollMessages();
+        if (!pollingInterval.current) {
+          pollingInterval.current = setInterval(pollMessages, SMART_POLL_INTERVAL);
+        }
+      } else if (nextAppState.match(/inactive|background/)) {
+        if (pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        }
+      }
+      appState.current = nextAppState;
+    });
+    
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+      subscription.remove();
+    };
+  }, [chat.$id, pollMessages]);
+
+  useEffect(() => {
+    loadChatSettings();
+  }, [chat.$id, user.$id]);
+
+  const handleViewPinnedMessages = async () => {
+    try {
+      const pinned = await getPinnedMessages(chat.$id);
+      setPinnedMessages(pinned);
+      setShowPinnedModal(true);
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.pinError'));
+    }
+  };
+
+  const handleMuteChat = async (duration, muteType = MUTE_TYPES.ALL) => {
+    try {
+      await muteChat(user.$id, chat.$id, muteType, duration);
+      setMuteStatus({ isMuted: true, muteType, expiresAt: duration ? new Date(Date.now() + duration).toISOString() : null });
+      setShowMuteModal(false);
+      Alert.alert(t('common.success'), t('chats.chatMuted'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.muteError'));
+    }
+  };
+
+  const handleUnmuteChat = async () => {
+    try {
+      await unmuteChat(user.$id, chat.$id);
+      setMuteStatus({ isMuted: false, muteType: MUTE_TYPES.NONE, expiresAt: null });
+      setShowMuteModal(false);
+      Alert.alert(t('common.success'), t('chats.chatUnmuted'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.unmuteError'));
+    }
+  };
+
+  const handlePinMessage = async (message) => {
+    try {
+      await pinMessage(chat.$id, message.$id, user.$id);
+      setMessages(prev => prev.map(m => 
+        m.$id === message.$id ? { ...m, isPinned: true, pinnedBy: user.$id } : m
+      ));
+      Alert.alert(t('common.success'), t('chats.messagePinned'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.pinError'));
+    }
+  };
+
+  const handleUnpinMessage = async (message) => {
+    try {
+      await unpinMessage(chat.$id, message.$id);
+      setMessages(prev => prev.map(m => 
+        m.$id === message.$id ? { ...m, isPinned: false, pinnedBy: null } : m
+      ));
+      Alert.alert(t('common.success'), t('chats.messageUnpinned'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.unpinError'));
+    }
+  };
+
+  const handleBookmarkMessage = async (message) => {
+    try {
+      await bookmarkMessage(user.$id, chat.$id, message.$id);
+      setBookmarkedMsgIds(prev => [...prev, message.$id]);
+      Alert.alert(t('common.success'), t('chats.messageBookmarked'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.bookmarkError'));
+    }
+  };
+
+  const handleUnbookmarkMessage = async (message) => {
+    try {
+      await unbookmarkMessage(user.$id, chat.$id, message.$id);
+      setBookmarkedMsgIds(prev => prev.filter(id => id !== message.$id));
+      Alert.alert(t('common.success'), t('chats.messageUnbookmarked'));
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.unbookmarkError'));
+    }
+  };
+
+  const handleCopyMessage = async (message) => {
+    if (message.content) {
+      await Clipboard.setStringAsync(message.content);
+      Alert.alert(t('common.success'), t('chats.messageCopied'));
+    }
+  };
+
+  const handleDeleteMessage = async (message) => {
+    Alert.alert(
+      t('chats.deleteMessage'),
+      t('chats.deleteMessageConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMessage(message.$id);
+              setMessages(prev => prev.filter(m => m.$id !== message.$id));
+            } catch (error) {
+              Alert.alert(t('common.error'), t('chats.deleteMessageError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReplyMessage = (message) => {
+    const senderName = userCache[message.senderId]?.name || message.senderName || 'Unknown';
+    setReplyingTo({ ...message, senderName });
+  };
+
+  const handleForwardMessage = (message) => {
+    navigation.navigate('ForwardMessage', { message });
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleSendMessage = async (content, imageUrl = null) => {
+    if (!canSend) {
+      Alert.alert(t('chats.noPermission'), t('chats.representativeOnlyMessage'));
+      return;
+    }
+
+    try {
+      setSending(true);
+      const messageData = {
+        content: content || '',
+        senderId: user.$id,
+        senderName: user.fullName,
+        senderPhoto: user.profilePicture || null,
+      };
+      
+      if (imageUrl && typeof imageUrl === 'string') {
+        messageData.images = [imageUrl];
+      }
+      
+      if (replyingTo) {
+        messageData.replyToId = replyingTo.$id;
+        messageData.replyToContent = replyingTo.content?.substring(0, 50) || '';
+        messageData.replyToSender = replyingTo.senderName || '';
+      }
+      
+      await sendMessage(chat.$id, messageData);
+      setReplyingTo(null);
+      
+      pollMessages();
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message || t('chats.errorSendingMessage'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleVisitProfile = () => {
+    setShowChatOptionsModal(false);
+    if (chat.type === 'private' && chat.otherUser) {
+      navigation.navigate('UserProfile', { userId: chat.otherUser.$id || chat.otherUser.id });
+    }
+  };
+
+  const handleBlockUser = () => {
+    setShowChatOptionsModal(false);
+    const otherUserId = chat.otherUser?.$id || chat.otherUser?.id;
+    const otherUserName = chat.otherUser?.name || chat.otherUser?.fullName || getChatDisplayName();
+    
+    if (!otherUserId) {
+      Alert.alert(t('common.error'), t('chats.blockError') || 'Cannot block this user');
+      return;
+    }
+    
+    Alert.alert(
+      t('chats.blockUser'),
+      (t('chats.blockConfirm') || 'Are you sure you want to block {name}?').replace('{name}', otherUserName),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.block') || 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(user.$id, otherUserId);
+              Alert.alert(t('common.success'), t('chats.userBlocked') || 'User has been blocked');
+              navigation.goBack();
+            } catch (error) {
+              Alert.alert(t('common.error'), t('chats.blockError') || 'Failed to block user');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleChatHeaderPress = () => {
+    if (chat.type === 'custom_group') {
+      navigation.navigate('GroupSettings', { chat });
+    } else {
+      setShowChatOptionsModal(true);
+    }
+  };
+
+  return {
+    // State
+    messages,
+    loading,
+    sending,
+    canSend,
+    userCache,
+    replyingTo,
+    muteStatus,
+    showMuteModal,
+    pinnedMessages,
+    showPinnedModal,
+    bookmarkedMsgIds,
+    canPin,
+    canMentionEveryone,
+    showChatOptionsModal,
+    flatListRef,
+    
+    // Setters
+    setShowMuteModal,
+    setShowPinnedModal,
+    setShowChatOptionsModal,
+    
+    // Handlers
+    getChatDisplayName,
+    handleChatHeaderPress,
+    handleViewPinnedMessages,
+    handleMuteChat,
+    handleUnmuteChat,
+    handlePinMessage,
+    handleUnpinMessage,
+    handleBookmarkMessage,
+    handleUnbookmarkMessage,
+    handleCopyMessage,
+    handleDeleteMessage,
+    handleReplyMessage,
+    handleForwardMessage,
+    cancelReply,
+    handleSendMessage,
+    handleVisitProfile,
+    handleBlockUser,
+  };
+};

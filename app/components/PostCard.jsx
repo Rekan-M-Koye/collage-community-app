@@ -1,285 +1,26 @@
-import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Modal,
   Share,
-  Dimensions,
   Linking,
-  Platform,
-  Alert,
-  ActivityIndicator,
-  Animated,
+  Modal,
 } from 'react-native';
-import { PinchGestureHandler, State } from 'react-native-gesture-handler';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from '../hooks/useTranslation';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { POST_COLORS, POST_ICONS } from '../constants/postConstants';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const STAGE_COLORS = {
-  stage_1: '#3B82F6',
-  stage_2: '#8B5CF6',
-  stage_3: '#10B981',
-  stage_4: '#F59E0B',
-  stage_5: '#EF4444',
-  stage_6: '#EC4899',
-  graduate: '#6366F1',
-  all: '#6B7280',
-};
-
-const sanitizeTag = (tag) => {
-  if (!tag) return '';
-  return String(tag).replace(/[^a-zA-Z0-9\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s_-]/g, '').trim();
-};
-
-// Zoomable Image component with pinch gesture
-const ZoomableImage = ({ uri }) => {
-  const scale = useRef(new Animated.Value(1)).current;
-  const baseScale = useRef(1);
-
-  const onPinchEvent = Animated.event(
-    [{ nativeEvent: { scale: scale } }],
-    { useNativeDriver: true }
-  );
-
-  const onPinchStateChange = (event) => {
-    if (event.nativeEvent.oldState === State.ACTIVE) {
-      const newScale = baseScale.current * event.nativeEvent.scale;
-      baseScale.current = Math.min(Math.max(newScale, 1), 5);
-      
-      if (baseScale.current <= 1) {
-        Animated.spring(scale, {
-          toValue: 1,
-          useNativeDriver: true,
-        }).start();
-        baseScale.current = 1;
-      } else {
-        scale.setValue(baseScale.current);
-      }
-    }
-  };
-
-  return (
-    <PinchGestureHandler
-      onGestureEvent={onPinchEvent}
-      onHandlerStateChange={onPinchStateChange}
-    >
-      <Animated.View style={galleryStyles.imageWrapper}>
-        <Animated.Image
-          source={{ uri }}
-          style={[
-            galleryStyles.image,
-            { transform: [{ scale: Animated.multiply(scale, baseScale.current > 1 ? 1 : scale) }] }
-          ]}
-          resizeMode="contain"
-        />
-      </Animated.View>
-    </PinchGestureHandler>
-  );
-};
-
-// Image Gallery Component with pinch zoom, download, and proper counter
-const ImageGallery = ({ images, initialIndex, onClose, t }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const scrollViewRef = useRef(null);
-
-  const handleScroll = (event) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const newIndex = Math.round(offsetX / SCREEN_WIDTH);
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < images.length) {
-      setCurrentIndex(newIndex);
-    }
-  };
-
-  const handleDownload = async () => {
-    try {
-      setIsDownloading(true);
-      
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          t('common.error'),
-          t('post.permissionDenied') || 'Permission to access media library is required'
-        );
-        return;
-      }
-
-      const imageUrl = images[currentIndex];
-      const filename = `collage_image_${Date.now()}.jpg`;
-      const fileUri = FileSystem.cacheDirectory + filename;
-
-      const downloadResumable = FileSystem.createDownloadResumable(
-        imageUrl,
-        fileUri,
-        {},
-        () => {}
-      );
-
-      const result = await downloadResumable.downloadAsync();
-      
-      if (result && result.uri) {
-        const asset = await MediaLibrary.createAssetAsync(result.uri);
-        if (asset) {
-          Alert.alert(
-            t('common.success'),
-            t('post.imageSaved') || 'Image saved to gallery'
-          );
-        }
-      } else {
-        throw new Error('Download failed');
-      }
-    } catch (error) {
-      Alert.alert(
-        t('common.error'),
-        t('post.downloadFailed') || 'Failed to download image'
-      );
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const handleShareImage = async () => {
-    try {
-      await Share.share({
-        url: images[currentIndex],
-        message: images[currentIndex],
-      });
-    } catch (error) {
-      // Share cancelled or failed
-    }
-  };
-
-  return (
-    <View style={galleryStyles.container}>
-      {/* Header */}
-      <View style={galleryStyles.header}>
-        <TouchableOpacity 
-          style={galleryStyles.headerButton}
-          onPress={onClose}
-        >
-          <Ionicons name="close" size={28} color="#fff" />
-        </TouchableOpacity>
-        
-        <Text style={galleryStyles.counter}>
-          {currentIndex + 1} / {images.length}
-        </Text>
-        
-        <View style={galleryStyles.headerActions}>
-          <TouchableOpacity 
-            style={galleryStyles.headerButton}
-            onPress={handleShareImage}
-          >
-            <Ionicons name="share-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={galleryStyles.headerButton}
-            onPress={handleDownload}
-            disabled={isDownloading}
-          >
-            {isDownloading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="download-outline" size={24} color="#fff" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Images with pinch zoom */}
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        contentOffset={{ x: initialIndex * SCREEN_WIDTH, y: 0 }}
-        scrollEventThrottle={16}
-      >
-        {images.map((img, index) => (
-          <ZoomableImage key={index} uri={img} />
-        ))}
-      </ScrollView>
-
-      {/* Zoom hint */}
-      <View style={galleryStyles.hintContainer}>
-        <Text style={galleryStyles.hintText}>
-          {t('post.pinchToZoom') || 'Pinch to zoom'}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-const galleryStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  counter: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  imageWrapper: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  image: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.8,
-  },
-  hintContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  hintText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-  },
-});
+import PostCardImageGallery from './postCard/PostCardImageGallery';
+import PostCardMenu from './postCard/PostCardMenu';
+import { 
+  postCardStyles as styles, 
+  STAGE_COLORS, 
+  sanitizeTag, 
+  formatTimeAgo, 
+  getDefaultAvatar 
+} from './postCard/styles';
 
 const PostCard = ({ 
   post, 
@@ -310,9 +51,6 @@ const PostCard = ({
   const postIcon = POST_ICONS[post.postType] || 'document-outline';
   const stageColor = STAGE_COLORS[post.stage] || '#6B7280';
 
-  // Determine post owner name and avatar
-  // For current user's posts, use fresh user context data
-  // For other users' posts, use post data with fallback
   const isCurrentUserPost = user && post.userId === user.$id;
   const postOwnerName = isCurrentUserPost 
     ? user.fullName 
@@ -348,47 +86,6 @@ const PostCard = ({
     }
   };
 
-  const formatTimeAgo = (timestamp) => {
-    if (!timestamp) return '';
-    
-    try {
-      const now = new Date();
-      const postDate = new Date(timestamp);
-      
-      if (isNaN(postDate.getTime())) return '';
-      
-      const diffMs = now - postDate;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return t('time.justNow');
-      if (diffMins < 60) return t('time.minutesAgo').replace('{count}', diffMins);
-      if (diffHours < 24) return t('time.hoursAgo').replace('{count}', diffHours);
-      if (diffDays < 7) return t('time.daysAgo').replace('{count}', diffDays);
-      
-      return postDate.toLocaleDateString();
-    } catch (error) {
-      return '';
-    }
-  };
-
-  const getDefaultAvatar = (name) => {
-    const sanitizedName = (name || 'User').replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 50);
-    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(sanitizedName) + '&size=200&background=667eea&color=fff&bold=true';
-  };
-
-  const handleMenuAction = (action) => {
-    setShowMenu(false);
-    if (action === 'edit' && onEdit) onEdit();
-    if (action === 'delete' && onDelete) onDelete();
-    if (action === 'report' && onReport) onReport();
-    if (action === 'markResolved' && onMarkResolved) {
-      onMarkResolved();
-      setResolved(true);
-    }
-  };
-
   const handleShare = async () => {
     try {
       await Share.share({
@@ -396,6 +93,7 @@ const PostCard = ({
         title: post.topic,
       });
     } catch (error) {
+      // Share cancelled
     }
   };
 
@@ -490,15 +188,16 @@ const PostCard = ({
   };
 
   return (
-      <View 
-        style={[
-          styles.card, 
-          { 
-            backgroundColor: theme.card || theme.cardBackground,
-            borderColor: theme.border,
-          }
-        ]}
-      >
+    <View 
+      style={[
+        styles.card, 
+        { 
+          backgroundColor: theme.card || theme.cardBackground,
+          borderColor: theme.border,
+        }
+      ]}
+    >
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onUserPress} activeOpacity={0.8}>
           <Image 
@@ -514,7 +213,7 @@ const PostCard = ({
               </Text>
             </TouchableOpacity>
             <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-              {formatTimeAgo(post.$createdAt)}
+              {formatTimeAgo(post.$createdAt, t)}
             </Text>
             {post.isEdited === true && (
               <Text style={[styles.editedText, { color: theme.textTertiary }]}>
@@ -545,6 +244,7 @@ const PostCard = ({
         </TouchableOpacity>
       </View>
 
+      {/* Content */}
       <View style={styles.content}>
         <Text style={[styles.topic, { color: theme.text }]} numberOfLines={2} selectable>
           {post.topic}
@@ -600,7 +300,6 @@ const PostCard = ({
           </View>
         )}
 
-        {/* See More / See Less Button */}
         {((post.text && post.text.length > 150) || 
           (post.links && post.links.length > 2) || 
           (post.tags && post.tags.length > 4)) && (
@@ -618,6 +317,7 @@ const PostCard = ({
         {showImages && renderImageLayout()}
       </View>
 
+      {/* Footer */}
       <View style={[styles.footer, { borderTopColor: theme.border }]}>
         <View style={styles.footerLeft}>
           <TouchableOpacity 
@@ -683,86 +383,32 @@ const PostCard = ({
         </View>
       </View>
 
-      <Modal
+      {/* Menu Modal */}
+      <PostCardMenu
         visible={showMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMenu(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={() => setShowMenu(false)}
-        >
-          <View style={[styles.menuModal, { backgroundColor: theme.card || theme.cardBackground }]}>
-            {isOwner ? (
-              <>
-                {post.postType === 'question' && !resolved && (
-                  <>
-                    <TouchableOpacity 
-                      style={styles.menuItem} 
-                      onPress={() => handleMenuAction('markResolved')}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={22} color="#10B981" />
-                      <Text style={[styles.menuText, { color: '#10B981' }]}>
-                        {t('post.markAsAnswered')}
-                      </Text>
-                    </TouchableOpacity>
-                    <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-                  </>
-                )}
-                <TouchableOpacity 
-                  style={styles.menuItem} 
-                  onPress={() => handleMenuAction('edit')}
-                >
-                  <Ionicons name="create-outline" size={22} color="#3B82F6" />
-                  <Text style={[styles.menuText, { color: '#3B82F6' }]}>
-                    {t('common.edit')}
-                  </Text>
-                </TouchableOpacity>
-                <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-                <TouchableOpacity 
-                  style={styles.menuItem} 
-                  onPress={() => handleMenuAction('delete')}
-                >
-                  <Ionicons name="trash-outline" size={22} color="#EF4444" />
-                  <Text style={[styles.menuText, { color: '#EF4444' }]}>
-                    {t('common.delete')}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity 
-                style={styles.menuItem} 
-                onPress={() => handleMenuAction('report')}
-              >
-                <Ionicons name="flag-outline" size={22} color="#F59E0B" />
-                <Text style={[styles.menuText, { color: '#F59E0B' }]}>
-                  {t('post.report')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => setShowMenu(false)}
-            >
-              <Ionicons name="close-outline" size={22} color={theme.textSecondary} />
-              <Text style={[styles.menuText, { color: theme.textSecondary }]}>
-                {t('common.cancel')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setShowMenu(false)}
+        isOwner={isOwner}
+        isQuestion={post.postType === 'question'}
+        isResolved={resolved}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onReport={onReport}
+        onMarkResolved={() => {
+          if (onMarkResolved) onMarkResolved();
+          setResolved(true);
+        }}
+        theme={theme}
+        t={t}
+      />
 
+      {/* Image Gallery Modal */}
       <Modal
         visible={imageGalleryVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setImageGalleryVisible(false)}
       >
-        <ImageGallery
+        <PostCardImageGallery
           images={post.images || []}
           initialIndex={selectedImageIndex}
           onClose={() => setImageGalleryVisible(false)}
@@ -772,300 +418,5 @@ const PostCard = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  headerInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  userNameContainer: {
-    flex: 1,
-    marginRight: 5,
-  },
-  userName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    flexWrap: 'wrap',
-  },
-  timeText: {
-    fontSize: 11,
-    fontWeight: '400',
-  },
-  editedText: {
-    fontSize: 10,
-    fontStyle: 'italic',
-  },
-  stageBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  stageText: {
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  typeBadgeInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 5,
-    gap: 2,
-  },
-  typeTextInline: {
-    fontSize: 9,
-    fontWeight: '600',
-  },
-  menuButton: {
-    padding: 6,
-  },
-  content: {
-    marginBottom: 14,
-  },
-  topic: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 10,
-    lineHeight: 26,
-  },
-  text: {
-    fontSize: 15,
-    lineHeight: 23,
-    marginBottom: 10,
-  },
-  linksContainer: {
-    marginTop: 8,
-    marginBottom: 4,
-    gap: 6,
-  },
-  linkChipDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  linkText: {
-    fontSize: 13,
-    color: '#3B82F6',
-    flex: 1,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 6,
-  },
-  tagText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  seeMoreButton: {
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  seeMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  singleImage: {
-    width: '100%',
-    height: 280,
-    borderRadius: 16,
-    marginTop: 14,
-  },
-  twoImagesContainer: {
-    flexDirection: 'row',
-    marginTop: 14,
-    gap: 8,
-  },
-  twoImageWrapper: {
-    flex: 1,
-  },
-  twoImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 14,
-  },
-  threeImagesContainer: {
-    flexDirection: 'row',
-    marginTop: 14,
-    gap: 8,
-    height: 280,
-  },
-  threeImageMain: {
-    flex: 2,
-  },
-  threeMainImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-  },
-  threeImageSide: {
-    flex: 1,
-    gap: 8,
-  },
-  threeSideWrapper: {
-    flex: 1,
-  },
-  threeSideImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 14,
-    gap: 8,
-  },
-  gridImageWrapper: {
-    width: '48.5%',
-    height: 160,
-    position: 'relative',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-  },
-  moreImagesOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moreImagesText: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  footerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    gap: 4,
-  },
-  actionText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  statsText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuModal: {
-    borderRadius: 18,
-    width: '85%',
-    maxWidth: 320,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 22,
-    gap: 14,
-  },
-  menuText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  menuDivider: {
-    height: 1,
-  },
-});
 
 export default memo(PostCard);

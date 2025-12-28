@@ -884,9 +884,13 @@ export default {
     alreadyDownvoted: 'You already downvoted this reply',
     postNotFound: 'Post not found',
     deleteReplyError: 'Failed to delete reply',
+    deleteReplyConfirm: 'Are you sure you want to delete this reply?',
     updateReplyError: 'Failed to update reply',
     upvoteError: 'Failed to upvote',
     downvoteError: 'Failed to downvote',
+    editingReply: 'Editing reply',
+    linkOpenError: 'Failed to open link',
+    send: 'Send',
   },
   
   // Search

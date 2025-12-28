@@ -879,9 +879,13 @@ export default {
     alreadyDownvoted: 'لقد صوت بالفعل ضد هذا الرد',
     postNotFound: 'المنشور غير موجود',
     deleteReplyError: 'فشل حذف الرد',
+    deleteReplyConfirm: 'هل أنت متأكد أنك تريد حذف هذا الرد؟',
     updateReplyError: 'فشل تحديث الرد',
     upvoteError: 'فشل التصويت لصالح',
     downvoteError: 'فشل التصويت ضد',
+    editingReply: 'تعديل الرد',
+    linkOpenError: 'فشل فتح الرابط',
+    send: 'إرسال',
   },
   
   // Search

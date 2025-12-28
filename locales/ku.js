@@ -879,9 +879,13 @@ export default {
     alreadyDownvoted: 'تۆ پێشتر دەنگت نزم کردووەتەوە بۆ ئەم وەڵامە',
     postNotFound: 'پۆستەکە نەدۆزرایەوە',
     deleteReplyError: 'سڕینەوەی وەڵام سەرکەوتوو نەبوو',
+    deleteReplyConfirm: 'دڵنیای لە سڕینەوەی ئەم وەڵامە؟',
     updateReplyError: 'نوێکردنەوەی وەڵام سەرکەوتوو نەبوو',
     upvoteError: 'دەنگبەرزکردنەوە سەرکەوتوو نەبوو',
     downvoteError: 'دەنگنزمکردنەوە سەرکەوتوو نەبوو',
+    editingReply: 'دەستکاریکردنی وەڵام',
+    linkOpenError: 'کردنەوەی لینک سەرکەوتوو نەبوو',
+    send: 'ناردن',
   },
   
   // Search

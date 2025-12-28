@@ -454,25 +454,50 @@ const CreatePost = ({ navigation, route }) => {
                 style={styles.chipInput}
                 value={tagInput}
                 onChangeText={(text) => {
-                  // Check for space, comma, or newline to create tag
-                  if (text.includes(' ') || text.includes(',') || text.includes('\n')) {
-                    const parts = text.split(/[\s,\n]+/).filter(Boolean);
-                    const newTags = [];
-                    parts.forEach(part => {
-                      const cleanTag = part.trim().replace(/^#/, '');
-                      if (cleanTag && !tags.includes(cleanTag) && !newTags.includes(cleanTag)) {
-                        newTags.push(cleanTag);
-                      }
-                    });
-                    if (newTags.length > 0) {
-                      setTags([...tags, ...newTags]);
+                  // Check if the last character is a space, comma, or newline
+                  const lastChar = text.slice(-1);
+                  const hasTagSeparator = lastChar === ' ' || lastChar === ',' || lastChar === '\n';
+                  
+                  if (hasTagSeparator && text.length > 1) {
+                    // User typed a separator, create tag from what's before it
+                    const tagText = text.slice(0, -1).trim().replace(/^#/, '');
+                    if (tagText && !tags.includes(tagText)) {
+                      setTags([...tags, tagText]);
                     }
                     setTagInput('');
                     return;
                   }
+                  
+                  // Also check for pasted content with multiple words
+                  if (text.includes(' ') || text.includes(',')) {
+                    const parts = text.split(/[\s,]+/).filter(Boolean);
+                    if (parts.length > 1) {
+                      const newTags = [];
+                      parts.forEach(part => {
+                        const cleanTag = part.trim().replace(/^#/, '');
+                        if (cleanTag && !tags.includes(cleanTag) && !newTags.includes(cleanTag)) {
+                          newTags.push(cleanTag);
+                        }
+                      });
+                      if (newTags.length > 0) {
+                        setTags([...tags, ...newTags]);
+                      }
+                      setTagInput('');
+                      return;
+                    }
+                  }
+                  
                   setTagInput(text);
                 }}
                 onSubmitEditing={() => {
+                  const newTag = tagInput.trim().replace(/^#/, '');
+                  if (newTag && !tags.includes(newTag)) {
+                    setTags([...tags, newTag]);
+                  }
+                  setTagInput('');
+                }}
+                onEndEditing={() => {
+                  // Also create tag when user taps away
                   const newTag = tagInput.trim().replace(/^#/, '');
                   if (newTag && !tags.includes(newTag)) {
                     setTags([...tags, newTag]);
@@ -485,6 +510,7 @@ const CreatePost = ({ navigation, route }) => {
                 blurOnSubmit={false}
                 autoCapitalize="none"
                 autoCorrect={false}
+                spellCheck={false}
                 returnKeyType="done"
               />
             </View>
@@ -520,22 +546,38 @@ const CreatePost = ({ navigation, route }) => {
                 style={[styles.topicInput, { flex: 1 }]}
                 value={linkInput}
                 onChangeText={(text) => {
-                  // Check for space or newline to add link
-                  if (text.includes(' ') || text.includes('\n')) {
-                    const parts = text.split(/[\s\n]+/).filter(Boolean);
-                    const newLinks = [];
-                    parts.forEach(part => {
-                      const cleanLink = part.trim();
-                      if (cleanLink && !links.includes(cleanLink) && !newLinks.includes(cleanLink)) {
-                        newLinks.push(cleanLink);
-                      }
-                    });
-                    if (newLinks.length > 0) {
-                      setLinks([...links, ...newLinks]);
+                  // Check if the last character is a space or newline
+                  const lastChar = text.slice(-1);
+                  const hasSeparator = lastChar === ' ' || lastChar === '\n';
+                  
+                  if (hasSeparator && text.length > 1) {
+                    const linkText = text.slice(0, -1).trim();
+                    if (linkText && !links.includes(linkText)) {
+                      setLinks([...links, linkText]);
                     }
                     setLinkInput('');
                     return;
                   }
+                  
+                  // Also check for pasted content with multiple links
+                  if (text.includes(' ') || text.includes('\n')) {
+                    const parts = text.split(/[\s\n]+/).filter(Boolean);
+                    if (parts.length > 1) {
+                      const newLinks = [];
+                      parts.forEach(part => {
+                        const cleanLink = part.trim();
+                        if (cleanLink && !links.includes(cleanLink) && !newLinks.includes(cleanLink)) {
+                          newLinks.push(cleanLink);
+                        }
+                      });
+                      if (newLinks.length > 0) {
+                        setLinks([...links, ...newLinks]);
+                      }
+                      setLinkInput('');
+                      return;
+                    }
+                  }
+                  
                   setLinkInput(text);
                 }}
                 placeholder={t('post.linksPlaceholder')}
@@ -545,7 +587,15 @@ const CreatePost = ({ navigation, route }) => {
                 keyboardType="url"
                 blurOnSubmit={false}
                 autoCorrect={false}
+                spellCheck={false}
                 onSubmitEditing={() => {
+                  const newLink = linkInput.trim();
+                  if (newLink && !links.includes(newLink)) {
+                    setLinks([...links, newLink]);
+                  }
+                  setLinkInput('');
+                }}
+                onEndEditing={() => {
                   const newLink = linkInput.trim();
                   if (newLink && !links.includes(newLink)) {
                     setLinks([...links, newLink]);
