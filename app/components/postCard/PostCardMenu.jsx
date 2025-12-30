@@ -23,10 +23,18 @@ const PostCardMenu = ({
 }) => {
   const handleAction = (action) => {
     onClose();
-    if (action === 'edit' && onEdit) onEdit();
-    if (action === 'delete' && onDelete) onDelete();
-    if (action === 'report' && onReport) onReport();
-    if (action === 'markResolved' && onMarkResolved) onMarkResolved();
+    if (action === 'edit' && onEdit) {
+      onEdit();
+    }
+    if (action === 'delete' && onDelete) {
+      onDelete();
+    }
+    if (action === 'report' && onReport) {
+      onReport();
+    }
+    if (action === 'markResolved' && onMarkResolved) {
+      onMarkResolved();
+    }
   };
 
   return (

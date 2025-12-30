@@ -105,4 +105,4 @@ The app uses Appwrite's built-in email verification:
 4. Handle verification in app with `confirmEmailVerification(userId, secret)`
 5. Update `isEmailVerified` to true in users collection
 
-**Note:** Update the verification URL in `auth.js` from `https://collage-community.app/verify-email` to your actual domain/deep link.
+**Note:** Update the verification URL in `auth.js` from `https://college-community.app/verify-email` to your actual domain/deep link.

@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, ActivityIndicator, View, Animated } from 'react-native';
+import { Platform, ActivityIndicator, View, Animated, Image, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppSettingsProvider, useAppSettings } from './context/AppSettingsContext';
-import { UserProvider } from './context/UserContext';
+import { UserProvider, useUser } from './context/UserContext';
 import { LanguageProvider } from './context/LanguageContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getCurrentUser, getUserDocument, signOut } from '../database/auth';
+import { getAllUserChats } from '../database/chatHelpers';
+import { getTotalUnreadCount } from '../database/chats';
 
 import SignIn from './auth/SignIn';
 import SignUp from './auth/SignUp';
@@ -58,6 +62,45 @@ const AnimatedTabIcon = ({ focused, iconName, color, size }) => {
 
 const TabNavigator = () => {
   const { t, theme, isDarkMode } = useAppSettings();
+  const { user } = useUser();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const stageToValue = (stage) => {
+    if (!stage) return null;
+    const stageMap = {
+      'firstYear': '1',
+      'secondYear': '2',
+      'thirdYear': '3',
+      'fourthYear': '4',
+      'fifthYear': '5',
+      'sixthYear': '6',
+    };
+    return stageMap[stage] || stage;
+  };
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user?.$id || !user?.department) return;
+    try {
+      const stageValue = stageToValue(user.stage);
+      const chats = await getAllUserChats(user.$id, user.department, stageValue);
+      const allChats = [
+        ...(chats.defaultGroups || []),
+        ...(chats.customGroups || []),
+        ...(chats.privateChats || []),
+      ];
+      const chatIds = allChats.map(c => c.$id);
+      const total = await getTotalUnreadCount(user.$id, chatIds);
+      setUnreadCount(total);
+    } catch (error) {
+      // Silently fail
+    }
+  }, [user?.$id, user?.department, user?.stage]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
   
   return (
     <Tab.Navigator
@@ -109,7 +152,17 @@ const TabNavigator = () => {
       <Tab.Screen 
         name="Chats" 
         component={Chats} 
-        options={{ title: t('tabs.chats') }}
+        options={{ 
+          title: t('tabs.chats'),
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#EF4444',
+            fontSize: 10,
+            fontWeight: '600',
+            minWidth: 18,
+            height: 18,
+          },
+        }}
       />
       <Tab.Screen 
         name="Post" 
@@ -165,8 +218,13 @@ const MainStack = () => {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a2e' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={loadingStyles.container}>
+        <Image
+          source={require('../assets/icon.png')}
+          style={loadingStyles.logo}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="large" color="#007AFF" style={loadingStyles.loader} />
       </View>
     );
   }
@@ -287,17 +345,44 @@ const MainStack = () => {
 };
 
 export default function App() {
-  return (
-    <ErrorBoundary>
-      <LanguageProvider>
-        <AppSettingsProvider>
-          <UserProvider>
-            <NavigationContainer>
-              <MainStack />
-            </NavigationContainer>
-          </UserProvider>
-        </AppSettingsProvider>
-      </LanguageProvider>
-    </ErrorBoundary>
-  );
+  console.log('=== APP STARTING ===');
+  try {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <LanguageProvider>
+              <AppSettingsProvider>
+                <UserProvider>
+                  <NavigationContainer>
+                    <MainStack />
+                  </NavigationContainer>
+                </UserProvider>
+              </AppSettingsProvider>
+            </LanguageProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  } catch (error) {
+    console.error('=== APP ERROR ===', error);
+    throw error;
+  }
 }
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a2e',
+  },
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
+  },
+  loader: {
+    marginTop: 10,
+  },
+});

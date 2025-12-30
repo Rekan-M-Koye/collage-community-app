@@ -4,6 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 
+// Ensure WebBrowser redirects work properly
+WebBrowser.maybeCompleteAuthSession();
+
 const PENDING_VERIFICATION_KEY = 'pending_verification';
 const PENDING_OAUTH_KEY = 'pending_oauth_signup';
 const VERIFICATION_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -125,7 +128,14 @@ export const initiateSignup = async (email, password, name, additionalData = {})
             // But we already created the account above, so this just sends the OTP
             tokenResponse = await account.createEmailToken(userId, sanitizedEmail);
         } catch (otpError) {
-            // If OTP sending fails, clean up the created account and throw error
+            // If OTP sending fails, clean up the created account
+            // Check for specific error types to provide better feedback
+            if (otpError.message?.includes('SMTP') || otpError.message?.includes('email')) {
+                throw new Error('Email service is temporarily unavailable. Please try again later.');
+            }
+            if (otpError.code === 501 || otpError.message?.includes('not implemented')) {
+                throw new Error('Email verification is not configured. Please contact support.');
+            }
             throw new Error('Failed to send verification code. Please try again.');
         }
         
@@ -267,36 +277,59 @@ export const resendVerificationEmail = async () => {
 
 // ==================== GOOGLE OAUTH ====================
 
-// Start Google OAuth flow
+// Get the Appwrite project ID for OAuth callback
+const getAppwriteProjectId = () => {
+    return process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID || '';
+};
+
+// Helper to get the correct redirect URL for OAuth
+// Appwrite expects callbacks in the format: appwrite-callback-[PROJECT_ID]://
+const getOAuthRedirectUrl = () => {
+    const projectId = getAppwriteProjectId();
+    // Appwrite's expected OAuth callback format for mobile apps
+    // This scheme is automatically recognized by Appwrite without needing
+    // to register it as a separate platform
+    return `appwrite-callback-${projectId}://`;
+};
+
+// Start Google OAuth flow using the Token-based approach (recommended for React Native)
 export const signInWithGoogle = async () => {
     try {
-        // Create deep link URLs for OAuth callback
-        const successUrl = Linking.createURL('oauth-callback');
-        const failureUrl = Linking.createURL('oauth-failure');
+        const redirectUrl = getOAuthRedirectUrl();
         
-        // Get the OAuth URL from Appwrite
+        // Use createOAuth2Token for React Native - it returns userId and secret
+        // that we use to create a session manually
         const authUrl = account.createOAuth2Token(
             OAuthProvider.Google,
-            successUrl,
-            failureUrl
+            redirectUrl, // success URL
+            redirectUrl  // failure URL (same, we parse the result)
         );
         
-        // Open the browser for OAuth
+        // Open the browser for OAuth authentication
         const result = await WebBrowser.openAuthSessionAsync(
             authUrl.toString(),
-            successUrl
+            redirectUrl,
+            {
+                showInRecents: true,
+            }
         );
         
         if (result.type === 'success' && result.url) {
-            // Parse the URL to get the secret and userId
+            // Parse the callback URL to extract userId and secret
             const url = new URL(result.url);
             const secret = url.searchParams.get('secret');
             const userId = url.searchParams.get('userId');
             
             if (secret && userId) {
-                // Create session with the token
+                // Create a session using the token
                 await account.createSession(userId, secret);
                 return { success: true };
+            }
+            
+            // Check for error in URL parameters
+            const error = url.searchParams.get('error');
+            if (error) {
+                return { success: false, error: error };
             }
         }
         

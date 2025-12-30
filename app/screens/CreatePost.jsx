@@ -433,89 +433,64 @@ const CreatePost = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>
               {t('post.tags')} {t('common.optional')}
             </Text>
-            <View style={styles.chipsInputContainer}>
-              {tags.map((tag, index) => (
-                <View key={index} style={styles.chip}>
-                  <Text style={styles.chipText}>#{tag}</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const newTags = [...tags];
-                      newTags.splice(index, 1);
-                      setTags(newTags);
-                    }}
-                    style={styles.chipDelete}
-                    disabled={loading}
-                  >
-                    <Ionicons name="close" size={14} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TextInput
-                style={styles.chipInput}
-                value={tagInput}
-                onChangeText={(text) => {
-                  // Check if the last character is a space, comma, or newline
-                  const lastChar = text.slice(-1);
-                  const hasTagSeparator = lastChar === ' ' || lastChar === ',' || lastChar === '\n';
-                  
-                  if (hasTagSeparator && text.length > 1) {
-                    // User typed a separator, create tag from what's before it
-                    const tagText = text.slice(0, -1).trim().replace(/^#/, '');
-                    if (tagText && !tags.includes(tagText)) {
-                      setTags([...tags, tagText]);
+            <View style={styles.hashtagsSection}>
+              <View style={styles.hashtagsChipsWrapper}>
+                {tags.map((tag, index) => (
+                  <View key={index} style={styles.hashtagChip}>
+                    <Ionicons name="pricetag-outline" size={12} color="#8B5CF6" />
+                    <Text style={styles.hashtagChipText}>{tag}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const newTags = [...tags];
+                        newTags.splice(index, 1);
+                        setTags(newTags);
+                      }}
+                      disabled={loading}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close" size={14} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.hashtagInputRow}>
+                <TextInput
+                  style={styles.hashtagInput}
+                  value={tagInput}
+                  onChangeText={setTagInput}
+                  placeholder={t('post.tagsPlaceholder')}
+                  placeholderTextColor="#9CA3AF"
+                  editable={!loading && tags.length < 10}
+                  blurOnSubmit={false}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    const cleanTag = tagInput.trim().replace(/^#/, '');
+                    if (cleanTag && !tags.includes(cleanTag) && tags.length < 10) {
+                      setTags([...tags, cleanTag]);
                     }
                     setTagInput('');
-                    return;
-                  }
-                  
-                  // Also check for pasted content with multiple words
-                  if (text.includes(' ') || text.includes(',')) {
-                    const parts = text.split(/[\s,]+/).filter(Boolean);
-                    if (parts.length > 1) {
-                      const newTags = [];
-                      parts.forEach(part => {
-                        const cleanTag = part.trim().replace(/^#/, '');
-                        if (cleanTag && !tags.includes(cleanTag) && !newTags.includes(cleanTag)) {
-                          newTags.push(cleanTag);
-                        }
-                      });
-                      if (newTags.length > 0) {
-                        setTags([...tags, ...newTags]);
-                      }
-                      setTagInput('');
-                      return;
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.addLinkButton, { opacity: tagInput.trim() ? 1 : 0.5 }]}
+                  onPress={() => {
+                    const cleanTag = tagInput.trim().replace(/^#/, '');
+                    if (cleanTag && !tags.includes(cleanTag) && tags.length < 10) {
+                      setTags([...tags, cleanTag]);
                     }
-                  }
-                  
-                  setTagInput(text);
-                }}
-                onSubmitEditing={() => {
-                  const newTag = tagInput.trim().replace(/^#/, '');
-                  if (newTag && !tags.includes(newTag)) {
-                    setTags([...tags, newTag]);
-                  }
-                  setTagInput('');
-                }}
-                onEndEditing={() => {
-                  // Also create tag when user taps away
-                  const newTag = tagInput.trim().replace(/^#/, '');
-                  if (newTag && !tags.includes(newTag)) {
-                    setTags([...tags, newTag]);
-                  }
-                  setTagInput('');
-                }}
-                placeholder={tags.length === 0 ? t('post.tagsPlaceholder') : ''}
-                placeholderTextColor="#9CA3AF"
-                editable={!loading}
-                blurOnSubmit={false}
-                autoCapitalize="none"
-                autoCorrect={false}
-                spellCheck={false}
-                returnKeyType="done"
-              />
+                    setTagInput('');
+                  }}
+                  disabled={loading || !tagInput.trim() || tags.length >= 10}
+                >
+                  <Ionicons name="add-circle" size={28} color="#8B5CF6" />
+                </TouchableOpacity>
+              </View>
             </View>
             <Text style={styles.helperText}>
-              {t('post.tagsHelper')}
+              {t('post.tagsInputHelper')}
             </Text>
           </View>
 
@@ -523,9 +498,10 @@ const CreatePost = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>
               {t('post.links')} {t('common.optional')}
             </Text>
-            <View style={styles.linksChipsContainer}>
+            <View style={styles.linksSection}>
               {links.map((link, index) => (
                 <View key={index} style={styles.linkChip}>
+                  <Ionicons name="link-outline" size={14} color="#3B82F6" />
                   <Text style={styles.linkChipText} numberOfLines={1}>{link}</Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -533,89 +509,48 @@ const CreatePost = ({ navigation, route }) => {
                       newLinks.splice(index, 1);
                       setLinks(newLinks);
                     }}
-                    style={styles.chipDelete}
                     disabled={loading}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    <Ionicons name="close" size={14} color="#6B7280" />
+                    <Ionicons name="close" size={16} color="#6B7280" />
                   </TouchableOpacity>
                 </View>
               ))}
-            </View>
-            <View style={styles.linkInputRow}>
-              <TextInput
-                style={[styles.topicInput, { flex: 1 }]}
-                value={linkInput}
-                onChangeText={(text) => {
-                  // Check if the last character is a space or newline
-                  const lastChar = text.slice(-1);
-                  const hasSeparator = lastChar === ' ' || lastChar === '\n';
-                  
-                  if (hasSeparator && text.length > 1) {
-                    const linkText = text.slice(0, -1).trim();
-                    if (linkText && !links.includes(linkText)) {
-                      setLinks([...links, linkText]);
+              <View style={styles.linkInputRow}>
+                <TextInput
+                  style={styles.linkInput}
+                  value={linkInput}
+                  onChangeText={setLinkInput}
+                  placeholder={t('post.linksPlaceholder')}
+                  placeholderTextColor="#9CA3AF"
+                  editable={!loading}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  blurOnSubmit={false}
+                  autoCorrect={false}
+                  spellCheck={false}
+                  onSubmitEditing={() => {
+                    const newLink = linkInput.trim();
+                    if (newLink && !links.includes(newLink)) {
+                      setLinks([...links, newLink]);
                     }
                     setLinkInput('');
-                    return;
-                  }
-                  
-                  // Also check for pasted content with multiple links
-                  if (text.includes(' ') || text.includes('\n')) {
-                    const parts = text.split(/[\s\n]+/).filter(Boolean);
-                    if (parts.length > 1) {
-                      const newLinks = [];
-                      parts.forEach(part => {
-                        const cleanLink = part.trim();
-                        if (cleanLink && !links.includes(cleanLink) && !newLinks.includes(cleanLink)) {
-                          newLinks.push(cleanLink);
-                        }
-                      });
-                      if (newLinks.length > 0) {
-                        setLinks([...links, ...newLinks]);
-                      }
-                      setLinkInput('');
-                      return;
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.addLinkButton, { opacity: linkInput.trim() ? 1 : 0.5 }]}
+                  onPress={() => {
+                    const newLink = linkInput.trim();
+                    if (newLink && !links.includes(newLink)) {
+                      setLinks([...links, newLink]);
                     }
-                  }
-                  
-                  setLinkInput(text);
-                }}
-                placeholder={t('post.linksPlaceholder')}
-                placeholderTextColor="#9CA3AF"
-                editable={!loading}
-                autoCapitalize="none"
-                keyboardType="url"
-                blurOnSubmit={false}
-                autoCorrect={false}
-                spellCheck={false}
-                onSubmitEditing={() => {
-                  const newLink = linkInput.trim();
-                  if (newLink && !links.includes(newLink)) {
-                    setLinks([...links, newLink]);
-                  }
-                  setLinkInput('');
-                }}
-                onEndEditing={() => {
-                  const newLink = linkInput.trim();
-                  if (newLink && !links.includes(newLink)) {
-                    setLinks([...links, newLink]);
-                  }
-                  setLinkInput('');
-                }}
-              />
-              <TouchableOpacity
-                style={styles.addLinkButton}
-                onPress={() => {
-                  const newLink = linkInput.trim();
-                  if (newLink && !links.includes(newLink)) {
-                    setLinks([...links, newLink]);
-                  }
-                  setLinkInput('');
-                }}
-                disabled={loading || !linkInput.trim()}
-              >
-                <Ionicons name="add-circle" size={28} color={linkInput.trim() ? '#3B82F6' : '#D1D5DB'} />
-              </TouchableOpacity>
+                    setLinkInput('');
+                  }}
+                  disabled={loading || !linkInput.trim()}
+                >
+                  <Ionicons name="add-circle" size={28} color="#3B82F6" />
+                </TouchableOpacity>
+              </View>
             </View>
             <Text style={styles.helperText}>
               {t('post.linksHelper')}
@@ -815,36 +750,80 @@ const styles = StyleSheet.create({
     color: '#111827',
     paddingVertical: 4,
   },
-  linksChipsContainer: {
-    flexDirection: 'column',
+  // Links section styles (matching Reply page)
+  linksSection: {
     gap: 8,
-    marginBottom: 8,
   },
   linkChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DBEAFE',
-    borderRadius: 12,
-    paddingLeft: 12,
-    paddingRight: 8,
-    paddingVertical: 10,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#93C5FD',
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
   },
   linkChipText: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1D4ED8',
+    fontSize: 13,
+    color: '#3B82F6',
   },
   linkInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
+  linkInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#F9FAFB',
+  },
   addLinkButton: {
     padding: 4,
+  },
+  // Hashtags section styles
+  hashtagsSection: {
+    gap: 8,
+  },
+  hashtagsChipsWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  hashtagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139,92,246,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  hashtagChipText: {
+    fontSize: 13,
+    color: '#8B5CF6',
+  },
+  hashtagInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  hashtagInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#F9FAFB',
   },
   bottomSpace: {
     height: 40,

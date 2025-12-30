@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSettings } from '../context/AppSettingsContext';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { 
@@ -21,6 +22,7 @@ import { borderRadius } from '../theme/designTokens';
 
 const Lecture = () => {
   const { t, theme, isDarkMode } = useAppSettings();
+  const insets = useSafeAreaInsets();
 
   const cardBackground = isDarkMode 
     ? 'rgba(255, 255, 255, 0.08)' 
@@ -45,7 +47,7 @@ const Lecture = () => {
         
         <AnimatedBackground particleCount={18} />
         
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingTop: insets.top + spacing.sm }]}>
           <View 
             style={[
               styles.emptyStateCard,
@@ -84,7 +86,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(5),
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(5),
     paddingBottom: hp(12),
   },
   emptyStateCard: {

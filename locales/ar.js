@@ -814,6 +814,8 @@ export default {
     downloadFailed: 'فشل تنزيل الصورة',
     permissionDenied: 'مطلوب إذن الوصول إلى مكتبة الوسائط',
     pinchToZoom: 'استخدم إصبعين للتكبير',
+    pinchToZoomRotate: 'استخدم إصبعين للتكبير • للتدوير',
+    doubleTapToZoom: 'انقر مرتين للتكبير',
     uploadingImages: 'جاري رفع الصور',
     pleaseWait: 'يرجى الانتظار حتى يتم رفع الصور...',
     postCreated: 'تم إنشاء المنشور بنجاح!',

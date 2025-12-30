@@ -97,6 +97,15 @@ const ChatListItem = ({ chat, onPress, currentUserId, unreadCount = 0 }) => {
     ? 'rgba(255, 255, 255, 0.05)' 
     : 'rgba(255, 255, 255, 0.9)';
 
+  // Determine if we should show a profile picture
+  const shouldShowProfilePicture = 
+    (isPrivateChat && chat.otherUser) || 
+    (chat.type === CHAT_TYPES.CUSTOM_GROUP && chat.groupPhoto);
+  
+  const profilePictureUri = isPrivateChat 
+    ? chat.otherUser?.profilePicture 
+    : chat.groupPhoto;
+
   return (
     <TouchableOpacity 
       onPress={onPress} 
@@ -109,13 +118,13 @@ const ChatListItem = ({ chat, onPress, currentUserId, unreadCount = 0 }) => {
         }
       ]}>
       
-      {isPrivateChat && chat.otherUser?.profilePicture ? (
+      {isPrivateChat && chat.otherUser ? (
         <ProfilePicture 
           uri={chat.otherUser.profilePicture}
           name={chatName}
           size={moderateScale(48)}
         />
-      ) : chat.type === CHAT_TYPES.CUSTOM_GROUP && chat.groupPhoto ? (
+      ) : chat.type === CHAT_TYPES.CUSTOM_GROUP ? (
         <ProfilePicture 
           uri={chat.groupPhoto}
           name={chatName}

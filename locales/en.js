@@ -819,6 +819,8 @@ export default {
     downloadFailed: 'Failed to download image',
     permissionDenied: 'Permission to access media library is required',
     pinchToZoom: 'Pinch to zoom',
+    pinchToZoomRotate: 'Pinch to zoom • Rotate with two fingers',
+    doubleTapToZoom: 'Double tap to zoom',
     uploadingImages: 'Uploading Images',
     pleaseWait: 'Please wait while images are being uploaded...',
     postCreated: 'Post created successfully!',

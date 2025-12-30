@@ -10,9 +10,11 @@ import {
   RefreshControl,
   TouchableOpacity,
   Animated,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { GlassContainer } from '../components/GlassComponents';
@@ -31,7 +33,7 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost, incrementPostViewCount } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost, incrementPostViewCount, markQuestionAsResolved } from '../../database/posts';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 import { usePosts } from '../hooks/useRealtimeSubscription';
@@ -43,6 +45,7 @@ const Home = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
   const { showAlert } = useCustomAlert();
+  const insets = useSafeAreaInsets();
   const [selectedFeed, setSelectedFeed] = useState(FEED_TYPES.DEPARTMENT);
   const [selectedStage, setSelectedStage] = useState('all');
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
@@ -132,7 +135,7 @@ const Home = ({ navigation }) => {
 
         if (diff > 5 && currentScrollY > 50) {
           Animated.timing(headerTranslateY, {
-            toValue: -70,
+            toValue: -120,
             duration: 200,
             useNativeDriver: true,
           }).start();
@@ -324,8 +327,31 @@ const Home = ({ navigation }) => {
     navigation.navigate('EditPost', { post });
   };
 
+  const handleMarkResolved = async (postId) => {
+    try {
+      await markQuestionAsResolved(postId);
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.$id === postId 
+            ? { ...post, isResolved: true }
+            : post
+        )
+      );
+      
+      showAlert(t('common.success'), t('post.markedAsResolved'), 'success');
+    } catch (error) {
+      const errorInfo = handleNetworkError(error);
+      showAlert(
+        errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
+        errorInfo.message,
+        [{ text: t('common.ok') }]
+      );
+    }
+  };
+
   const handleDeletePost = async (post) => {
-    showAlert(
+    Alert.alert(
       t('common.delete'),
       t('post.deleteConfirm'),
       [
@@ -346,7 +372,7 @@ const Home = ({ navigation }) => {
               showAlert(
                 errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
                 errorInfo.message,
-                [{ text: t('common.ok') }]
+                'error'
               );
             }
           },
@@ -495,6 +521,7 @@ const Home = ({ navigation }) => {
               onEdit={() => handleEditPost(item)}
               onDelete={() => handleDeletePost(item)}
               onReport={() => handleReportPost(item)}
+              onMarkResolved={() => handleMarkResolved(item.$id)}
               onTagPress={(tag) => searchBarRef.current?.openWithQuery(`#${tag}`)}
               isLiked={item.likedBy?.includes(user?.$id)}
               isOwner={item.userId === user?.$id}
@@ -541,11 +568,12 @@ const Home = ({ navigation }) => {
 
         <AnimatedBackground particleCount={18} />
 
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingTop: insets.top + spacing.sm }]}>
           <Animated.View
             style={[
               styles.headerRow,
               {
+                top: insets.top + spacing.sm,
                 transform: [{ translateY: headerTranslateY }],
               }
             ]}
@@ -618,7 +646,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(5),
     paddingBottom: hp(2),
   },
   headerRow: {
@@ -628,6 +655,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     gap: spacing.xs,
     height: 44,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   searchIconButton: {
     width: 44,
@@ -718,7 +750,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   postsListContent: {
-    paddingTop: spacing.sm,
+    paddingTop: 56,
     paddingBottom: spacing.xl,
   },
   footerLoader: {

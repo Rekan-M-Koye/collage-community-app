@@ -69,21 +69,33 @@ const PostDetails = ({ navigation, route }) => {
       
       const repliesWithUserData = await Promise.all(
         fetchedReplies.map(async (reply) => {
+          // If this is the current user's reply, use their data directly
+          if (reply.userId === user?.$id) {
+            return {
+              ...reply,
+              currentUserId: user?.$id,
+              userData: {
+                fullName: user.fullName,
+                profilePicture: user.profilePicture,
+              }
+            };
+          }
+          
           try {
             const userDoc = await getUserDocument(reply.userId);
             return {
               ...reply,
               currentUserId: user?.$id,
               userData: {
-                fullName: userDoc.fullName,
-                profilePicture: userDoc.profilePicture,
+                fullName: userDoc?.fullName || userDoc?.name || t('common.user'),
+                profilePicture: userDoc?.profilePicture || null,
               }
             };
           } catch (error) {
             return {
               ...reply,
               currentUserId: user?.$id,
-              userData: { fullName: 'User', profilePicture: null }
+              userData: { fullName: t('common.user'), profilePicture: null }
             };
           }
         })
@@ -106,6 +118,12 @@ const PostDetails = ({ navigation, route }) => {
     if (!post?.$id) {
       showAlert(t('common.error'), t('post.postNotFound'), 'error');
       return;
+    }
+
+    // Include any pending link that user typed but hasn't pressed space yet
+    let finalLinks = [...replyLinks];
+    if (linkInput.trim() && !finalLinks.includes(linkInput.trim())) {
+      finalLinks.push(linkInput.trim());
     }
 
     setIsSubmitting(true);
@@ -131,6 +149,7 @@ const PostDetails = ({ navigation, route }) => {
           text: replyText.trim(),
           images: uploadedImageUrls.length > 0 ? uploadedImageUrls : (editingReply.images || []),
           imageDeleteUrls: uploadedImageDeleteUrls.length > 0 ? uploadedImageDeleteUrls : (editingReply.imageDeleteUrls || []),
+          links: finalLinks.length > 0 ? finalLinks : (editingReply.links || []),
           isEdited: true,
         };
 
@@ -145,6 +164,7 @@ const PostDetails = ({ navigation, route }) => {
           isAccepted: false,
           images: uploadedImageUrls,
           imageDeleteUrls: uploadedImageDeleteUrls,
+          links: finalLinks,
           likeCount: 0,
           isEdited: false,
           parentReplyId: null,
@@ -299,10 +319,17 @@ const PostDetails = ({ navigation, route }) => {
 
   const handleGalleryPick = async () => {
     try {
+      const permission = await ExpoImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        showAlert(t('common.error'), t('settings.galleryPermissionRequired') || 'Gallery permission is required', 'error');
+        return;
+      }
+
       const result = await ExpoImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['image'],
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.7,
+        selectionLimit: 3 - replyImages.length,
       });
 
       if (!result.canceled && result.assets) {
@@ -323,7 +350,7 @@ const PostDetails = ({ navigation, route }) => {
       }
 
       const result = await ExpoImagePicker.launchCameraAsync({
-        mediaTypes: ['image'],
+        mediaTypes: ['images'],
         quality: 0.7,
       });
 

@@ -48,8 +48,10 @@ const Post = () => {
   const [text, setText] = useState('');
   const [department, setDepartment] = useState(user?.department || '');
   const [stage, setStage] = useState(user?.stage || '');
-  const [tags, setTags] = useState('');
-  const [links, setLinks] = useState('');
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [links, setLinks] = useState([]);
+  const [linkInput, setLinkInput] = useState('');
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -149,8 +151,8 @@ const Post = () => {
         });
       }
 
-      const tagsArray = tags.trim() ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
-      const linksArray = links.trim() ? links.split('\n').map(link => link.trim()).filter(Boolean) : [];
+      const tagsArray = tags.filter(tag => tag.length > 0);
+      const linksArray = links.filter(link => link.length > 0);
       
       const postDepartment = isPublic ? 'public' : (user?.department || '');
 
@@ -171,8 +173,10 @@ const Post = () => {
       
       setTopic('');
       setText('');
-      setTags('');
-      setLinks('');
+      setTags([]);
+      setTagInput('');
+      setLinks([]);
+      setLinkInput('');
       setImages([]);
       setPostType(POST_TYPES.DISCUSSION);
     } catch (error) {
@@ -378,43 +382,138 @@ const Post = () => {
 
           {showTags && (
             <View style={styles.section}>
-              <TextInput
-                style={[styles.input, {
-                  backgroundColor: theme.inputBackground,
-                  borderColor: theme.border,
-                  color: theme.text
-                }]}
-                value={tags}
-                onChangeText={setTags}
-                placeholder={t('post.tagsPlaceholder')}
-                placeholderTextColor={theme.textSecondary}
-                editable={!loading}
-              />
+              <View style={styles.chipsContainer}>
+                {tags.map((tag, index) => (
+                  <View key={index} style={[styles.tagChip, { backgroundColor: isDarkMode ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.1)' }]}>
+                    <Ionicons name="pricetag-outline" size={12} color="#8B5CF6" />
+                    <Text style={styles.tagChipText}>{tag}</Text>
+                    <TouchableOpacity
+                      onPress={() => setTags(tags.filter((_, i) => i !== index))}
+                      disabled={loading}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close" size={14} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.chipInputRow}>
+                <TextInput
+                  style={[styles.chipInput, {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.border,
+                    color: theme.text
+                  }]}
+                  value={tagInput}
+                  onChangeText={(text) => {
+                    if (text.endsWith(' ')) {
+                      const cleanTag = text.trim().replace(/^#/, '');
+                      if (cleanTag && !tags.includes(cleanTag) && tags.length < 10) {
+                        setTags([...tags, cleanTag]);
+                      }
+                      setTagInput('');
+                    } else {
+                      setTagInput(text);
+                    }
+                  }}
+                  placeholder={t('post.tagsPlaceholder')}
+                  placeholderTextColor={theme.textSecondary}
+                  editable={!loading && tags.length < 10}
+                  blurOnSubmit={false}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    const cleanTag = tagInput.trim().replace(/^#/, '');
+                    if (cleanTag && !tags.includes(cleanTag) && tags.length < 10) {
+                      setTags([...tags, cleanTag]);
+                    }
+                    setTagInput('');
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.addChipButton, { opacity: tagInput.trim() ? 1 : 0.5 }]}
+                  onPress={() => {
+                    const cleanTag = tagInput.trim().replace(/^#/, '');
+                    if (cleanTag && !tags.includes(cleanTag) && tags.length < 10) {
+                      setTags([...tags, cleanTag]);
+                    }
+                    setTagInput('');
+                  }}
+                  disabled={loading || !tagInput.trim() || tags.length >= 10}
+                >
+                  <Ionicons name="add-circle" size={28} color="#8B5CF6" />
+                </TouchableOpacity>
+              </View>
               <Text style={[styles.helperText, { color: theme.textSecondary }]}>
-                {t('post.tagsHelper')}
+                {t('post.tagsInputHelper')}
               </Text>
             </View>
           )}
 
           {showLinks && (
             <View style={styles.section}>
-              <TextInput
-                style={[styles.input, styles.textArea, {
-                  backgroundColor: theme.inputBackground,
-                  borderColor: theme.border,
-                  color: theme.text,
-                  minHeight: 100
-                }]}
-                value={links}
-                onChangeText={setLinks}
-                placeholder={t('post.linksPlaceholder')}
-                placeholderTextColor={theme.textSecondary}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                editable={!loading}
-                autoCapitalize="none"
-              />
+              <View style={styles.linksChipsContainer}>
+                {links.map((link, index) => (
+                  <View key={index} style={[styles.linkChip, { backgroundColor: isDarkMode ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)' }]}>
+                    <Ionicons name="link-outline" size={14} color="#3B82F6" />
+                    <Text style={styles.linkChipText} numberOfLines={1}>{link}</Text>
+                    <TouchableOpacity
+                      onPress={() => setLinks(links.filter((_, i) => i !== index))}
+                      disabled={loading}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close" size={16} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.chipInputRow}>
+                <TextInput
+                  style={[styles.chipInput, {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.border,
+                    color: theme.text
+                  }]}
+                  value={linkInput}
+                  onChangeText={(text) => {
+                    if (text.endsWith(' ')) {
+                      const newLink = text.trim();
+                      if (newLink && !links.includes(newLink)) {
+                        setLinks([...links, newLink]);
+                      }
+                      setLinkInput('');
+                    } else {
+                      setLinkInput(text);
+                    }
+                  }}
+                  placeholder={t('post.linksPlaceholder')}
+                  placeholderTextColor={theme.textSecondary}
+                  editable={!loading}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => {
+                    const newLink = linkInput.trim();
+                    if (newLink && !links.includes(newLink)) {
+                      setLinks([...links, newLink]);
+                    }
+                    setLinkInput('');
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.addChipButton, { opacity: linkInput.trim() ? 1 : 0.5 }]}
+                  onPress={() => {
+                    const newLink = linkInput.trim();
+                    if (newLink && !links.includes(newLink)) {
+                      setLinks([...links, newLink]);
+                    }
+                    setLinkInput('');
+                  }}
+                  disabled={loading || !linkInput.trim()}
+                >
+                  <Ionicons name="add-circle" size={28} color="#3B82F6" />
+                </TouchableOpacity>
+              </View>
               <Text style={[styles.helperText, { color: theme.textSecondary }]}>
                 {t('post.linksHelper')}
               </Text>
@@ -574,20 +673,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
   },
-  chipContainer: {
+  chipsContainer: {
     flexDirection: 'row',
-    marginTop: 4,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
   },
-  chip: {
-    paddingHorizontal: 16,
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  tagChipText: {
+    fontSize: 13,
+    color: '#8B5CF6',
+  },
+  linksChipsContainer: {
+    gap: 8,
+    marginBottom: 8,
+  },
+  linkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  linkChipText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#3B82F6',
+  },
+  chipInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chipInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    marginRight: 8,
-  },
-  chipText: {
     fontSize: 14,
-    fontWeight: '500',
+  },
+  addChipButton: {
+    padding: 4,
   },
   imagesContainer: {
     flexDirection: 'row',

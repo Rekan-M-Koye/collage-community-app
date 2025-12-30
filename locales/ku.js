@@ -814,6 +814,8 @@ export default {
     downloadFailed: 'دابەزێنی وێنە سەرکەوتوو نەبوو',
     permissionDenied: 'مۆڵەتی دەستگەیشتن بە کتێبخانەی میدیا پێویستە',
     pinchToZoom: 'دوو پەنجە بەکاربێنە بۆ زوومکردن',
+    pinchToZoomRotate: 'دوو پەنجە بەکاربێنە بۆ زوومکردن • بۆ سوڕاندن',
+    doubleTapToZoom: 'دوو جار لێبدە بۆ زوومکردن',
     uploadingImages: 'بارکردنی وێنەکان',
     pleaseWait: 'تکایە چاوەڕێ بە تا وێنەکان بار دەکرێن...',
     postCreated: 'پۆست بە سەرکەوتوویی دروست کرا!',

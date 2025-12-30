@@ -1,4 +1,4 @@
-# Collage Community
+# College Community
 
 A React Native mobile application designed to help college students communicate, collaborate, and share resources.
 

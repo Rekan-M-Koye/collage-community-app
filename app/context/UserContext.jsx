@@ -5,25 +5,34 @@ import { getCurrentUser, getCompleteUserData } from '../../database/auth';
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
+  console.log('=== UserProvider rendering ===');
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
+    console.log('=== UserProvider useEffect - initializing user ===');
     initializeUser();
   }, []);
 
   const initializeUser = async () => {
+    console.log('=== UserProvider initializeUser START ===');
     try {
       setIsLoading(true);
+      console.log('=== Getting cached data ===');
       
       const cachedData = await AsyncStorage.getItem('userData');
       const cached = cachedData ? JSON.parse(cachedData) : null;
+      console.log('=== Cached data:', cached ? 'Found' : 'Not found');
       
+      console.log('=== Getting current user from Appwrite ===');
       const appwriteUser = await getCurrentUser();
+      console.log('=== Appwrite user:', appwriteUser ? 'Found' : 'Not found');
       
       if (appwriteUser) {
+        console.log('=== Getting complete user data ===');
         const completeUserData = await getCompleteUserData();
+        console.log('=== Complete user data:', completeUserData ? 'Found' : 'Not found');
         
         if (completeUserData) {
           const userData = {

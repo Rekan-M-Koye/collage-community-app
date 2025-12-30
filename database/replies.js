@@ -2,21 +2,14 @@ import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
 
 export const createReply = async (replyData) => {
-    console.log('[DEBUG createReply] called with:', JSON.stringify(replyData, null, 2));
     try {
         if (!replyData || typeof replyData !== 'object') {
-            console.log('[DEBUG createReply] Invalid reply data');
             throw new Error('Invalid reply data');
         }
         
         if (!replyData.postId || !replyData.userId) {
-            console.log('[DEBUG createReply] Missing required fields - postId:', replyData.postId, 'userId:', replyData.userId);
             throw new Error('Missing required fields');
         }
-        
-        console.log('[DEBUG createReply] Creating document in database...');
-        console.log('[DEBUG createReply] databaseId:', config.databaseId);
-        console.log('[DEBUG createReply] repliesCollectionId:', config.repliesCollectionId);
         
         const reply = await databases.createDocument(
             config.databaseId,
@@ -24,17 +17,11 @@ export const createReply = async (replyData) => {
             ID.unique(),
             replyData
         );
-        console.log('[DEBUG createReply] Document created:', reply?.$id);
 
-        console.log('[DEBUG createReply] Incrementing post reply count...');
         await incrementPostReplyCount(replyData.postId);
-        console.log('[DEBUG createReply] Post reply count incremented');
 
         return reply;
     } catch (error) {
-        console.log('[DEBUG createReply] ERROR:', error);
-        console.log('[DEBUG createReply] Error message:', error?.message);
-        console.log('[DEBUG createReply] Error code:', error?.code);
         throw error;
     }
 };

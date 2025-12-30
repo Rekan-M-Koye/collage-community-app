@@ -10,6 +10,7 @@ import {
   Animated,
   PanResponder,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,112 @@ import {
 import { borderRadius } from '../theme/designTokens';
 
 const SWIPE_THRESHOLD = 60;
+
+// Message status indicator component
+const MessageStatusIndicator = ({ 
+  status, 
+  readBy, 
+  chatType, 
+  otherUserPhoto, 
+  otherUserName,
+  participantCount,
+  theme,
+  isDarkMode 
+}) => {
+  // For optimistic/sending messages
+  if (status === 'sending') {
+    return (
+      <View style={statusStyles.container}>
+        <ActivityIndicator size={moderateScale(10)} color="rgba(255,255,255,0.6)" />
+      </View>
+    );
+  }
+  
+  // For failed messages
+  if (status === 'failed') {
+    return (
+      <View style={statusStyles.container}>
+        <Ionicons name="alert-circle" size={moderateScale(14)} color="#EF4444" />
+      </View>
+    );
+  }
+  
+  // Message sent but not read
+  if (status === 'sent' || !readBy || readBy.length === 0) {
+    return (
+      <View style={statusStyles.container}>
+        <Ionicons name="checkmark" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
+      </View>
+    );
+  }
+  
+  // For private chats - show other user's profile picture when read
+  if (chatType === 'private' && readBy.length > 0) {
+    return (
+      <View style={statusStyles.container}>
+        {otherUserPhoto ? (
+          <Image 
+            source={{ uri: otherUserPhoto }} 
+            style={statusStyles.readAvatar}
+          />
+        ) : (
+          <View style={[statusStyles.readAvatarPlaceholder, { backgroundColor: theme.primary }]}>
+            <Text style={statusStyles.readAvatarText}>
+              {(otherUserName || '?')[0].toUpperCase()}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+  
+  // For group chats - show double check when all have read
+  if ((chatType === 'custom_group' || chatType === 'stage_group' || chatType === 'department_group') && readBy.length > 0) {
+    const allRead = participantCount && readBy.length >= participantCount - 1; // -1 for sender
+    return (
+      <View style={statusStyles.container}>
+        <Ionicons 
+          name={allRead ? "checkmark-done" : "checkmark"} 
+          size={moderateScale(12)} 
+          color={allRead ? "#60A5FA" : "rgba(255,255,255,0.6)"} 
+        />
+      </View>
+    );
+  }
+  
+  // Default - single check
+  return (
+    <View style={statusStyles.container}>
+      <Ionicons name="checkmark" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
+    </View>
+  );
+};
+
+const statusStyles = StyleSheet.create({
+  container: {
+    marginLeft: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: moderateScale(14),
+  },
+  readAvatar: {
+    width: moderateScale(14),
+    height: moderateScale(14),
+    borderRadius: moderateScale(7),
+  },
+  readAvatarPlaceholder: {
+    width: moderateScale(14),
+    height: moderateScale(14),
+    borderRadius: moderateScale(7),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  readAvatarText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(8),
+    fontWeight: '600',
+  },
+});
 
 const MessageBubble = ({ 
   message, 
@@ -40,6 +147,11 @@ const MessageBubble = ({
   onUnbookmark,
   isBookmarked = false,
   onAvatarPress,
+  onRetry,
+  chatType,
+  otherUserPhoto,
+  otherUserName,
+  participantCount,
 }) => {
   const { theme, isDarkMode, t, chatSettings } = useAppSettings();
   const [imageModalVisible, setImageModalVisible] = useState(false);
@@ -216,17 +328,44 @@ const MessageBubble = ({
 
       {renderMessageContent()}
       
-      <Text style={[
-        styles.timeText,
-        { 
-          fontSize: fontSize(9),
-          color: isCurrentUser 
-            ? 'rgba(255,255,255,0.6)' 
-            : theme.textSecondary
-        }
-      ]}>
-        {formatTime(message.createdAt || message.$createdAt)}
-      </Text>
+      <View style={styles.timeStatusRow}>
+        <Text style={[
+          styles.timeText,
+          { 
+            fontSize: fontSize(9),
+            color: isCurrentUser 
+              ? 'rgba(255,255,255,0.6)' 
+              : theme.textSecondary
+          }
+        ]}>
+          {formatTime(message.createdAt || message.$createdAt)}
+        </Text>
+        
+        {/* Status indicator for current user's messages */}
+        {isCurrentUser && (
+          <MessageStatusIndicator
+            status={message._status}
+            readBy={message.readBy}
+            chatType={chatType}
+            otherUserPhoto={otherUserPhoto}
+            otherUserName={otherUserName}
+            participantCount={participantCount}
+            theme={theme}
+            isDarkMode={isDarkMode}
+          />
+        )}
+      </View>
+      
+      {/* Retry button for failed messages */}
+      {message._status === 'failed' && onRetry && (
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => onRetry(message)}
+        >
+          <Ionicons name="refresh" size={moderateScale(12)} color="#EF4444" />
+          <Text style={styles.retryText}>{t('common.retry') || 'Retry'}</Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 
@@ -516,6 +655,24 @@ const styles = StyleSheet.create({
   },
   swipeIndicatorRight: {
     right: spacing.xs,
+  },
+  timeStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: spacing.xs,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  retryText: {
+    color: '#EF4444',
+    fontSize: fontSize(10),
+    fontWeight: '500',
   },
   modalContainer: {
     flex: 1,

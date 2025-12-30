@@ -386,13 +386,21 @@ const PostCard = ({
       {/* Menu Modal */}
       <PostCardMenu
         visible={showMenu}
-        onClose={() => setShowMenu(false)}
+        onClose={() => {
+          setShowMenu(false);
+        }}
         isOwner={isOwner}
         isQuestion={post.postType === 'question'}
         isResolved={resolved}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onReport={onReport}
+        onEdit={() => {
+          if (onEdit) onEdit();
+        }}
+        onDelete={() => {
+          if (onDelete) onDelete();
+        }}
+        onReport={() => {
+          if (onReport) onReport();
+        }}
         onMarkResolved={() => {
           if (onMarkResolved) onMarkResolved();
           setResolved(true);

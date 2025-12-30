@@ -13,3 +13,4 @@ Follow existing code style and conventions
 no console.log statements in final code
 FIXMEs and TODOs must be COMPLETED
 No commented-out code
+we have too many files, and i like small files, just make sure when i ask you to do a task find the correct files to change and only change those files. 

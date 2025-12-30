@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList, RefreshControl, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,7 @@ import { borderRadius } from '../theme/designTokens';
 const Profile = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user, isLoading, refreshUser } = useUser();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('about');
   const [imageKey, setImageKey] = useState(Date.now());
   const [userPosts, setUserPosts] = useState([]);
@@ -457,7 +459,7 @@ const Profile = ({ navigation }) => {
       <LinearGradient colors={isDarkMode ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#e3f2fd', '#bbdefb', '#90caf9']} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <ScrollView 
           style={styles.scrollView} 
-          contentContainerStyle={styles.scrollContent} 
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + spacing.sm }]} 
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -592,7 +594,7 @@ const styles = StyleSheet.create({
   },
   gradient: { flex: 1 }, 
   scrollView: { flex: 1 }, 
-  scrollContent: { paddingTop: Platform.OS === 'ios' ? hp(5) : hp(3), paddingBottom: hp(10) }, 
+  scrollContent: { paddingBottom: hp(10) }, 
   profileHeader: { alignItems: 'center', paddingHorizontal: wp(5), marginBottom: spacing.md, position: 'relative' }, 
   settingsButton: { position: 'absolute', top: spacing.md, right: wp(5), zIndex: 10, width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
   avatarContainer: { marginBottom: spacing.sm }, 

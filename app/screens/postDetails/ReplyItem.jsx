@@ -75,7 +75,7 @@ const ReplyItem = ({
           )}
           <View style={styles.replyUserDetails}>
             <Text style={[styles.replyUserName, { color: theme.text }]}>
-              {reply.userData?.fullName || 'User'}
+              {reply.userData?.fullName || t('common.user')}
             </Text>
             <Text style={[styles.replyTime, { color: theme.textSecondary }]}>
               {formatTime(reply.$createdAt)}

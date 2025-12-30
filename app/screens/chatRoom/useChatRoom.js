@@ -12,6 +12,7 @@ import {
   canUserPinMessage,
   canUserMentionEveryone,
   markChatAsRead,
+  markAllMessagesAsRead,
 } from '../../../database/chats';
 import { getUserById, blockUser } from '../../../database/users';
 import { 
@@ -182,6 +183,11 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
       
       userCacheRef.current = newUserCache;
       setUserCache(newUserCache);
+      
+      // Mark messages as read when loading
+      if (user?.$id) {
+        markAllMessagesAsRead(chat.$id, user.$id);
+      }
     } catch (error) {
       Alert.alert(t('common.error'), error.message || t('chats.errorLoadingMessages'));
     } finally {
@@ -198,6 +204,10 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         pollMessages();
+        // Mark messages as read when returning to app
+        if (user?.$id) {
+          markAllMessagesAsRead(chat.$id, user.$id);
+        }
         if (!pollingInterval.current) {
           pollingInterval.current = setInterval(pollMessages, SMART_POLL_INTERVAL);
         }
@@ -346,6 +356,42 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
       return;
     }
 
+    // Create optimistic message with pending status
+    const tempId = `temp_${Date.now()}`;
+    const optimisticMessage = {
+      $id: tempId,
+      chatId: chat.$id,
+      content: content || '',
+      senderId: user.$id,
+      senderName: user.fullName,
+      senderPhoto: user.profilePicture || null,
+      $createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      // Message status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
+      _status: 'sending',
+      _isOptimistic: true,
+    };
+    
+    if (imageUrl && typeof imageUrl === 'string') {
+      optimisticMessage.images = [imageUrl];
+      optimisticMessage.imageUrl = imageUrl;
+    }
+    
+    if (replyingTo) {
+      optimisticMessage.replyToId = replyingTo.$id;
+      optimisticMessage.replyToContent = replyingTo.content?.substring(0, 50) || '';
+      optimisticMessage.replyToSender = replyingTo.senderName || '';
+    }
+
+    // Add optimistic message immediately
+    setMessages(prev => [...prev, optimisticMessage]);
+    setReplyingTo(null);
+    
+    // Scroll to bottom
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
     try {
       setSending(true);
       const messageData = {
@@ -359,21 +405,44 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
         messageData.images = [imageUrl];
       }
       
-      if (replyingTo) {
-        messageData.replyToId = replyingTo.$id;
-        messageData.replyToContent = replyingTo.content?.substring(0, 50) || '';
-        messageData.replyToSender = replyingTo.senderName || '';
+      if (optimisticMessage.replyToId) {
+        messageData.replyToId = optimisticMessage.replyToId;
+        messageData.replyToContent = optimisticMessage.replyToContent;
+        messageData.replyToSender = optimisticMessage.replyToSender;
       }
       
-      await sendMessage(chat.$id, messageData);
-      setReplyingTo(null);
+      const sentMessage = await sendMessage(chat.$id, messageData);
       
-      pollMessages();
+      // Replace optimistic message with real message
+      setMessages(prev => prev.map(msg => 
+        msg.$id === tempId 
+          ? { ...sentMessage, _status: 'sent', _isOptimistic: false }
+          : msg
+      ));
+      
     } catch (error) {
+      // Mark message as failed
+      setMessages(prev => prev.map(msg => 
+        msg.$id === tempId 
+          ? { ...msg, _status: 'failed' }
+          : msg
+      ));
       Alert.alert(t('common.error'), error.message || t('chats.errorSendingMessage'));
     } finally {
       setSending(false);
     }
+  };
+
+  // Retry sending a failed message
+  const handleRetryMessage = async (failedMessage) => {
+    // Remove the failed message
+    setMessages(prev => prev.filter(msg => msg.$id !== failedMessage.$id));
+    
+    // Resend
+    await handleSendMessage(
+      failedMessage.content, 
+      failedMessage.images?.[0] || failedMessage.imageUrl
+    );
   };
 
   const handleVisitProfile = () => {
@@ -440,6 +509,7 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     canMentionEveryone,
     showChatOptionsModal,
     flatListRef,
+    chat,
     
     // Setters
     setShowMuteModal,
@@ -462,6 +532,7 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     handleForwardMessage,
     cancelReply,
     handleSendMessage,
+    handleRetryMessage,
     handleVisitProfile,
     handleBlockUser,
   };

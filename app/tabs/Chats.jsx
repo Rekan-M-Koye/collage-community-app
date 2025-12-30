@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -35,6 +37,7 @@ import { useChatList } from '../hooks/useRealtimeSubscription';
 const Chats = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -166,6 +169,15 @@ const Chats = ({ navigation }) => {
     await loadChats();
     setRefreshing(false);
   };
+
+  // Reload chats when screen comes into focus (e.g., returning from ChatRoom)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.department && !initializing) {
+        loadChats();
+      }
+    }, [user?.department, initializing])
+  );
 
   const handleChatPress = (chat) => {
     navigation.navigate('ChatRoom', { chat });
@@ -363,7 +375,7 @@ const Chats = ({ navigation }) => {
         
         <AnimatedBackground particleCount={18} />
         
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingTop: insets.top + spacing.sm }]}>
           {hasContent ? (
             <SectionList
               sections={sections}
@@ -424,7 +436,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(5),
     paddingBottom: hp(12),
   },
   listContent: {

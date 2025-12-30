@@ -12,6 +12,7 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -265,13 +266,11 @@ const SignIn = ({ navigation }) => {
             ]}>
             
             <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Ionicons 
-                  name="school-outline" 
-                  size={moderateScale(50)} 
-                  color="#FFFFFF" 
-                />
-              </View>
+              <Image
+                source={require('../../assets/logo-white.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
 
             <View style={styles.headerContainer}>
@@ -477,16 +476,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: spacing.lg,
-  },
-  logoCircle: {
-    width: moderateScale(90),
-    height: moderateScale(90),
-    borderRadius: moderateScale(45),
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  logoImage: {
+    width: moderateScale(120),
+    height: moderateScale(120),
   },
   headerContainer: {
     marginBottom: spacing.lg,

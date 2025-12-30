@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   TextInput, 
@@ -27,6 +27,7 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [showMentionOptions, setShowMentionOptions] = useState(false);
+  const inputRef = useRef(null);
 
   const handleInsertMention = (mention) => {
     setMessage(prev => prev + mention + ' ');
@@ -104,19 +105,27 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
     if (!trimmedMessage && !selectedImage) return;
     if (!onSend) return;
 
+    // Store the message before clearing for immediate UI feedback
+    const messageToSend = trimmedMessage;
+    const imageToSend = selectedImage;
+    
+    // Clear message immediately for better UX
+    setMessage('');
+    
     try {
-      setUploading(true);
       let imageUrl = null;
 
-      if (selectedImage) {
-        const uploadResult = await uploadToImgbb(selectedImage.base64);
+      if (imageToSend) {
+        setUploading(true);
+        setSelectedImage(null);
+        const uploadResult = await uploadToImgbb(imageToSend.base64);
         imageUrl = uploadResult.url;
       }
 
-      await onSend(trimmedMessage, imageUrl);
-      setMessage('');
-      setSelectedImage(null);
+      await onSend(messageToSend, imageUrl);
     } catch (error) {
+      // Restore message on error
+      setMessage(messageToSend);
       Alert.alert(t('common.error'), error.message || t('chats.sendError'));
     } finally {
       setUploading(false);
@@ -241,6 +250,7 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
             }
           ]}>
             <TextInput
+              ref={inputRef}
               style={[
                 styles.input,
                 { 

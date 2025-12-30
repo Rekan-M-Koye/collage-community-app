@@ -337,6 +337,88 @@ export const updateMessage = async (messageId, messageData) => {
     }
 };
 
+// Mark a message as read by a user
+export const markMessageAsRead = async (messageId, userId) => {
+    try {
+        if (!messageId || !userId) {
+            return null;
+        }
+        
+        const message = await databases.getDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId
+        );
+        
+        const currentReadBy = message.readBy || [];
+        if (currentReadBy.includes(userId)) {
+            return message;
+        }
+        
+        const updatedMessage = await databases.updateDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId,
+            {
+                readBy: [...currentReadBy, userId]
+            }
+        );
+        
+        return updatedMessage;
+    } catch (error) {
+        // Silently fail - read receipts are not critical
+        return null;
+    }
+};
+
+// Mark all messages in a chat as read by a user
+export const markAllMessagesAsRead = async (chatId, userId) => {
+    try {
+        if (!chatId || !userId) {
+            return;
+        }
+        
+        // Get recent unread messages (limit to last 50 for performance)
+        const messages = await databases.listDocuments(
+            config.databaseId,
+            config.messagesCollectionId,
+            [
+                Query.equal('chatId', chatId),
+                Query.orderDesc('$createdAt'),
+                Query.limit(50)
+            ]
+        );
+        
+        // Update each message that doesn't have this user in readBy
+        const updatePromises = messages.documents
+            .filter(msg => msg.senderId !== userId && !(msg.readBy || []).includes(userId))
+            .map(msg => markMessageAsRead(msg.$id, userId));
+        
+        await Promise.all(updatePromises);
+    } catch (error) {
+        // Silently fail
+    }
+};
+
+// Get participants who have read a message
+export const getMessageReadReceipts = async (messageId) => {
+    try {
+        if (!messageId) {
+            return [];
+        }
+        
+        const message = await databases.getDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId
+        );
+        
+        return message.readBy || [];
+    } catch (error) {
+        return [];
+    }
+};
+
 export const addRepresentative = async (chatId, userId) => {
     try {
         if (!chatId || !userId) {

@@ -144,7 +144,7 @@ Based on reviewing the codebase, here are all the columns being used:
 - `chatId`, `senderId`, `senderName`, `content`, `imageUrl`, `images[]`
 - `replyToId`, `replyToContent`, `replyToSender`
 - `isPinned`, `pinnedBy`, `pinnedAt`
-- `mentionsAll`, `$createdAt`
+- `mentionsAll`, `readBy[]`, `$createdAt`
 
 ### Chats Collection (used in code):
 

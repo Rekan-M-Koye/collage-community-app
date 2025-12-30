@@ -49,6 +49,7 @@ const ChatRoom = ({ route, navigation }) => {
     canMentionEveryone,
     showChatOptionsModal,
     flatListRef,
+    chat: chatData,
     setShowMuteModal,
     setShowPinnedModal,
     setShowChatOptionsModal,
@@ -67,6 +68,7 @@ const ChatRoom = ({ route, navigation }) => {
     handleForwardMessage,
     cancelReply,
     handleSendMessage,
+    handleRetryMessage,
     handleVisitProfile,
     handleBlockUser,
   } = useChatRoom({ chat, user, t, navigation });
@@ -154,6 +156,11 @@ const ChatRoom = ({ route, navigation }) => {
       }
     };
 
+    // Get other user info for private chats (for read receipts)
+    const otherUserPhoto = chat.type === 'private' ? chat.otherUser?.profilePicture : null;
+    const otherUserName = chat.type === 'private' ? (chat.otherUser?.name || chat.otherUser?.fullName) : null;
+    const participantCount = chat.participants?.length || 0;
+
     return (
       <MessageBubble
         message={item}
@@ -171,6 +178,11 @@ const ChatRoom = ({ route, navigation }) => {
         onUnbookmark={isBookmarked ? () => handleUnbookmarkMessage(item) : null}
         isBookmarked={isBookmarked}
         onAvatarPress={handleAvatarPress}
+        onRetry={item._status === 'failed' ? handleRetryMessage : null}
+        chatType={chat.type}
+        otherUserPhoto={otherUserPhoto}
+        otherUserName={otherUserName}
+        participantCount={participantCount}
       />
     );
   };
