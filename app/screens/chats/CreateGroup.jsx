@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import { useUser } from '../../context/UserContext';
 import { GlassInput } from '../../components/GlassComponents';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import ProfilePicture from '../../components/ProfilePicture';
-import { getUsersByDepartment } from '../../../database/users';
+import { getUsersByDepartment, getFriends, searchUsers } from '../../../database/users';
 import { createCustomGroup } from '../../../database/chatHelpers';
 import { 
   wp, 
@@ -36,9 +36,13 @@ const CreateGroup = ({ navigation }) => {
   const { user: currentUser } = useUser();
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
-  const [users, setUsers] = useState([]);
+  const [friends, setFriends] = useState([]);
+  const [departmentUsers, setDepartmentUsers] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -46,20 +50,65 @@ const CreateGroup = ({ navigation }) => {
   }, [currentUser]);
 
   const loadUsers = async () => {
-    if (!currentUser?.department) {
+    if (!currentUser?.$id) {
       setLoading(false);
       return;
     }
 
     try {
-      const departmentUsers = await getUsersByDepartment(currentUser.department, 50);
-      const filteredUsers = departmentUsers.filter(u => u.$id !== currentUser.$id);
-      setUsers(filteredUsers);
+      // Load friends first (priority)
+      const userFriends = await getFriends(currentUser.$id);
+      const filteredFriends = userFriends.filter(u => u.$id !== currentUser.$id);
+      setFriends(filteredFriends);
+      
+      // Also load department users
+      if (currentUser.department) {
+        const deptUsers = await getUsersByDepartment(currentUser.department, 50);
+        // Filter out current user and friends (to avoid duplicates)
+        const friendIds = filteredFriends.map(f => f.$id);
+        const nonFriendDeptUsers = deptUsers.filter(
+          u => u.$id !== currentUser.$id && !friendIds.includes(u.$id)
+        );
+        setDepartmentUsers(nonFriendDeptUsers);
+      }
     } catch (error) {
-      setUsers([]);
+      setFriends([]);
+      setDepartmentUsers([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const debounceTimeout = React.useRef(null);
+
+  const handleSearch = useCallback(async (query) => {
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const results = await searchUsers(query, 20);
+      const filteredResults = results.filter(u => u.$id !== currentUser?.$id);
+      setSearchResults(filteredResults);
+    } catch (error) {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [currentUser]);
+
+  const handleQueryChange = (text) => {
+    setSearchQuery(text);
+    
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      handleSearch(text);
+    }, 300);
   };
 
   const toggleUserSelection = (userId) => {
@@ -242,24 +291,89 @@ const CreateGroup = ({ navigation }) => {
                 )}
               </View>
 
+              {/* Search Bar */}
+              <GlassInput style={styles.searchContainer}>
+                <Ionicons name="search" size={moderateScale(18)} color={theme.textSecondary} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text, fontSize: fontSize(14) }]}
+                  placeholder={t('chats.searchUsers')}
+                  placeholderTextColor={theme.textSecondary}
+                  value={searchQuery}
+                  onChangeText={handleQueryChange}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); }}>
+                    <Ionicons name="close-circle" size={moderateScale(18)} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </GlassInput>
+
               {loading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={theme.primary} />
                 </View>
-              ) : users.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
-                    {t('chats.emptySearchMessage')}
-                  </Text>
-                </View>
+              ) : searchQuery.length > 0 ? (
+                // Show search results
+                searching ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  </View>
+                ) : searchResults.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
+                      {t('chats.emptySearchMessage')}
+                    </Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={searchResults}
+                    renderItem={renderUserItem}
+                    keyExtractor={(item) => item.$id}
+                    scrollEnabled={false}
+                    contentContainerStyle={styles.usersList}
+                  />
+                )
               ) : (
-                <FlatList
-                  data={users}
-                  renderItem={renderUserItem}
-                  keyExtractor={(item) => item.$id}
-                  scrollEnabled={false}
-                  contentContainerStyle={styles.usersList}
-                />
+                // Show friends first, then department users
+                <>
+                  {friends.length > 0 && (
+                    <>
+                      <Text style={[styles.subSectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                        {t('chats.friends')}
+                      </Text>
+                      <FlatList
+                        data={friends}
+                        renderItem={renderUserItem}
+                        keyExtractor={(item) => item.$id}
+                        scrollEnabled={false}
+                        contentContainerStyle={styles.usersList}
+                      />
+                    </>
+                  )}
+                  
+                  {departmentUsers.length > 0 && (
+                    <>
+                      <Text style={[styles.subSectionTitle, { color: theme.textSecondary, fontSize: fontSize(12), marginTop: spacing.md }]}>
+                        {t('chats.departmentUsers')}
+                      </Text>
+                      <FlatList
+                        data={departmentUsers}
+                        renderItem={renderUserItem}
+                        keyExtractor={(item) => item.$id}
+                        scrollEnabled={false}
+                        contentContainerStyle={styles.usersList}
+                      />
+                    </>
+                  )}
+
+                  {friends.length === 0 && departmentUsers.length === 0 && (
+                    <View style={styles.emptyContainer}>
+                      <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
+                        {t('chats.emptySearchMessage')}
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           </ScrollView>
@@ -405,6 +519,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontWeight: '400',
+  },
+  subSectionTitle: {
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   footer: {
     paddingHorizontal: spacing.md,

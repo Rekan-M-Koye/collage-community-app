@@ -3,6 +3,7 @@ import { ID, Permission, Role, Query, OAuthProvider } from 'appwrite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { userCacheManager } from '../app/utils/cacheManager';
 
 // Ensure WebBrowser redirects work properly
 WebBrowser.maybeCompleteAuthSession();
@@ -690,10 +691,18 @@ export const getCompleteUserData = async () => {
     }
 };
 
-export const getUserDocument = async (userId) => {
+export const getUserDocument = async (userId, skipCache = false) => {
     try {
         if (!userId || typeof userId !== 'string') {
             throw new Error('Invalid user ID');
+        }
+        
+        // Check cache first (unless explicitly skipped)
+        if (!skipCache) {
+            const cachedUser = await userCacheManager.getCachedUserData(userId);
+            if (cachedUser) {
+                return cachedUser;
+            }
         }
         
         const userDoc = await databases.getDocument(
@@ -701,6 +710,10 @@ export const getUserDocument = async (userId) => {
             config.usersCollectionId || '68fc7b42001bf7efbba3',
             userId
         );
+        
+        // Cache the user data for future requests
+        await userCacheManager.cacheUserData(userId, userDoc);
+        
         return userDoc;
     } catch (error) {
         throw error;
@@ -735,6 +748,10 @@ export const updateUserDocument = async (userId, data) => {
             userId,
             data
         );
+        
+        // Invalidate user cache
+        await userCacheManager.invalidateUser(userId);
+        
         return userDoc;
     } catch (error) {
         throw error;

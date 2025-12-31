@@ -1,7 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CACHE_PREFIX = 'cache_';
-const CACHE_EXPIRY_TIME = 1000 * 60 * 60 * 24;
+const CACHE_EXPIRY_TIME = 1000 * 60 * 60 * 24; // 24 hours
+
+// Cache durations for different data types
+const CACHE_DURATIONS = {
+  user: 1000 * 60 * 60, // 1 hour for user data
+  posts: 1000 * 60 * 5, // 5 minutes for posts
+  chats: 1000 * 60 * 2, // 2 minutes for chats list
+  messages: 1000 * 60 * 1, // 1 minute for messages
+  replies: 1000 * 60 * 5, // 5 minutes for replies
+  image: CACHE_EXPIRY_TIME * 7, // 7 days for images
+};
 
 export const cacheManager = {
   async set(key, value, expiryTime = CACHE_EXPIRY_TIME) {
@@ -20,12 +30,17 @@ export const cacheManager = {
     }
   },
 
-  async get(key) {
+  async get(key, ignoreExpiry = false) {
     try {
       const cachedData = await AsyncStorage.getItem(`${CACHE_PREFIX}${key}`);
       if (!cachedData) return null;
 
       const { value, timestamp, expiryTime } = JSON.parse(cachedData);
+      
+      // If ignoring expiry, return value regardless of age (for stale-while-revalidate)
+      if (ignoreExpiry) {
+        return { value, isStale: Date.now() - timestamp > expiryTime };
+      }
       
       if (Date.now() - timestamp > expiryTime) {
         await this.remove(key);
@@ -38,11 +53,37 @@ export const cacheManager = {
     }
   },
 
+  async getWithMeta(key) {
+    try {
+      const cachedData = await AsyncStorage.getItem(`${CACHE_PREFIX}${key}`);
+      if (!cachedData) return null;
+
+      const { value, timestamp, expiryTime } = JSON.parse(cachedData);
+      const isStale = Date.now() - timestamp > expiryTime;
+      
+      return { value, timestamp, isStale };
+    } catch (error) {
+      return null;
+    }
+  },
+
   async remove(key) {
     try {
       await AsyncStorage.removeItem(`${CACHE_PREFIX}${key}`);
     } catch (error) {
       // Failed to remove cache
+    }
+  },
+
+  async removeByPrefix(prefix) {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(key => key.startsWith(`${CACHE_PREFIX}${prefix}`));
+      if (cacheKeys.length > 0) {
+        await AsyncStorage.multiRemove(cacheKeys);
+      }
+    } catch (error) {
+      // Failed to remove cache by prefix
     }
   },
 
@@ -64,7 +105,7 @@ export const imageCacheManager = {
     const cached = await cacheManager.get(`image_${url}`);
     if (cached) return cached;
 
-    await cacheManager.set(`image_${url}`, url, CACHE_EXPIRY_TIME * 7);
+    await cacheManager.set(`image_${url}`, url, CACHE_DURATIONS.image);
     return url;
   },
 
@@ -77,11 +118,141 @@ export const imageCacheManager = {
 export const userCacheManager = {
   async cacheUserData(userId, userData) {
     if (!userId || !userData) return;
-    await cacheManager.set(`user_${userId}`, userData, CACHE_EXPIRY_TIME);
+    await cacheManager.set(`user_${userId}`, userData, CACHE_DURATIONS.user);
   },
 
   async getCachedUserData(userId) {
     if (!userId) return null;
     return await cacheManager.get(`user_${userId}`);
+  },
+
+  async invalidateUser(userId) {
+    if (!userId) return;
+    await cacheManager.remove(`user_${userId}`);
+  }
+};
+
+// Posts cache manager with smart invalidation
+export const postsCacheManager = {
+  generateCacheKey(filters = {}, limit = 20, offset = 0) {
+    const parts = ['posts'];
+    if (filters.department) parts.push(`dept_${filters.department}`);
+    if (filters.stage && filters.stage !== 'all') parts.push(`stage_${filters.stage}`);
+    if (filters.userId) parts.push(`user_${filters.userId}`);
+    if (filters.postType) parts.push(`type_${filters.postType}`);
+    parts.push(`l${limit}_o${offset}`);
+    return parts.join('_');
+  },
+
+  async cachePosts(key, posts) {
+    if (!key || !posts) return;
+    await cacheManager.set(key, posts, CACHE_DURATIONS.posts);
+  },
+
+  async getCachedPosts(key) {
+    if (!key) return null;
+    return await cacheManager.getWithMeta(key);
+  },
+
+  async invalidatePostsCache(department = null) {
+    if (department) {
+      await cacheManager.removeByPrefix(`posts_dept_${department}`);
+    }
+    await cacheManager.removeByPrefix('posts_');
+  },
+
+  async invalidateSinglePost(postId) {
+    // Invalidate all posts caches since a post change affects multiple lists
+    await cacheManager.removeByPrefix('posts_');
+  }
+};
+
+// Chats cache manager
+export const chatsCacheManager = {
+  generateCacheKey(userId, department, stage) {
+    return `chats_${userId}_${department}_${stage || 'all'}`;
+  },
+
+  async cacheChats(key, chats) {
+    if (!key || !chats) return;
+    await cacheManager.set(key, chats, CACHE_DURATIONS.chats);
+  },
+
+  async getCachedChats(key) {
+    if (!key) return null;
+    return await cacheManager.getWithMeta(key);
+  },
+
+  async invalidateChatsCache(userId = null) {
+    if (userId) {
+      await cacheManager.removeByPrefix(`chats_${userId}`);
+    } else {
+      await cacheManager.removeByPrefix('chats_');
+    }
+  }
+};
+
+// Messages cache manager
+export const messagesCacheManager = {
+  generateCacheKey(chatId, limit = 100) {
+    return `messages_${chatId}_${limit}`;
+  },
+
+  async cacheMessages(chatId, messages, limit = 100) {
+    if (!chatId || !messages) return;
+    const key = this.generateCacheKey(chatId, limit);
+    await cacheManager.set(key, messages, CACHE_DURATIONS.messages);
+  },
+
+  async getCachedMessages(chatId, limit = 100) {
+    if (!chatId) return null;
+    const key = this.generateCacheKey(chatId, limit);
+    return await cacheManager.getWithMeta(key);
+  },
+
+  async invalidateChatMessages(chatId) {
+    if (!chatId) return;
+    await cacheManager.removeByPrefix(`messages_${chatId}`);
+  },
+
+  async addMessageToCache(chatId, message, limit = 100) {
+    if (!chatId || !message) return;
+    const key = this.generateCacheKey(chatId, limit);
+    const cached = await cacheManager.getWithMeta(key);
+    if (cached?.value) {
+      const messages = cached.value;
+      if (!messages.some(m => m.$id === message.$id)) {
+        messages.push(message);
+        // Keep only the last 'limit' messages
+        if (messages.length > limit) {
+          messages.shift();
+        }
+        await cacheManager.set(key, messages, CACHE_DURATIONS.messages);
+      }
+    }
+  }
+};
+
+// Replies cache manager
+export const repliesCacheManager = {
+  generateCacheKey(postId) {
+    return `replies_${postId}`;
+  },
+
+  async cacheReplies(postId, replies) {
+    if (!postId || !replies) return;
+    const key = this.generateCacheKey(postId);
+    await cacheManager.set(key, replies, CACHE_DURATIONS.replies);
+  },
+
+  async getCachedReplies(postId) {
+    if (!postId) return null;
+    const key = this.generateCacheKey(postId);
+    return await cacheManager.getWithMeta(key);
+  },
+
+  async invalidateReplies(postId) {
+    if (!postId) return;
+    await cacheManager.remove(this.generateCacheKey(postId));
   }
 };

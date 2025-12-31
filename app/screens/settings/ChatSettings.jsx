@@ -122,7 +122,7 @@ const ChatSettings = ({ navigation }) => {
 
   const pickCustomBackground = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['image'],
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [9, 16],
       quality: 0.8,

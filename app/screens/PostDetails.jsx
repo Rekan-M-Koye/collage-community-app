@@ -20,6 +20,7 @@ import { uploadImage } from '../../services/imgbbService';
 import { createReply, getRepliesByPost, updateReply, deleteReply, markReplyAsAccepted, unmarkReplyAsAccepted } from '../../database/replies';
 import { getUserDocument } from '../../database/auth';
 import { incrementPostViewCount } from '../../database/posts';
+import { notifyPostReply } from '../../database/notifications';
 import ImageGalleryModal from './postDetails/ImageGalleryModal';
 import ReplyItem from './postDetails/ReplyItem';
 import ReplyInputSection from './postDetails/ReplyInputSection';
@@ -176,6 +177,22 @@ const PostDetails = ({ navigation, route }) => {
 
         await createReply(replyData);
         showAlert(t('common.success'), t('post.replyAdded'), 'success');
+
+        // Send notification to post owner if it's not their own reply
+        if (post.userId !== user.$id) {
+          try {
+            await notifyPostReply(
+              post.userId,
+              user.$id,
+              user.fullName || user.name,
+              user.profilePicture,
+              post.$id,
+              replyText.trim()
+            );
+          } catch (notifyError) {
+            // Silent fail for notification
+          }
+        }
       }
 
       await loadReplies();
@@ -486,6 +503,7 @@ const PostDetails = ({ navigation, route }) => {
           onPickImages={handlePickImages}
           onToggleLinksSection={() => setShowLinksSection(!showLinksSection)}
           onSubmit={handleAddReply}
+          currentUserId={user?.$id}
         />
       </KeyboardAvoidingView>
 

@@ -1,5 +1,6 @@
 import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
+import { repliesCacheManager } from '../app/utils/cacheManager';
 
 export const createReply = async (replyData) => {
     try {
@@ -19,6 +20,9 @@ export const createReply = async (replyData) => {
         );
 
         await incrementPostReplyCount(replyData.postId);
+        
+        // Invalidate replies cache for this post
+        await repliesCacheManager.invalidateReplies(replyData.postId);
 
         return reply;
     } catch (error) {
@@ -43,10 +47,18 @@ export const getReply = async (replyId) => {
     }
 };
 
-export const getRepliesByPost = async (postId, limit = 50, offset = 0) => {
+export const getRepliesByPost = async (postId, limit = 50, offset = 0, useCache = true) => {
     try {
         if (!postId || typeof postId !== 'string') {
             throw new Error('Invalid post ID');
+        }
+        
+        // Try to get cached data first (only for initial load without offset)
+        if (useCache && offset === 0) {
+            const cached = await repliesCacheManager.getCachedReplies(postId);
+            if (cached?.value && !cached.isStale) {
+                return cached.value;
+            }
         }
         
         const replies = await databases.listDocuments(
@@ -59,8 +71,21 @@ export const getRepliesByPost = async (postId, limit = 50, offset = 0) => {
                 Query.offset(offset)
             ]
         );
+        
+        // Cache the replies for initial load
+        if (offset === 0) {
+            await repliesCacheManager.cacheReplies(postId, replies.documents);
+        }
+        
         return replies.documents;
     } catch (error) {
+        // On network error, try to return stale cache
+        if (offset === 0) {
+            const cached = await repliesCacheManager.getCachedReplies(postId);
+            if (cached?.value) {
+                return cached.value;
+            }
+        }
         throw error;
     }
 };
@@ -87,7 +112,7 @@ export const getRepliesByUser = async (userId, limit = 20, offset = 0) => {
     }
 };
 
-export const updateReply = async (replyId, replyData) => {
+export const updateReply = async (replyId, replyData, postId = null) => {
     try {
         if (!replyId || typeof replyId !== 'string') {
             throw new Error('Invalid reply ID');
@@ -108,6 +133,12 @@ export const updateReply = async (replyId, replyData) => {
             replyId,
             updateData
         );
+        
+        // Invalidate replies cache if postId is provided
+        if (postId) {
+            await repliesCacheManager.invalidateReplies(postId);
+        }
+        
         return reply;
     } catch (error) {
         throw error;
@@ -131,6 +162,9 @@ export const deleteReply = async (replyId, postId, imageDeleteUrls = []) => {
         );
 
         await decrementPostReplyCount(postId);
+        
+        // Invalidate replies cache for this post
+        await repliesCacheManager.invalidateReplies(postId);
 
         if (imageDeleteUrls && imageDeleteUrls.length > 0) {
         }

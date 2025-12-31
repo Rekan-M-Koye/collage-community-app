@@ -14,7 +14,7 @@ import {
   markChatAsRead,
   markAllMessagesAsRead,
 } from '../../../database/chats';
-import { getUserById, blockUser } from '../../../database/users';
+import { getUserById, blockUser, getFriends } from '../../../database/users';
 import { 
   muteChat, 
   unmuteChat, 
@@ -25,6 +25,7 @@ import {
   MUTE_TYPES,
 } from '../../../database/userChatSettings';
 import { useChatMessages } from '../../hooks/useRealtimeSubscription';
+import { messagesCacheManager } from '../../utils/cacheManager';
 
 const SMART_POLL_INTERVAL = 10000;
 
@@ -43,6 +44,8 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
   const [canPin, setCanPin] = useState(false);
   const [canMentionEveryone, setCanMentionEveryone] = useState(false);
   const [showChatOptionsModal, setShowChatOptionsModal] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [userFriends, setUserFriends] = useState([]);
   
   const flatListRef = useRef(null);
   const pollingInterval = useRef(null);
@@ -62,6 +65,9 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     isRealtimeActive.current = true;
     
     if (payload.chatId === chat.$id) {
+      // Add message to cache
+      await messagesCacheManager.addMessageToCache(chat.$id, payload, 100);
+      
       setMessages(prev => {
         if (prev.some(m => m.$id === payload.$id)) {
           return prev;
@@ -85,10 +91,12 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     }
   }, [chat.$id]);
 
-  const handleRealtimeMessageDeleted = useCallback((payload) => {
+  const handleRealtimeMessageDeleted = useCallback(async (payload) => {
     isRealtimeActive.current = true;
+    // Invalidate messages cache since data changed
+    await messagesCacheManager.invalidateChatMessages(chat.$id);
     setMessages(prev => prev.filter(m => m.$id !== payload.$id));
-  }, []);
+  }, [chat.$id]);
 
   useChatMessages(
     chat.$id,
@@ -195,9 +203,37 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     }
   };
 
+  const loadMembersAndFriends = async () => {
+    try {
+      // Load friends
+      if (user?.$id) {
+        const friends = await getFriends(user.$id);
+        setUserFriends(friends || []);
+      }
+      
+      // Load group members for group chats
+      if (chat.type !== 'private' && chat.participants?.length > 0) {
+        const memberPromises = chat.participants
+          .filter(id => id !== user?.$id)
+          .map(async (id) => {
+            try {
+              return await getUserById(id);
+            } catch (e) {
+              return null;
+            }
+          });
+        const members = await Promise.all(memberPromises);
+        setGroupMembers(members.filter(Boolean));
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  };
+
   useEffect(() => {
     loadMessages();
     checkPermissions();
+    loadMembersAndFriends();
     
     pollingInterval.current = setInterval(pollMessages, SMART_POLL_INTERVAL);
     
@@ -485,11 +521,8 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
   };
 
   const handleChatHeaderPress = () => {
-    if (chat.type === 'custom_group') {
-      navigation.navigate('GroupSettings', { chat });
-    } else {
-      setShowChatOptionsModal(true);
-    }
+    // Open chat options modal for all chat types
+    setShowChatOptionsModal(true);
   };
 
   return {
@@ -510,6 +543,8 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     showChatOptionsModal,
     flatListRef,
     chat,
+    groupMembers,
+    userFriends,
     
     // Setters
     setShowMuteModal,

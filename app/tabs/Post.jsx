@@ -87,7 +87,7 @@ const Post = () => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.8,
         selectionLimit: MAX_IMAGES_PER_POST - images.length,
@@ -116,12 +116,13 @@ const Post = () => {
   };
 
   const validateForm = () => {
-    if (!topic.trim()) {
-      Alert.alert(t('common.error'), t('post.topicRequired'));
-      return false;
-    }
-    if (!text.trim()) {
-      Alert.alert(t('common.error'), t('post.textRequired'));
+    // Post must have at least one of: topic, text, or images
+    const hasTopic = topic.trim().length > 0;
+    const hasText = text.trim().length > 0;
+    const hasImages = images.length > 0;
+    
+    if (!hasTopic && !hasText && !hasImages) {
+      Alert.alert(t('common.error'), t('post.contentRequired') || 'Please add a topic, description, or at least one image');
       return false;
     }
     if (!stage) {
@@ -247,7 +248,7 @@ const Post = () => {
 
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: theme.text }]}>
-              {t('post.topic')} <Text style={{ color: theme.danger }}>*</Text>
+              {t('post.topic')}
             </Text>
             <TextInput
               style={[styles.input, { 
@@ -269,7 +270,7 @@ const Post = () => {
 
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: theme.text }]}>
-              {t('post.description')} <Text style={{ color: theme.danger }}>*</Text>
+              {t('post.description')}
             </Text>
             <TextInput
               style={[styles.input, styles.textArea, {

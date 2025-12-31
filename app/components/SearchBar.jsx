@@ -10,7 +10,10 @@ import {
   Keyboard,
   ActivityIndicator,
   Platform,
+  StatusBar,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
@@ -22,12 +25,21 @@ import PostCard from './PostCard';
 import { searchUsers } from '../../database/users';
 import { searchPosts } from '../../database/posts';
 
+const SEARCH_FILTERS = {
+  ALL: 'all',
+  PEOPLE: 'people',
+  POSTS: 'posts',
+  HASHTAGS: 'hashtags',
+};
+
 const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, ref) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(SEARCH_FILTERS.ALL);
   const [results, setResults] = useState({
     users: [],
     posts: [],
@@ -70,17 +82,37 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
     };
   }, [searchQuery]);
 
-  const performSearch = async (query) => {
+  const performSearch = async (query, filter = activeFilter) => {
     if (!query || query.trim().length === 0) {
       setIsSearching(false);
       return;
     }
 
     try {
-      const [usersResults, postsResults] = await Promise.all([
-        searchUsers(query.trim(), 5),
-        searchPosts(query.trim(), user?.department, user?.major, 10)
-      ]);
+      let cleanQuery = query.trim();
+      
+      // For hashtag filter, strip # if present for searching
+      const isHashtagSearch = filter === SEARCH_FILTERS.HASHTAGS || cleanQuery.startsWith('#');
+      if (isHashtagSearch) {
+        cleanQuery = cleanQuery.replace(/^#/, '');
+      }
+
+      let usersResults = [];
+      let postsResults = [];
+
+      // Search based on active filter
+      if (filter === SEARCH_FILTERS.PEOPLE || filter === SEARCH_FILTERS.ALL) {
+        usersResults = await searchUsers(cleanQuery, 10);
+      }
+      
+      if (filter === SEARCH_FILTERS.POSTS || filter === SEARCH_FILTERS.ALL) {
+        postsResults = await searchPosts(cleanQuery, user?.department, user?.major, 15);
+      }
+      
+      if (filter === SEARCH_FILTERS.HASHTAGS) {
+        // Search specifically for hashtags/tags
+        postsResults = await searchPosts(`#${cleanQuery}`, user?.department, user?.major, 15);
+      }
 
       setResults({
         users: usersResults || [],
@@ -90,6 +122,14 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
       setResults({ users: [], posts: [] });
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    if (searchQuery.trim().length > 0) {
+      setIsSearching(true);
+      performSearch(searchQuery, filter);
     }
   };
 
@@ -120,6 +160,7 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
     setIsModalVisible(false);
     setSearchQuery('');
     setResults({ users: [], posts: [] });
+    setActiveFilter(SEARCH_FILTERS.ALL);
     Keyboard.dismiss();
   };
 
@@ -138,7 +179,14 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
   };
 
   const renderSearchResults = () => {
-    const hasResults = results.users.length > 0 || results.posts.length > 0;
+    // Filter results based on active filter
+    const showUsers = activeFilter === SEARCH_FILTERS.ALL || activeFilter === SEARCH_FILTERS.PEOPLE;
+    const showPosts = activeFilter === SEARCH_FILTERS.ALL || activeFilter === SEARCH_FILTERS.POSTS || activeFilter === SEARCH_FILTERS.HASHTAGS;
+    
+    const filteredUsers = showUsers ? results.users : [];
+    const filteredPosts = showPosts ? results.posts : [];
+    
+    const hasResults = filteredUsers.length > 0 || filteredPosts.length > 0;
     const hasQuery = searchQuery.trim().length > 0;
 
     if (isSearching) {
@@ -185,10 +233,10 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
     return (
       <FlatList
         data={[
-          ...(results.users.length > 0 ? [{ type: 'header', title: t('search.users') }] : []),
-          ...results.users.map(user => ({ type: 'user', data: user })),
-          ...(results.posts.length > 0 ? [{ type: 'header', title: t('search.posts') }] : []),
-          ...results.posts.map(post => ({ type: 'post', data: post })),
+          ...(filteredUsers.length > 0 ? [{ type: 'header', title: t('search.users') || 'Users' }] : []),
+          ...filteredUsers.map(user => ({ type: 'user', data: user })),
+          ...(filteredPosts.length > 0 ? [{ type: 'header', title: activeFilter === SEARCH_FILTERS.HASHTAGS ? (t('search.taggedPosts') || 'Tagged Posts') : (t('search.posts') || 'Posts') }] : []),
+          ...filteredPosts.map(post => ({ type: 'post', data: post })),
         ]}
         keyExtractor={(item, index) => `${item.type}-${index}`}
         renderItem={({ item }) => {
@@ -280,18 +328,31 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
         visible={isModalVisible}
         animationType="slide"
         onRequestClose={handleCloseModal}
+        statusBarTranslucent
       >
         <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-          <View style={[styles.searchHeader, { borderBottomColor: theme.border }]}>
+          <StatusBar
+            barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+            backgroundColor="transparent"
+            translucent
+          />
+          <View style={[styles.searchHeader, { borderBottomColor: theme.border, paddingTop: insets.top + 10 }]}>
             <TouchableOpacity onPress={handleCloseModal} style={styles.backButton}>
               <Ionicons name="arrow-back" size={moderateScale(24)} color={theme.text} />
             </TouchableOpacity>
             
-            <View style={styles.searchInputContainer}>
+            <View style={[
+              styles.searchInputContainer,
+              {
+                backgroundColor: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.1)' 
+                  : 'rgba(0, 0, 0, 0.06)',
+              }
+            ]}>
               <Ionicons
                 name="search-outline"
                 size={moderateScale(20)}
-                color={theme.subText}
+                color={isDarkMode ? theme.text : theme.textSecondary}
                 style={styles.searchIcon}
               />
               <TextInput
@@ -304,7 +365,7 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
                   },
                 ]}
                 placeholder={t('search.placeholder')}
-                placeholderTextColor={theme.input.placeholder}
+                placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.5)' : theme.textSecondary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearchSubmit}
@@ -316,12 +377,56 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
                   <Ionicons
                     name="close-circle"
                     size={moderateScale(20)}
-                    color={theme.subText}
+                    color={isDarkMode ? theme.text : theme.textSecondary}
                   />
                 </TouchableOpacity>
               )}
             </View>
           </View>
+
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={[styles.filterTabsContainer, { borderBottomColor: theme.border }]}
+            contentContainerStyle={styles.filterTabsContent}
+          >
+            {[
+              { key: SEARCH_FILTERS.ALL, label: t('search.all') || 'All', icon: 'apps-outline' },
+              { key: SEARCH_FILTERS.PEOPLE, label: t('search.people') || 'People', icon: 'people-outline' },
+              { key: SEARCH_FILTERS.POSTS, label: t('search.posts') || 'Posts', icon: 'document-text-outline' },
+              { key: SEARCH_FILTERS.HASHTAGS, label: t('search.hashtags') || 'Tags', icon: 'pricetag-outline' },
+            ].map((filter) => (
+              <TouchableOpacity
+                key={filter.key}
+                style={[
+                  styles.filterTab,
+                  activeFilter === filter.key && {
+                    borderBottomWidth: 2,
+                    borderBottomColor: theme.primary,
+                  },
+                ]}
+                onPress={() => handleFilterChange(filter.key)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={filter.icon}
+                  size={moderateScale(14)}
+                  color={activeFilter === filter.key ? theme.primary : theme.subText}
+                />
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    {
+                      color: activeFilter === filter.key ? theme.primary : theme.subText,
+                      fontWeight: activeFilter === filter.key ? '600' : '400',
+                    },
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           <View style={styles.resultsContainer}>
             {renderSearchResults()}
@@ -355,19 +460,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: Platform.OS === 'ios' ? hp(6) : hp(2),
     paddingBottom: spacing.md,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
   },
   backButton: {
     padding: spacing.xs,
     marginRight: spacing.sm,
   },
+  filterTabsContainer: {
+    borderBottomWidth: 1,
+  },
+  filterTabsContent: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.sm,
+  },
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: 4,
+  },
+  filterTabText: {
+    fontSize: fontSize(11),
+  },
   searchInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(128, 128, 128, 0.15)',
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,

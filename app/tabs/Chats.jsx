@@ -24,6 +24,7 @@ import {
   getAllUserChats,
 } from '../../database/chatHelpers';
 import { getUnreadCount } from '../../database/chats';
+import { chatsCacheManager } from '../utils/cacheManager';
 import { 
   wp, 
   hp, 
@@ -61,6 +62,11 @@ const Chats = ({ navigation }) => {
 
   // Real-time subscription for chat updates (new messages, unread count changes)
   const handleRealtimeChatUpdate = useCallback(async (payload) => {
+    // Invalidate chats cache since data changed
+    if (user?.$id) {
+      await chatsCacheManager.invalidateChatsCache(user.$id);
+    }
+    
     // Update the chat in the appropriate list
     const updateChatInList = (list, setList) => {
       const index = list.findIndex(c => c.$id === payload.$id);

@@ -2,6 +2,7 @@ import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
 import { CHAT_TYPES, createGroupChat, getUserGroupChats } from './chats';
 import { getUserById } from './users';
+import { chatsCacheManager } from '../app/utils/cacheManager';
 
 export const PRIVATE_CHAT_TYPE = 'private';
 export const CUSTOM_GROUP_TYPE = 'custom_group';
@@ -179,6 +180,10 @@ export const createPrivateChat = async (user1, user2) => {
             }
         );
 
+        // Invalidate chat cache for both users
+        await chatsCacheManager.invalidateChatsCache(user1.$id);
+        await chatsCacheManager.invalidateChatsCache(user2.$id);
+
         // Return with otherUser populated for proper display
         return { ...chat, otherUser: user2 };
     } catch (error) {
@@ -215,6 +220,11 @@ export const createCustomGroup = async (groupData, creatorId) => {
             ID.unique(),
             documentData
         );
+
+        // Invalidate chat cache for all members
+        for (const memberId of members) {
+            await chatsCacheManager.invalidateChatsCache(memberId);
+        }
 
         return chat;
     } catch (error) {
@@ -268,7 +278,9 @@ export const getUserCustomGroups = async (userId) => {
     }
 };
 
-export const getAllUserChats = async (userId, department, stage) => {
+export const getAllUserChats = async (userId, department, stage, useCache = true) => {
+    const cacheKey = chatsCacheManager.generateCacheKey(userId, department, stage);
+    
     try {
         const results = {
             defaultGroups: [],
@@ -278,6 +290,14 @@ export const getAllUserChats = async (userId, department, stage) => {
 
         if (!userId) {
             return results;
+        }
+
+        // Try to get cached data first
+        if (useCache) {
+            const cached = await chatsCacheManager.getCachedChats(cacheKey);
+            if (cached?.value && !cached.isStale) {
+                return cached.value;
+            }
         }
 
         const [groupChats, customGroups, privateChats] = await Promise.all([
@@ -306,9 +326,17 @@ export const getAllUserChats = async (userId, department, stage) => {
         );
         
         results.privateChats = privateChatsWithOtherUser;
+        
+        // Cache the results
+        await chatsCacheManager.cacheChats(cacheKey, results);
 
         return results;
     } catch (error) {
+        // On network error, try to return stale cache
+        const cached = await chatsCacheManager.getCachedChats(cacheKey);
+        if (cached?.value) {
+            return cached.value;
+        }
         return {
             defaultGroups: [],
             customGroups: [],
@@ -448,6 +476,9 @@ export const addGroupMember = async (chatId, userId) => {
                 chatId,
                 { participants }
             );
+            
+            // Invalidate cache for the new member
+            await chatsCacheManager.invalidateChatsCache(userId);
         }
         return true;
     } catch (error) {
@@ -483,7 +514,55 @@ export const removeGroupMember = async (chatId, userId) => {
 
 export const leaveGroup = async (chatId, userId) => {
     try {
-        return await removeGroupMember(chatId, userId);
+        if (!chatId || !userId) throw new Error('Chat ID and user ID are required');
+
+        const chat = await databases.getDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId
+        );
+
+        // Check if user is the owner (first admin)
+        const isOwner = chat.admins?.[0] === userId;
+        
+        let newAdmins = (chat.admins || []).filter(id => id !== userId);
+        let newRepresentatives = (chat.representatives || []).filter(id => id !== userId);
+        const newParticipants = (chat.participants || []).filter(id => id !== userId);
+
+        // If owner is leaving, transfer ownership
+        if (isOwner && newParticipants.length > 0) {
+            let newOwnerId = null;
+            
+            // Priority 1: Oldest remaining admin (first in the admins array after filtering)
+            if (newAdmins.length > 0) {
+                newOwnerId = newAdmins[0]; // Already first, no change needed
+            } else {
+                // Priority 2: Oldest member (first participant by join order)
+                // Find oldest participant by checking who's been there longest
+                // Since we can't track join dates, use array order (first = oldest)
+                newOwnerId = newParticipants[0];
+                
+                // Make them an admin
+                newAdmins = [newOwnerId];
+                newRepresentatives = [newOwnerId];
+            }
+        }
+
+        await databases.updateDocument(
+            config.databaseId,
+            config.chatsCollectionId,
+            chatId,
+            { 
+                participants: newParticipants, 
+                admins: newAdmins, 
+                representatives: newRepresentatives 
+            }
+        );
+        
+        // Invalidate cache
+        await chatsCacheManager.invalidateChatsCache(userId);
+        
+        return true;
     } catch (error) {
         throw error;
     }

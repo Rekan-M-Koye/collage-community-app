@@ -33,10 +33,12 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
-import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost, incrementPostViewCount, markQuestionAsResolved } from '../../database/posts';
+import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost, incrementPostViewCount, markQuestionAsResolved, getPost } from '../../database/posts';
+import { notifyPostLike } from '../../database/notifications';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 import { usePosts } from '../hooks/useRealtimeSubscription';
+import { postsCacheManager } from '../utils/cacheManager';
 
 const POSTS_PER_PAGE = 15;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
@@ -66,6 +68,9 @@ const Home = ({ navigation }) => {
 
   // Real-time subscription for new/updated posts
   const handleRealtimePostUpdate = useCallback(async (payload) => {
+    // Invalidate posts cache since data changed
+    await postsCacheManager.invalidateSinglePost(payload.$id);
+    
     // Check if this post matches current filters
     const matchesFeed = 
       selectedFeed === FEED_TYPES.PUBLIC ||
@@ -89,7 +94,9 @@ const Home = ({ navigation }) => {
     }
   }, [selectedFeed, selectedStage, user?.department]);
 
-  const handleRealtimePostDelete = useCallback((payload) => {
+  const handleRealtimePostDelete = useCallback(async (payload) => {
+    // Invalidate posts cache since data changed
+    await postsCacheManager.invalidateSinglePost(payload.$id);
     setPosts(prev => prev.filter(p => p.$id !== payload.$id));
   }, []);
 
@@ -313,6 +320,25 @@ const Home = ({ navigation }) => {
             : post
         )
       );
+
+      // Send notification if the post was liked (not unliked) and it's not the user's own post
+      if (result.isLiked) {
+        const likedPost = posts.find(p => p.$id === postId);
+        if (likedPost && likedPost.userId !== user.$id) {
+          try {
+            await notifyPostLike(
+              likedPost.userId,
+              user.$id,
+              user.fullName || user.name,
+              user.profilePicture,
+              postId,
+              likedPost.topic || likedPost.text
+            );
+          } catch (notifyError) {
+            // Silent fail for notification
+          }
+        }
+      }
     } catch (error) {
       const errorInfo = handleNetworkError(error);
       showAlert(
@@ -619,6 +645,29 @@ const Home = ({ navigation }) => {
                 </Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.notificationContainer,
+                  {
+                    backgroundColor: isDarkMode
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : 'rgba(0, 0, 0, 0.04)',
+                    borderWidth: 0.5,
+                    borderColor: isDarkMode
+                      ? 'rgba(255, 255, 255, 0.15)'
+                      : 'rgba(0, 0, 0, 0.08)',
+                  }
+                ]}
+              >
+                <Ionicons name="notifications-outline" size={moderateScale(18)} color={theme.text} />
+              </View>
+            </TouchableOpacity>
           </Animated.View>
 
           <View style={styles.feedContent}>
@@ -689,6 +738,17 @@ const styles = StyleSheet.create({
   },
   stageText: {
     fontWeight: '600',
+  },
+  notificationButton: {
+    height: 40,
+    width: 40,
+  },
+  notificationContainer: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.md,
   },
   searchSection: {
     paddingHorizontal: wp(4),

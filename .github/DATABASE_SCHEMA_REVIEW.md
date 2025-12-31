@@ -6,6 +6,24 @@ This document contains the current Appwrite database schema and identifies any m
 
 ## Current Database Tables
 
+### 0. **notifications** (Table ID: 69554fd5001d447c8c1c) ✅ CREATED
+
+| Column Name          | Type     | Size | Indexed | Required | Default |
+| -------------------- | -------- | ---- | ------- | -------- | ------- |
+| $id                  | string   | -    | ✓       | -        | -       |
+| senderId             | string   | 255  | -       | ✓        | -       |
+| senderName           | string   | 255  | -       | -        | NULL    |
+| postId               | string   | 255  | -       | -        | NULL    |
+| userId               | string   | 255  | -       | ✓        | -       |
+| senderProfilePicture | string   | 999  | -       | -        | NULL    |
+| type                 | string   | 255  | -       | -        | NULL    |
+| postPreview          | string   | 1000 | -       | -        | NULL    |
+| isRead               | boolean  | -    | -       | -        | false   |
+| $createdAt           | datetime | -    | -       | -        | -       |
+| $updatedAt           | datetime | -    | -       | -        | -       |
+
+---
+
 ### 1. **messages** (Table ID: messages)
 
 | Column Name    | Type     | Size  | Indexed | Required | Default |

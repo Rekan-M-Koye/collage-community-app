@@ -183,6 +183,84 @@ const NotificationSettings = ({ navigation }) => {
                   ios_backgroundColor={theme.border}
                 />
               </View>
+              
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              
+              <View style={styles.settingItem}>
+                <View style={[
+                  styles.iconContainer,
+                  { backgroundColor: isDarkMode ? 'rgba(255, 59, 48, 0.15)' : 'rgba(255, 59, 48, 0.1)' },
+                ]}>
+                  <Ionicons name="heart" size={20} color="#FF3B30" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>
+                    {t('settings.postLikeNotifications') || 'Post Likes'}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                    {t('settings.postLikeNotificationsDesc') || 'When someone likes your post'}
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationSettings?.postLikes !== false}
+                  onValueChange={(value) => updateNotificationSetting('postLikes', value)}
+                  trackColor={{ false: theme.border, true: '#FF3B30' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={theme.border}
+                />
+              </View>
+              
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              
+              <View style={styles.settingItem}>
+                <View style={[
+                  styles.iconContainer,
+                  { backgroundColor: isDarkMode ? 'rgba(0, 122, 255, 0.15)' : 'rgba(0, 122, 255, 0.1)' },
+                ]}>
+                  <Ionicons name="chatbubbles-outline" size={20} color="#007AFF" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>
+                    {t('settings.postReplyNotifications') || 'Post Replies'}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                    {t('settings.postReplyNotificationsDesc') || 'When someone replies to your post'}
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationSettings?.postReplies !== false}
+                  onValueChange={(value) => updateNotificationSetting('postReplies', value)}
+                  trackColor={{ false: theme.border, true: '#007AFF' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={theme.border}
+                />
+              </View>
+              
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              
+              <View style={styles.settingItem}>
+                <View style={[
+                  styles.iconContainer,
+                  { backgroundColor: isDarkMode ? 'rgba(88, 86, 214, 0.15)' : 'rgba(88, 86, 214, 0.1)' },
+                ]}>
+                  <Ionicons name="at" size={20} color="#5856D6" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>
+                    {t('settings.mentionNotifications') || 'Mentions'}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                    {t('settings.mentionNotificationsDesc') || 'When someone mentions you'}
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationSettings?.mentions !== false}
+                  onValueChange={(value) => updateNotificationSetting('mentions', value)}
+                  trackColor={{ false: theme.border, true: '#5856D6' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={theme.border}
+                />
+              </View>
             </GlassCard>
           </View>
         )}

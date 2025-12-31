@@ -1,5 +1,6 @@
 import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
+import { messagesCacheManager } from '../app/utils/cacheManager';
 
 export const CHAT_TYPES = {
     STAGE_GROUP: 'stage_group',
@@ -176,7 +177,27 @@ export const canUserSendMessage = async (chatId, userId) => {
         }
         
         if (chat.type === 'custom_group') {
-            return chat.participants?.includes(userId) || false;
+            // Must be a participant first
+            if (!chat.participants?.includes(userId)) {
+                return false;
+            }
+            
+            // Check if onlyAdminsCanPost is enabled in settings
+            let settings = {};
+            try {
+                settings = chat.settings ? JSON.parse(chat.settings) : {};
+            } catch (e) {
+                settings = {};
+            }
+            
+            // If only admins can post, check if user is admin
+            if (settings.onlyAdminsCanPost) {
+                return chat.admins?.includes(userId) || 
+                       chat.representatives?.includes(userId) || 
+                       false;
+            }
+            
+            return true;
         }
         
         if (!chat.requiresRepresentative) {
@@ -267,13 +288,16 @@ export const sendMessage = async (chatId, messageData) => {
             }
         );
         
+        // Add message to cache
+        await messagesCacheManager.addMessageToCache(chatId, message, 100);
+        
         return message;
     } catch (error) {
         throw error;
     }
 };
 
-export const getMessages = async (chatId, limit = 50, offset = 0) => {
+export const getMessages = async (chatId, limit = 50, offset = 0, useCache = true) => {
     try {
         if (!chatId || typeof chatId !== 'string') {
             throw new Error('Invalid chat ID');
@@ -281,6 +305,14 @@ export const getMessages = async (chatId, limit = 50, offset = 0) => {
         
         if (!config.messagesCollectionId) {
             throw new Error('Messages collection not configured. Please check your .env file.');
+        }
+        
+        // Try to get cached data first (only for initial load without offset)
+        if (useCache && offset === 0) {
+            const cached = await messagesCacheManager.getCachedMessages(chatId, limit);
+            if (cached?.value && !cached.isStale) {
+                return cached.value;
+            }
         }
         
         const messages = await databases.listDocuments(
@@ -293,13 +325,26 @@ export const getMessages = async (chatId, limit = 50, offset = 0) => {
                 Query.offset(offset)
             ]
         );
+        
+        // Cache the messages for initial load
+        if (offset === 0) {
+            await messagesCacheManager.cacheMessages(chatId, messages.documents, limit);
+        }
+        
         return messages.documents;
     } catch (error) {
+        // On network error, try to return stale cache
+        if (offset === 0) {
+            const cached = await messagesCacheManager.getCachedMessages(chatId, limit);
+            if (cached?.value) {
+                return cached.value;
+            }
+        }
         throw error;
     }
 };
 
-export const deleteMessage = async (messageId) => {
+export const deleteMessage = async (messageId, imageDeleteUrl = null) => {
     try {
         if (!messageId || typeof messageId !== 'string') {
             throw new Error('Invalid message ID');
@@ -310,6 +355,16 @@ export const deleteMessage = async (messageId) => {
             config.messagesCollectionId,
             messageId
         );
+        
+        // Delete image from imgbb if delete URL is provided
+        if (imageDeleteUrl) {
+            try {
+                const { deleteImageFromImgbb } = require('../services/imgbbService');
+                await deleteImageFromImgbb(imageDeleteUrl);
+            } catch (imgError) {
+                // Image deletion failed but message was deleted
+            }
+        }
     } catch (error) {
         throw error;
     }

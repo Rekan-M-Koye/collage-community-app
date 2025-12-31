@@ -142,7 +142,7 @@ export const pickAndCompressImages = async (options = {}) => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['image'],
+      mediaTypes: ['images'],
       allowsMultipleSelection,
       quality: 1,
       selectionLimit: maxImages,
@@ -197,7 +197,7 @@ export const takePictureAndCompress = async (options = {}) => {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['image'],
+      mediaTypes: ['images'],
       quality: 1,
       allowsEditing: false,
     });

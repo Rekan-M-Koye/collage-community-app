@@ -50,6 +50,8 @@ const ChatRoom = ({ route, navigation }) => {
     showChatOptionsModal,
     flatListRef,
     chat: chatData,
+    groupMembers,
+    userFriends,
     setShowMuteModal,
     setShowPinnedModal,
     setShowChatOptionsModal,
@@ -74,6 +76,25 @@ const ChatRoom = ({ route, navigation }) => {
   } = useChatRoom({ chat, user, t, navigation });
 
   useEffect(() => {
+    // Get header background color to match chat background
+    const getHeaderBgColor = () => {
+      const bgSetting = chatSettings?.backgroundImage;
+      if (bgSetting?.startsWith('gradient_')) {
+        const gradientMap = {
+          'gradient_purple': '#667eea',
+          'gradient_blue': '#1a1a2e',
+          'gradient_green': '#134e5e',
+          'gradient_sunset': '#ff7e5f',
+          'gradient_ocean': '#2193b0',
+          'gradient_midnight': '#232526',
+          'gradient_aurora': '#00c6fb',
+          'gradient_rose': '#f4c4f3',
+        };
+        return gradientMap[bgSetting] || (isDarkMode ? '#1a1a2e' : '#f0f4ff');
+      }
+      return isDarkMode ? '#1a1a2e' : '#f0f4ff';
+    };
+
     navigation.setOptions({
       headerTitle: () => (
         <TouchableOpacity onPress={handleChatHeaderPress} activeOpacity={0.7}>
@@ -85,39 +106,21 @@ const ChatRoom = ({ route, navigation }) => {
           }}>
             {getChatDisplayName()}
           </Text>
-          {chat.type === 'private' && (
-            <Text style={{ 
-              color: theme.textSecondary, 
-              fontSize: fontSize(11), 
-              textAlign: 'center',
-            }}>
-              {t('chats.tapForOptions')}
-            </Text>
-          )}
+          <Text style={{ 
+            color: theme.textSecondary, 
+            fontSize: fontSize(11), 
+            textAlign: 'center',
+          }}>
+            {t('chats.tapForOptions')}
+          </Text>
         </TouchableOpacity>
       ),
       headerStyle: {
-        backgroundColor: isDarkMode ? '#1a1a2e' : '#f0f4ff',
+        backgroundColor: getHeaderBgColor(),
       },
       headerTintColor: theme.text,
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <TouchableOpacity
-            style={{ padding: spacing.xs }}
-            onPress={() => setShowMuteModal(true)}>
-            <Ionicons 
-              name={muteStatus.isMuted ? 'notifications-off' : 'notifications-outline'} 
-              size={moderateScale(22)} 
-              color={muteStatus.isMuted ? '#F59E0B' : theme.text} 
-            />
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={{ padding: spacing.xs }}
-            onPress={handleViewPinnedMessages}>
-            <Ionicons name="pin-outline" size={moderateScale(22)} color={theme.text} />
-          </TouchableOpacity>
-          
           {chat.type === 'custom_group' && (
             <TouchableOpacity
               style={{ marginRight: spacing.md }}
@@ -128,9 +131,28 @@ const ChatRoom = ({ route, navigation }) => {
         </View>
       ),
     });
-  }, [chat, isDarkMode, theme, muteStatus]);
+  }, [chat, isDarkMode, theme, muteStatus, chatSettings]);
 
   const memoizedMessages = useMemo(() => messages, [messages]);
+
+  // For private chats, find the last message sent by current user that was read by the other user
+  const lastSeenMessageId = useMemo(() => {
+    if (chat.type !== 'private') return null;
+    
+    const otherUserId = chat.otherUser?.$id;
+    if (!otherUserId) return null;
+
+    // Messages are in chronological order (oldest first, newest last)
+    // Find the most recent (newest) message sent by current user that was read by other user
+    // Loop backwards to find the newest read message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.senderId === user.$id && msg.readBy?.includes(otherUserId)) {
+        return msg.$id;
+      }
+    }
+    return null;
+  }, [messages, chat.type, chat.otherUser, user.$id]);
 
   const renderMessage = ({ item, index }) => {
     const isCurrentUser = item.senderId === user.$id;
@@ -160,6 +182,9 @@ const ChatRoom = ({ route, navigation }) => {
     const otherUserPhoto = chat.type === 'private' ? chat.otherUser?.profilePicture : null;
     const otherUserName = chat.type === 'private' ? (chat.otherUser?.name || chat.otherUser?.fullName) : null;
     const participantCount = chat.participants?.length || 0;
+    
+    // Check if this is the last message seen by the other user (for animated read receipt)
+    const isLastSeenMessage = isCurrentUser && item.$id === lastSeenMessageId;
 
     return (
       <MessageBubble
@@ -183,6 +208,7 @@ const ChatRoom = ({ route, navigation }) => {
         otherUserPhoto={otherUserPhoto}
         otherUserName={otherUserName}
         participantCount={participantCount}
+        isLastSeenMessage={isLastSeenMessage}
       />
     );
   };
@@ -313,8 +339,10 @@ const ChatRoom = ({ route, navigation }) => {
         }
         replyingTo={replyingTo}
         onCancelReply={cancelReply}
-        showMentionButton={chat.type === 'group'}
+        showMentionButton={chat.type !== 'private'}
         canMentionEveryone={canMentionEveryone}
+        groupMembers={groupMembers}
+        friends={userFriends}
       />
     </KeyboardAvoidingView>
   );
@@ -382,6 +410,10 @@ const ChatRoom = ({ route, navigation }) => {
         onViewPinnedMessages={() => {
           setShowChatOptionsModal(false);
           handleViewPinnedMessages();
+        }}
+        onOpenGroupSettings={() => {
+          setShowChatOptionsModal(false);
+          navigation.navigate('GroupSettings', { chat });
         }}
         onBlockUser={handleBlockUser}
         theme={theme}

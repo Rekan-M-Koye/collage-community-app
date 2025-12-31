@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { useAppSettings } from '../../context/AppSettingsContext';
 import { useUser } from '../../context/UserContext';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import ProfilePicture from '../../components/ProfilePicture';
-import { searchUsers } from '../../../database/users';
+import { searchUsers, getFriends } from '../../../database/users';
 import { createPrivateChat } from '../../../database/chatHelpers';
 import { 
   wp, 
@@ -34,9 +34,32 @@ const UserSearch = ({ navigation }) => {
   const { user: currentUser } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingFriends, setLoadingFriends] = useState(true);
   const [searched, setSearched] = useState(false);
   const [startingChat, setStartingChat] = useState(null);
+
+  useEffect(() => {
+    loadFriends();
+  }, [currentUser]);
+
+  const loadFriends = async () => {
+    if (!currentUser?.$id) {
+      setLoadingFriends(false);
+      return;
+    }
+
+    try {
+      const userFriends = await getFriends(currentUser.$id);
+      const filteredFriends = userFriends.filter(u => u.$id !== currentUser.$id);
+      setFriends(filteredFriends);
+    } catch (error) {
+      setFriends([]);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
 
   const debounceTimeout = React.useRef(null);
 
@@ -152,7 +175,7 @@ const UserSearch = ({ navigation }) => {
       );
     }
 
-    if (!searched) {
+    if (!searched && friends.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,122,255,0.1)' }]}>
@@ -168,20 +191,28 @@ const UserSearch = ({ navigation }) => {
       );
     }
 
-    return (
-      <View style={styles.emptyContainer}>
-        <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,122,255,0.1)' }]}>
-          <Ionicons name="person-outline" size={moderateScale(48)} color={theme.textSecondary} />
+    if (searched && users.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,122,255,0.1)' }]}>
+            <Ionicons name="person-outline" size={moderateScale(48)} color={theme.textSecondary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.text, fontSize: fontSize(18) }]}>
+            {t('chats.emptySearchTitle')}
+          </Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
+            {t('chats.emptySearchMessage')}
+          </Text>
         </View>
-        <Text style={[styles.emptyTitle, { color: theme.text, fontSize: fontSize(18) }]}>
-          {t('chats.emptySearchTitle')}
-        </Text>
-        <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: fontSize(14) }]}>
-          {t('chats.emptySearchMessage')}
-        </Text>
-      </View>
-    );
+      );
+    }
+
+    return null;
   };
+
+  // Determine what data to show
+  const displayData = searched ? users : friends;
+  const showFriendsLabel = !searched && friends.length > 0;
 
   return (
     <View style={styles.container}>
@@ -259,14 +290,25 @@ const UserSearch = ({ navigation }) => {
             </View>
           </View>
 
-          <FlatList
-            data={users}
-            renderItem={renderUserItem}
-            keyExtractor={(item) => item.$id}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={renderEmpty}
-            showsVerticalScrollIndicator={false}
-          />
+          {loadingFriends && !searched ? (
+            <View style={styles.loadingFriendsContainer}>
+              <ActivityIndicator size="large" color={theme.primary} />
+            </View>
+          ) : (
+            <FlatList
+              data={displayData}
+              renderItem={renderUserItem}
+              keyExtractor={(item) => item.$id}
+              contentContainerStyle={styles.listContent}
+              ListEmptyComponent={renderEmpty}
+              ListHeaderComponent={showFriendsLabel ? (
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                  {t('chats.friends')}
+                </Text>
+              ) : null}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </SafeAreaView>
       </LinearGradient>
     </View>
@@ -376,6 +418,19 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     lineHeight: fontSize(20),
+  },
+  loadingFriendsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: hp(10),
+  },
+  sectionLabel: {
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
 });
 

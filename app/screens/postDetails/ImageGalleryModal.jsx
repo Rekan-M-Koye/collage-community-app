@@ -1,209 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  Image,
   ActivityIndicator,
-  Alert,
   Dimensions,
   Modal,
   Platform,
+  FlatList,
 } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const ZoomableImage = ({ uri }) => {
-  const scale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const rotation = useSharedValue(0);
-  const savedScale = useSharedValue(1);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
-  const savedRotation = useSharedValue(0);
-
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((e) => {
-      scale.value = Math.min(Math.max(savedScale.value * e.scale, 0.5), 5);
-    })
-    .onEnd(() => {
-      savedScale.value = scale.value;
-      if (savedScale.value < 1) {
-        scale.value = withSpring(1, { damping: 15 });
-        translateX.value = withSpring(0, { damping: 15 });
-        translateY.value = withSpring(0, { damping: 15 });
-        savedScale.value = 1;
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-      }
-    });
-
-  const rotationGesture = Gesture.Rotation()
-    .onUpdate((e) => {
-      rotation.value = savedRotation.value + e.rotation;
-    })
-    .onEnd(() => {
-      savedRotation.value = rotation.value;
-      // Snap to nearest 90 degrees when close
-      const degrees = (rotation.value * 180) / Math.PI;
-      const snappedDegrees = Math.round(degrees / 90) * 90;
-      const snappedRadians = (snappedDegrees * Math.PI) / 180;
-      rotation.value = withSpring(snappedRadians, { damping: 15 });
-      savedRotation.value = snappedRadians;
-    });
-
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (savedScale.value > 1) {
-        const maxX = (SCREEN_WIDTH * (savedScale.value - 1)) / 2;
-        const maxY = (SCREEN_HEIGHT * 0.4 * (savedScale.value - 1)) / 2;
-        translateX.value = Math.max(-maxX, Math.min(maxX, savedTranslateX.value + e.translationX));
-        translateY.value = Math.max(-maxY, Math.min(maxY, savedTranslateY.value + e.translationY));
-      }
-    })
-    .onEnd((e) => {
-      if (savedScale.value > 1) {
-        const maxX = (SCREEN_WIDTH * (savedScale.value - 1)) / 2;
-        const maxY = (SCREEN_HEIGHT * 0.4 * (savedScale.value - 1)) / 2;
-        savedTranslateX.value = Math.max(-maxX, Math.min(maxX, savedTranslateX.value + e.translationX));
-        savedTranslateY.value = Math.max(-maxY, Math.min(maxY, savedTranslateY.value + e.translationY));
-      }
-    });
-
-  const doubleTapGesture = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => {
-      if (savedScale.value > 1 || savedRotation.value !== 0) {
-        scale.value = withSpring(1, { damping: 15 });
-        translateX.value = withSpring(0, { damping: 15 });
-        translateY.value = withSpring(0, { damping: 15 });
-        rotation.value = withSpring(0, { damping: 15 });
-        savedScale.value = 1;
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-        savedRotation.value = 0;
-      } else {
-        scale.value = withSpring(2.5, { damping: 15 });
-        savedScale.value = 2.5;
-      }
-    });
-
-  const composedGesture = Gesture.Simultaneous(
-    pinchGesture,
-    rotationGesture,
-    Gesture.Race(doubleTapGesture, panGesture)
-  );
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-      { rotate: `${rotation.value}rad` },
-    ],
-  }));
-
-  return (
-    <View style={styles.imageWrapper}>
-      <GestureDetector gesture={composedGesture}>
-        <Animated.Image
-          source={{ uri }}
-          style={[styles.galleryImage, animatedStyle]}
-          resizeMode="contain"
-        />
-      </GestureDetector>
-    </View>
-  );
-};
-
 const ImageGalleryModal = ({ visible, images, initialIndex, onClose, t }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({});
+  const flatListRef = useRef(null);
 
   useEffect(() => {
-    setCurrentIndex(initialIndex);
-  }, [initialIndex]);
-
-  const handleScroll = (event) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const newIndex = Math.round(offsetX / SCREEN_WIDTH);
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < images.length) {
-      setCurrentIndex(newIndex);
+    if (visible) {
+      setCurrentIndex(initialIndex);
     }
-  };
+  }, [initialIndex, visible]);
 
-  const handleDownload = async () => {
-    try {
-      setIsDownloading(true);
+  const handleImageLoad = useCallback((index) => {
+    setLoadingStates(prev => ({ ...prev, [index]: false }));
+  }, []);
 
-      const imageUrl = images[currentIndex];
-      if (!imageUrl) throw new Error('No image URL');
+  const handleImageLoadStart = useCallback((index) => {
+    setLoadingStates(prev => ({ ...prev, [index]: true }));
+  }, []);
 
-      // Request permission
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          t('common.error'),
-          t('post.galleryPermissionRequired') || 'Gallery permission is required to save images'
-        );
-        return;
-      }
-
-      const urlParts = imageUrl.split('.');
-      const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].split('?')[0] : 'jpg';
-      const validExtension = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension.toLowerCase()) ? extension : 'jpg';
-      const filename = `reply_image_${Date.now()}.${validExtension}`;
-      const fileUri = FileSystem.documentDirectory + filename;
-
-      // Download with headers for imgbb compatibility
-      const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri, {
-        headers: {
-          'Accept': 'image/*',
-          'User-Agent': 'Mozilla/5.0 (compatible; CollegeCommunity/1.0)',
-        },
-      });
-      
-      if (downloadResult && downloadResult.status === 200 && downloadResult.uri) {
-        // Save to gallery
-        const asset = await MediaLibrary.createAssetAsync(downloadResult.uri);
-        
-        if (asset) {
-          Alert.alert(
-            t('common.success'),
-            t('post.imageSaved') || 'Image saved to gallery'
-          );
-        }
-        
-        // Clean up cache
-        setTimeout(async () => {
-          try {
-            await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
-          } catch (deleteError) {
-            // Ignore deletion errors
-          }
-        }, 1000);
-      } else {
-        throw new Error('Download failed');
-      }
-    } catch (error) {
-      Alert.alert(t('common.error'), t('post.downloadFailed'));
-    } finally {
-      setIsDownloading(false);
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
     }
-  };
+  }).current;
 
-  if (!visible) return null;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
+  const renderImage = useCallback(({ item, index }) => (
+    <View style={styles.imageWrapper}>
+      {loadingStates[index] && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
+      <Image
+        source={{ uri: item }}
+        style={styles.galleryImage}
+        resizeMode="contain"
+        onLoadStart={() => handleImageLoadStart(index)}
+        onLoad={() => handleImageLoad(index)}
+      />
+    </View>
+  ), [loadingStates, handleImageLoad, handleImageLoadStart]);
+
+  if (!visible || !images || images.length === 0) return null;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -217,32 +73,41 @@ const ImageGalleryModal = ({ visible, images, initialIndex, onClose, t }) => {
             {currentIndex + 1} / {images.length}
           </Text>
           
-          <TouchableOpacity 
-            style={styles.headerButton} 
-            onPress={handleDownload}
-            disabled={isDownloading}
-          >
-            {isDownloading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="download-outline" size={24} color="#fff" />
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerButtonPlaceholder} />
         </View>
 
-        <ScrollView
+        <FlatList
+          ref={flatListRef}
+          data={images}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-          contentOffset={{ x: initialIndex * SCREEN_WIDTH, y: 0 }}
-        >
-          {images.map((img, index) => (
-            <ZoomableImage key={index} uri={img} />
-          ))}
-        </ScrollView>
+          initialScrollIndex={initialIndex}
+          getItemLayout={(data, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          keyExtractor={(item, index) => `image-${index}`}
+          renderItem={renderImage}
+          style={styles.flatList}
+        />
 
-        <Text style={styles.hint}>{t('post.pinchToZoomRotate') || 'Pinch to zoom • Rotate with two fingers • Double tap to reset'}</Text>
+        {images.length > 1 && (
+          <View style={styles.dotsContainer}>
+            {images.map((_, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.dot, 
+                  index === currentIndex && styles.dotActive
+                ]} 
+              />
+            ))}
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -275,21 +140,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerButtonPlaceholder: {
+    width: 44,
+    height: 44,
+  },
   counter: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  flatList: {
+    flex: 1,
   },
   imageWrapper: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
-  imageTouchable: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+  loadingContainer: {
+    position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -297,12 +167,27 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.8,
   },
-  hint: {
+  dotsContainer: {
     position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
+    bottom: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  dotActive: {
+    backgroundColor: '#fff',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });
 

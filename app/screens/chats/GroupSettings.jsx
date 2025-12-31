@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -68,6 +68,78 @@ const GroupSettings = ({ navigation, route }) => {
                   chat?.representatives?.includes(currentUser?.$id);
   const isCreator = chat?.admins?.[0] === currentUser?.$id;
 
+  // Refs for debounced auto-save
+  const saveTimeoutRef = useRef(null);
+  const latestSettingsRef = useRef(settings);
+  const latestNameRef = useRef(groupName);
+  const latestDescriptionRef = useRef(description);
+
+  // Keep refs up to date
+  useEffect(() => {
+    latestSettingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    latestNameRef.current = groupName;
+  }, [groupName]);
+
+  useEffect(() => {
+    latestDescriptionRef.current = description;
+  }, [description]);
+
+  // Auto-save function with debounce
+  const autoSave = useCallback(async (updatedSettings = null) => {
+    if (!isAdmin) return;
+
+    // Clear any pending save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounce save by 500ms
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const settingsToSave = updatedSettings || latestSettingsRef.current;
+        await updateGroupSettings(chat.$id, {
+          name: latestNameRef.current.trim(),
+          description: latestDescriptionRef.current.trim(),
+          groupPhoto: groupPhoto,
+          settings: JSON.stringify(settingsToSave),
+          requiresRepresentative: settingsToSave.onlyAdminsCanPost,
+        });
+        
+        // Update navigation params to reflect change immediately
+        navigation.setParams({
+          chat: {
+            ...chat,
+            name: latestNameRef.current.trim(),
+            description: latestDescriptionRef.current.trim(),
+            settings: JSON.stringify(settingsToSave),
+            requiresRepresentative: settingsToSave.onlyAdminsCanPost,
+          }
+        });
+      } catch (error) {
+        // Silent fail for auto-save, user will see on next attempt
+      }
+    }, 500);
+  }, [isAdmin, chat, groupPhoto, navigation]);
+
+  // Handle setting toggle with immediate state update and auto-save
+  const handleSettingToggle = useCallback((key, value) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    autoSave(newSettings);
+  }, [settings, autoSave]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     loadMembers();
     loadSettings();
@@ -97,14 +169,41 @@ const GroupSettings = ({ navigation, route }) => {
         quality: 'medium',
       });
 
-      if (result && result.length > 0) {
-        const uploadResult = await uploadToImgbb(result[0].base64);
-        if (uploadResult && uploadResult.url) {
-          setGroupPhoto(uploadResult.url);
-        }
+      if (!result || result.length === 0) {
+        setUploadingPhoto(false);
+        return; // User cancelled
       }
+
+      const imageData = result[0];
+      if (!imageData || !imageData.base64) {
+        throw new Error('Failed to get image data');
+      }
+
+      const uploadResult = await uploadToImgbb(imageData.base64);
+      if (!uploadResult || !uploadResult.url) {
+        throw new Error('Failed to upload image');
+      }
+
+      // Update local state
+      setGroupPhoto(uploadResult.url);
+      
+      // Save to database immediately
+      await updateGroupSettings(chat.$id, {
+        groupPhoto: uploadResult.url,
+      });
+      
+      // Update navigation params to reflect change
+      navigation.setParams({
+        chat: {
+          ...chat,
+          groupPhoto: uploadResult.url,
+        }
+      });
+      
+      Alert.alert(t('common.success'), t('chats.groupPhotoUpdated') || 'Group photo updated');
     } catch (error) {
-      Alert.alert(t('common.error'), t('chats.groupPhotoError'));
+      const errorMessage = error?.message || t('chats.groupPhotoError') || 'Failed to update group photo';
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setUploadingPhoto(false);
     }
@@ -152,25 +251,51 @@ const GroupSettings = ({ navigation, route }) => {
     if (!isCreator || userId === currentUser?.$id) return;
 
     const isUserAdmin = chat?.admins?.includes(userId);
+    const member = members.find(m => m.$id === userId);
+    const memberName = member?.name || member?.fullName || t('common.user');
     
-    try {
-      if (isUserAdmin) {
-        await removeGroupAdmin(chat.$id, userId);
-      } else {
-        await addGroupAdmin(chat.$id, userId);
-      }
-      // Refresh data
-      navigation.setParams({ 
-        chat: { 
-          ...chat, 
-          admins: isUserAdmin 
-            ? chat.admins.filter(id => id !== userId)
-            : [...(chat.admins || []), userId]
-        } 
-      });
-    } catch (error) {
-      Alert.alert(t('common.error'), t('chats.adminUpdateError'));
-    }
+    // Show confirmation dialog
+    Alert.alert(
+      isUserAdmin 
+        ? (t('chats.removeAdminTitle') || 'Remove Admin') 
+        : (t('chats.makeAdminTitle') || 'Make Admin'),
+      isUserAdmin
+        ? (t('chats.removeAdminConfirm') || `Are you sure you want to remove ${memberName} as admin?`).replace('{name}', memberName)
+        : (t('chats.makeAdminConfirm') || `Are you sure you want to make ${memberName} an admin?`).replace('{name}', memberName),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm') || 'Confirm',
+          onPress: async () => {
+            try {
+              if (isUserAdmin) {
+                await removeGroupAdmin(chat.$id, userId);
+              } else {
+                await addGroupAdmin(chat.$id, userId);
+              }
+              // Refresh data
+              navigation.setParams({ 
+                chat: { 
+                  ...chat, 
+                  admins: isUserAdmin 
+                    ? chat.admins.filter(id => id !== userId)
+                    : [...(chat.admins || []), userId]
+                } 
+              });
+              
+              Alert.alert(
+                t('common.success'),
+                isUserAdmin
+                  ? (t('chats.adminRemoved') || `${memberName} is no longer an admin`).replace('{name}', memberName)
+                  : (t('chats.adminAdded') || `${memberName} is now an admin`).replace('{name}', memberName)
+              );
+            } catch (error) {
+              Alert.alert(t('common.error'), t('chats.adminUpdateError'));
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRemoveMember = async (userId) => {
@@ -356,21 +481,7 @@ const GroupSettings = ({ navigation, route }) => {
             <Text style={[styles.headerTitle, { color: theme.text, fontSize: fontSize(20) }]}>
               {t('chats.groupSettings')}
             </Text>
-            {isAdmin && (
-              <TouchableOpacity 
-                style={styles.saveButton}
-                onPress={handleSaveSettings}
-                disabled={saving}>
-                {saving ? (
-                  <ActivityIndicator size="small" color={theme.primary} />
-                ) : (
-                  <Text style={[styles.saveButtonText, { color: theme.primary, fontSize: fontSize(16) }]}>
-                    {t('common.save')}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
-            {!isAdmin && <View style={styles.placeholder} />}
+            <View style={styles.placeholder} />
           </View>
 
           <ScrollView 
@@ -443,6 +554,7 @@ const GroupSettings = ({ navigation, route }) => {
                     ]}
                     value={groupName}
                     onChangeText={setGroupName}
+                    onBlur={() => autoSave()}
                     editable={isAdmin}
                     placeholder={t('chats.groupNamePlaceholder')}
                     placeholderTextColor={theme.textSecondary}
@@ -464,6 +576,7 @@ const GroupSettings = ({ navigation, route }) => {
                     ]}
                     value={description}
                     onChangeText={setDescription}
+                    onBlur={() => autoSave()}
                     editable={isAdmin}
                     multiline
                     numberOfLines={3}
@@ -493,42 +606,42 @@ const GroupSettings = ({ navigation, route }) => {
                   t('chats.onlyAdminsCanPost'),
                   t('chats.onlyAdminsCanPostDesc'),
                   settings.onlyAdminsCanPost,
-                  (val) => setSettings(prev => ({ ...prev, onlyAdminsCanPost: val }))
+                  (val) => handleSettingToggle('onlyAdminsCanPost', val)
                 )}
                 {renderSettingItem(
                   'person-add',
                   t('chats.allowMemberInvites'),
                   t('chats.allowMemberInvitesDesc'),
                   settings.allowMemberInvites,
-                  (val) => setSettings(prev => ({ ...prev, allowMemberInvites: val }))
+                  (val) => handleSettingToggle('allowMemberInvites', val)
                 )}
                 {renderSettingItem(
                   'at',
                   t('chats.allowEveryoneMention'),
                   t('chats.allowEveryoneMentionDesc'),
                   settings.allowEveryoneMention !== false,
-                  (val) => setSettings(prev => ({ ...prev, allowEveryoneMention: val }))
+                  (val) => handleSettingToggle('allowEveryoneMention', val)
                 )}
                 {renderSettingItem(
                   'megaphone',
                   t('chats.onlyAdminsCanMention'),
                   t('chats.onlyAdminsCanMentionDesc'),
                   settings.onlyAdminsCanMention,
-                  (val) => setSettings(prev => ({ ...prev, onlyAdminsCanMention: val }))
+                  (val) => handleSettingToggle('onlyAdminsCanMention', val)
                 )}
                 {renderSettingItem(
                   'pin',
                   t('chats.onlyAdminsCanPin'),
                   t('chats.onlyAdminsCanPinDesc'),
                   settings.onlyAdminsCanPin,
-                  (val) => setSettings(prev => ({ ...prev, onlyAdminsCanPin: val }))
+                  (val) => handleSettingToggle('onlyAdminsCanPin', val)
                 )}
                 {renderSettingItem(
                   'notifications-off',
                   t('chats.muteNotifications'),
                   t('chats.muteNotificationsDesc'),
                   settings.muteNotifications,
-                  (val) => setSettings(prev => ({ ...prev, muteNotifications: val }))
+                  (val) => handleSettingToggle('muteNotifications', val)
                 )}
               </View>
             </View>

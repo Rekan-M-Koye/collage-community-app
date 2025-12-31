@@ -37,7 +37,8 @@ import EditPost from './screens/EditPost';
 import ChatRoom from './screens/ChatRoom';
 import UserProfile from './screens/UserProfile';
 import ManageRepresentatives from './screens/ManageRepresentatives';
-import { NewChat, UserSearch, CreateGroup, GroupSettings, ForwardMessage } from './screens/chats';
+import Notifications from './screens/Notifications';
+import { NewChat, UserSearch, CreateGroup, GroupSettings, ForwardMessage, AddMembers } from './screens/chats';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -326,6 +327,11 @@ const MainStack = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen 
+        name="AddMembers" 
+        component={AddMembers}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
         name="ForwardMessage" 
         component={ForwardMessage}
         options={{ headerShown: false }}
@@ -338,6 +344,11 @@ const MainStack = () => {
       <Stack.Screen 
         name="ManageRepresentatives" 
         component={ManageRepresentatives}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Notifications" 
+        component={Notifications}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

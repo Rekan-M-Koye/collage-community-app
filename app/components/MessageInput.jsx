@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   TextInput, 
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Text,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -21,17 +22,104 @@ import { borderRadius } from '../theme/designTokens';
 import { pickAndCompressImages, takePictureAndCompress } from '../utils/imageCompression';
 import { uploadToImgbb } from '../../services/imgbbService';
 
-const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCancelReply, showMentionButton = false, canMentionEveryone = false }) => {
+const MessageInput = ({ 
+  onSend, 
+  disabled = false, 
+  placeholder, 
+  replyingTo, 
+  onCancelReply, 
+  showMentionButton = false, 
+  canMentionEveryone = false,
+  groupMembers = [],
+  friends = [],
+}) => {
   const { theme, isDarkMode, t } = useAppSettings();
   const [message, setMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [showMentionOptions, setShowMentionOptions] = useState(false);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1);
   const inputRef = useRef(null);
+
+  // Get mention suggestions based on context
+  const getMentionSuggestions = () => {
+    const suggestions = [];
+    
+    // Add @everyone option if allowed
+    if (canMentionEveryone) {
+      suggestions.push({ 
+        id: 'everyone', 
+        name: 'everyone', 
+        displayName: t('chats.mentionEveryone') || 'Everyone',
+        isSpecial: true 
+      });
+    }
+    
+    // Combine group members and friends, prioritize group members
+    const allUsers = [...groupMembers];
+    friends.forEach(friend => {
+      if (!allUsers.find(u => u.$id === friend.$id)) {
+        allUsers.push(friend);
+      }
+    });
+    
+    // Filter by query
+    const query = mentionQuery.toLowerCase();
+    const filteredUsers = allUsers.filter(user => {
+      const name = (user.name || user.fullName || '').toLowerCase();
+      return name.includes(query);
+    });
+    
+    // Add users to suggestions (limit to 3)
+    filteredUsers.slice(0, 3).forEach(user => {
+      suggestions.push({
+        id: user.$id,
+        name: user.name || user.fullName,
+        displayName: user.name || user.fullName,
+        profilePicture: user.profilePicture,
+        isSpecial: false,
+      });
+    });
+    
+    return suggestions.slice(0, 4); // Max 4 suggestions (1 everyone + 3 users)
+  };
+
+  const handleTextChange = (text) => {
+    setMessage(text);
+    
+    // Check for @ mention trigger
+    const lastAtIndex = text.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const textAfterAt = text.slice(lastAtIndex + 1);
+      // Check if there's no space after @ (still typing mention)
+      if (!textAfterAt.includes(' ') && textAfterAt.length <= 20) {
+        setMentionStartIndex(lastAtIndex);
+        setMentionQuery(textAfterAt);
+        setShowMentionSuggestions(true);
+        return;
+      }
+    }
+    
+    setShowMentionSuggestions(false);
+    setMentionQuery('');
+    setMentionStartIndex(-1);
+  };
+
+  const handleSelectMention = (suggestion) => {
+    const beforeMention = message.slice(0, mentionStartIndex);
+    const afterMention = message.slice(mentionStartIndex + mentionQuery.length + 1);
+    const mentionText = suggestion.isSpecial ? '@everyone' : `@${suggestion.name}`;
+    
+    setMessage(beforeMention + mentionText + ' ' + afterMention);
+    setShowMentionSuggestions(false);
+    setMentionQuery('');
+    setMentionStartIndex(-1);
+  };
 
   const handleInsertMention = (mention) => {
     setMessage(prev => prev + mention + ' ');
-    setShowMentionOptions(false);
+    setShowMentionSuggestions(false);
   };
 
   const handlePickImage = async () => {
@@ -190,20 +278,38 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
           </View>
         )}
 
-        {/* Mention options popup */}
-        {showMentionOptions && canMentionEveryone && (
+        {/* Mention suggestions popup */}
+        {showMentionSuggestions && (groupMembers.length > 0 || friends.length > 0 || canMentionEveryone) && (
           <View style={[
-            styles.mentionOptions,
+            styles.mentionSuggestions,
             { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
           ]}>
-            <TouchableOpacity 
-              style={styles.mentionOption}
-              onPress={() => handleInsertMention('@everyone')}>
-              <Ionicons name="people" size={moderateScale(18)} color={theme.primary} />
-              <Text style={[styles.mentionOptionText, { color: theme.text, fontSize: fontSize(14) }]}>
-                @everyone
-              </Text>
-            </TouchableOpacity>
+            {getMentionSuggestions().map((suggestion) => (
+              <TouchableOpacity 
+                key={suggestion.id}
+                style={styles.mentionSuggestionItem}
+                onPress={() => handleSelectMention(suggestion)}>
+                {suggestion.isSpecial ? (
+                  <View style={[styles.mentionIcon, { backgroundColor: theme.primary + '20' }]}>
+                    <Ionicons name="people" size={moderateScale(16)} color={theme.primary} />
+                  </View>
+                ) : suggestion.profilePicture ? (
+                  <Image 
+                    source={{ uri: suggestion.profilePicture }} 
+                    style={styles.mentionAvatar} 
+                  />
+                ) : (
+                  <View style={[styles.mentionIcon, { backgroundColor: theme.primary + '20' }]}>
+                    <Text style={{ color: theme.primary, fontWeight: '600' }}>
+                      {suggestion.name?.charAt(0)?.toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                )}
+                <Text style={[styles.mentionSuggestionText, { color: theme.text, fontSize: fontSize(14) }]}>
+                  {suggestion.displayName}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         )}
 
@@ -224,19 +330,24 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
           </TouchableOpacity>
 
           {/* @ mention button */}
-          {showMentionButton && canMentionEveryone && (
+          {showMentionButton && (
             <TouchableOpacity
               style={[
                 styles.iconButton,
                 { opacity: disabled || uploading ? 0.5 : 1 }
               ]}
-              onPress={() => setShowMentionOptions(!showMentionOptions)}
+              onPress={() => {
+                setMessage(prev => prev + '@');
+                setMentionStartIndex(message.length);
+                setMentionQuery('');
+                setShowMentionSuggestions(true);
+              }}
               disabled={disabled || uploading}
               activeOpacity={0.7}>
               <Ionicons 
                 name="at" 
                 size={moderateScale(24)} 
-                color={showMentionOptions ? theme.primary : theme.textSecondary} 
+                color={showMentionSuggestions ? theme.primary : theme.textSecondary} 
               />
             </TouchableOpacity>
           )}
@@ -261,7 +372,7 @@ const MessageInput = ({ onSend, disabled = false, placeholder, replyingTo, onCan
               placeholder={placeholder || t('chats.typeMessage')}
               placeholderTextColor={theme.textSecondary}
               value={message}
-              onChangeText={setMessage}
+              onChangeText={handleTextChange}
               multiline
               maxLength={1000}
               editable={!disabled && !uploading}
@@ -369,10 +480,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  mentionOptions: {
+  mentionSuggestions: {
     position: 'absolute',
     bottom: moderateScale(60),
     left: spacing.md,
+    right: spacing.md,
     borderRadius: borderRadius.md,
     padding: spacing.xs,
     shadowColor: '#000',
@@ -381,16 +493,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     zIndex: 10,
+    maxHeight: moderateScale(180),
   },
-  mentionOption: {
+  mentionSuggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
-  mentionOptionText: {
+  mentionSuggestionText: {
     fontWeight: '500',
+    flex: 1,
+  },
+  mentionAvatar: {
+    width: moderateScale(28),
+    height: moderateScale(28),
+    borderRadius: moderateScale(14),
+  },
+  mentionIcon: {
+    width: moderateScale(28),
+    height: moderateScale(28),
+    borderRadius: moderateScale(14),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

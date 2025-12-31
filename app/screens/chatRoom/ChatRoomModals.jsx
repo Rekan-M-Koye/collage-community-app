@@ -206,6 +206,7 @@ export const ChatOptionsModal = ({
   onOpenMuteModal,
   onViewPinnedMessages,
   onBlockUser,
+  onOpenGroupSettings,
   theme,
   isDarkMode,
   t 
@@ -232,6 +233,17 @@ export const ChatOptionsModal = ({
               <Ionicons name="person-outline" size={moderateScale(22)} color={theme.primary} />
               <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
                 {t('chats.visitProfile')}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+          {chat.type === 'custom_group' && onOpenGroupSettings && (
+            <TouchableOpacity
+              style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
+              onPress={onOpenGroupSettings}>
+              <Ionicons name="settings-outline" size={moderateScale(22)} color={theme.primary} />
+              <Text style={[styles.muteOptionText, { color: theme.text, fontSize: fontSize(15) }]}>
+                {t('chats.groupSettings')}
               </Text>
             </TouchableOpacity>
           )}

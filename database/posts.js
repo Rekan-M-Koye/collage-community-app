@@ -1,6 +1,8 @@
 import { databases, storage, config } from './config';
 import { ID, Query } from 'appwrite';
 import { handleNetworkError } from '../app/utils/networkErrorHandler';
+import { postsCacheManager } from '../app/utils/cacheManager';
+import { getUserById } from './users';
 
 export const createPost = async (postData) => {
     try {
@@ -8,8 +10,17 @@ export const createPost = async (postData) => {
             throw new Error('Invalid post data');
         }
         
-        if (!postData.userId || !postData.topic) {
-            throw new Error('Missing required fields');
+        // Post must have userId and at least one of: topic, text, or images
+        if (!postData.userId) {
+            throw new Error('User ID is required');
+        }
+        
+        const hasTopic = postData.topic && postData.topic.trim().length > 0;
+        const hasText = postData.text && postData.text.trim().length > 0;
+        const hasImages = postData.images && postData.images.length > 0;
+        
+        if (!hasTopic && !hasText && !hasImages) {
+            throw new Error('Post must have topic, text, or images');
         }
         
         const post = await databases.createDocument(
@@ -18,6 +29,10 @@ export const createPost = async (postData) => {
             ID.unique(),
             postData
         );
+        
+        // Invalidate posts cache for the department
+        await postsCacheManager.invalidatePostsCache(postData.department);
+        
         return post;
     } catch (error) {
         throw error;
@@ -41,8 +56,18 @@ export const getPost = async (postId) => {
     }
 };
 
-export const getPosts = async (filters = {}, limit = 20, offset = 0) => {
+export const getPosts = async (filters = {}, limit = 20, offset = 0, useCache = true) => {
+    const cacheKey = postsCacheManager.generateCacheKey(filters, limit, offset);
+    
     try {
+        // Try to get cached data first
+        if (useCache && offset === 0) {
+            const cached = await postsCacheManager.getCachedPosts(cacheKey);
+            if (cached?.value && !cached.isStale) {
+                return cached.value;
+            }
+        }
+        
         const queries = [
             Query.limit(limit),
             Query.offset(offset),
@@ -68,17 +93,39 @@ export const getPosts = async (filters = {}, limit = 20, offset = 0) => {
             queries
         );
         
+        // Cache the results for first page
+        if (offset === 0) {
+            await postsCacheManager.cachePosts(cacheKey, posts.documents);
+        }
+        
         return posts.documents;
     } catch (error) {
+        // On network error, try to return stale cache
+        if (offset === 0) {
+            const cached = await postsCacheManager.getCachedPosts(cacheKey);
+            if (cached?.value) {
+                return cached.value;
+            }
+        }
         const errorInfo = handleNetworkError(error);
         throw error;
     }
 };
 
-export const getPostsByDepartments = async (departments = [], stage = 'all', limit = 20, offset = 0) => {
+export const getPostsByDepartments = async (departments = [], stage = 'all', limit = 20, offset = 0, useCache = true) => {
+    const cacheKey = `posts_multi_depts_${departments.sort().join('-')}_stage_${stage}_l${limit}_o${offset}`;
+    
     try {
         if (!departments || departments.length === 0) {
             return [];
+        }
+
+        // Try to get cached data first
+        if (useCache && offset === 0) {
+            const cached = await postsCacheManager.getCachedPosts(cacheKey);
+            if (cached?.value && !cached.isStale) {
+                return cached.value;
+            }
         }
 
         const queries = [
@@ -98,15 +145,37 @@ export const getPostsByDepartments = async (departments = [], stage = 'all', lim
             queries
         );
         
+        // Cache the results for first page
+        if (offset === 0) {
+            await postsCacheManager.cachePosts(cacheKey, posts.documents);
+        }
+        
         return posts.documents;
     } catch (error) {
+        // On network error, try to return stale cache
+        if (offset === 0) {
+            const cached = await postsCacheManager.getCachedPosts(cacheKey);
+            if (cached?.value) {
+                return cached.value;
+            }
+        }
         const errorInfo = handleNetworkError(error);
         throw error;
     }
 };
 
-export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0) => {
+export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0, useCache = true) => {
+    const cacheKey = `posts_public_stage_${stage}_l${limit}_o${offset}`;
+    
     try {
+        // Try to get cached data first
+        if (useCache && offset === 0) {
+            const cached = await postsCacheManager.getCachedPosts(cacheKey);
+            if (cached?.value && !cached.isStale) {
+                return cached.value;
+            }
+        }
+        
         const queries = [
             Query.limit(limit),
             Query.offset(offset),
@@ -123,8 +192,20 @@ export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0) =
             queries
         );
         
+        // Cache the results for first page
+        if (offset === 0) {
+            await postsCacheManager.cachePosts(cacheKey, posts.documents);
+        }
+        
         return posts.documents;
     } catch (error) {
+        // On network error, try to return stale cache
+        if (offset === 0) {
+            const cached = await postsCacheManager.getCachedPosts(cacheKey);
+            if (cached?.value) {
+                return cached.value;
+            }
+        }
         const errorInfo = handleNetworkError(error);
         throw error;
     }
@@ -149,48 +230,115 @@ export const searchPosts = async (searchQuery, userDepartment = null, userMajor 
             return [];
         }
 
-        // Use server-side search with Query.search for full-text search
-        // Falls back to Query.contains if search index not available
-        const queries = [
-            Query.limit(limit),
-            Query.orderDesc('$createdAt')
-        ];
+        // Check if query looks like a hashtag search
+        const isHashtagSearch = sanitizedQuery.startsWith('#');
+        const searchTerm = isHashtagSearch ? sanitizedQuery.substring(1) : sanitizedQuery;
 
-        // Try full-text search on topic field (most commonly searched)
+        let allResults = [];
+
+        // Search in topic field
         try {
-            const searchQueries = [
-                Query.search('topic', sanitizedQuery),
-                Query.limit(limit),
-                Query.orderDesc('$createdAt')
-            ];
-
-            const posts = await databases.listDocuments(
+            const topicResults = await databases.listDocuments(
                 config.databaseId,
                 config.postsCollectionId,
-                searchQueries
+                [
+                    Query.contains('topic', [searchTerm]),
+                    Query.limit(limit),
+                    Query.orderDesc('$createdAt')
+                ]
             );
-            
-            if (posts.documents.length > 0) {
-                return posts.documents;
-            }
-        } catch (searchError) {
-            // Full-text search not available, fall back to contains query
+            allResults = [...topicResults.documents];
+        } catch (e) {
+            // Topic search failed
         }
 
-        // Fallback: Use contains query on topic (still server-side)
-        const containsQueries = [
-            Query.contains('topic', [sanitizedQuery]),
-            Query.limit(limit),
-            Query.orderDesc('$createdAt')
-        ];
+        // Search in description field (some posts may use this)
+        try {
+            const descriptionResults = await databases.listDocuments(
+                config.databaseId,
+                config.postsCollectionId,
+                [
+                    Query.contains('description', [searchTerm]),
+                    Query.limit(limit),
+                    Query.orderDesc('$createdAt')
+                ]
+            );
+            // Add unique results
+            descriptionResults.documents.forEach(doc => {
+                if (!allResults.find(r => r.$id === doc.$id)) {
+                    allResults.push(doc);
+                }
+            });
+        } catch (e) {
+            // Description search failed
+        }
 
-        const posts = await databases.listDocuments(
-            config.databaseId,
-            config.postsCollectionId,
-            containsQueries
-        );
-        
-        return posts.documents;
+        // Search in text field (post content)
+        try {
+            const textResults = await databases.listDocuments(
+                config.databaseId,
+                config.postsCollectionId,
+                [
+                    Query.contains('text', [searchTerm]),
+                    Query.limit(limit),
+                    Query.orderDesc('$createdAt')
+                ]
+            );
+            // Add unique results
+            textResults.documents.forEach(doc => {
+                if (!allResults.find(r => r.$id === doc.$id)) {
+                    allResults.push(doc);
+                }
+            });
+        } catch (e) {
+            // Text search failed
+        }
+
+        // Search in tags array
+        try {
+            const tagsResults = await databases.listDocuments(
+                config.databaseId,
+                config.postsCollectionId,
+                [
+                    Query.contains('tags', [searchTerm]),
+                    Query.limit(limit),
+                    Query.orderDesc('$createdAt')
+                ]
+            );
+            // Add unique results
+            tagsResults.documents.forEach(doc => {
+                if (!allResults.find(r => r.$id === doc.$id)) {
+                    allResults.push(doc);
+                }
+            });
+        } catch (e) {
+            // Tags search failed
+        }
+
+        // Search in links array
+        try {
+            const linksResults = await databases.listDocuments(
+                config.databaseId,
+                config.postsCollectionId,
+                [
+                    Query.contains('links', [searchTerm]),
+                    Query.limit(limit),
+                    Query.orderDesc('$createdAt')
+                ]
+            );
+            // Add unique results
+            linksResults.documents.forEach(doc => {
+                if (!allResults.find(r => r.$id === doc.$id)) {
+                    allResults.push(doc);
+                }
+            });
+        } catch (e) {
+            // Links search failed
+        }
+
+        // Sort by date and limit results
+        allResults.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+        return allResults.slice(0, limit);
     } catch (error) {
         return [];
     }
@@ -217,6 +365,10 @@ export const updatePost = async (postId, postData) => {
             postId,
             updateData
         );
+        
+        // Invalidate posts cache
+        await postsCacheManager.invalidateSinglePost(postId);
+        
         return post;
     } catch (error) {
         throw error;
@@ -239,6 +391,9 @@ export const deletePost = async (postId, imageDeleteUrls = []) => {
             const { deleteMultipleImages } = require('../services/imgbbService');
             await deleteMultipleImages(imageDeleteUrls);
         }
+        
+        // Invalidate posts cache
+        await postsCacheManager.invalidateSinglePost(postId);
         
         return { success: true };
     } catch (error) {
@@ -439,16 +594,12 @@ export const enrichPostsWithUserData = async (posts) => {
     // Get unique user IDs
     const userIds = [...new Set(postsNeedingUserData.map(post => post.userId))];
     
-    // Fetch user data for all unique users
+    // Fetch user data for all unique users (uses cached data)
     const userDataMap = {};
     await Promise.all(
         userIds.map(async (userId) => {
             try {
-                const user = await databases.getDocument(
-                    config.databaseId,
-                    config.usersCollectionId || '68fc7b42001bf7efbba3',
-                    userId
-                );
+                const user = await getUserById(userId);
                 userDataMap[userId] = {
                     name: user.name || user.fullName,
                     profilePicture: user.profilePicture || null,

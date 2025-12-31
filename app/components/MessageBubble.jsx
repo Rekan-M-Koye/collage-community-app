@@ -1,4 +1,4 @@
-import React, { useState, useRef, memo } from 'react';
+import React, { useState, useRef, memo, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,6 +11,9 @@ import {
   PanResponder,
   Pressable,
   ActivityIndicator,
+  LayoutAnimation,
+  UIManager,
+  Platform as RNPlatform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +26,11 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
+// Enable LayoutAnimation for Android
+if (RNPlatform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const SWIPE_THRESHOLD = 60;
 
 // Message status indicator component
@@ -34,8 +42,36 @@ const MessageStatusIndicator = ({
   otherUserName,
   participantCount,
   theme,
-  isDarkMode 
+  isDarkMode,
+  isLastSeenMessage 
 }) => {
+  // Animation value for the read receipt avatar
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (isLastSeenMessage) {
+      // Animate in when this becomes the last seen message
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Reset animation when this is no longer the last seen
+      scaleAnim.setValue(0);
+      opacityAnim.setValue(0);
+    }
+  }, [isLastSeenMessage]);
+
   // For optimistic/sending messages
   if (status === 'sending') {
     return (
@@ -63,22 +99,38 @@ const MessageStatusIndicator = ({
     );
   }
   
-  // For private chats - show other user's profile picture when read
+  // For private chats - only show animated avatar on the LAST seen message
   if (chatType === 'private' && readBy.length > 0) {
+    // If this is the last seen message, show animated avatar
+    if (isLastSeenMessage) {
+      return (
+        <Animated.View style={[
+          statusStyles.container,
+          {
+            transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
+          }
+        ]}>
+          {otherUserPhoto ? (
+            <Image 
+              source={{ uri: otherUserPhoto }} 
+              style={statusStyles.readAvatar}
+            />
+          ) : (
+            <View style={[statusStyles.readAvatarPlaceholder, { backgroundColor: theme.primary }]}>
+              <Text style={statusStyles.readAvatarText}>
+                {(otherUserName || '?')[0].toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+      );
+    }
+    
+    // For other read messages (not the last), show double checkmark
     return (
       <View style={statusStyles.container}>
-        {otherUserPhoto ? (
-          <Image 
-            source={{ uri: otherUserPhoto }} 
-            style={statusStyles.readAvatar}
-          />
-        ) : (
-          <View style={[statusStyles.readAvatarPlaceholder, { backgroundColor: theme.primary }]}>
-            <Text style={statusStyles.readAvatarText}>
-              {(otherUserName || '?')[0].toUpperCase()}
-            </Text>
-          </View>
-        )}
+        <Ionicons name="checkmark-done" size={moderateScale(12)} color="#60A5FA" />
       </View>
     );
   }
@@ -152,6 +204,7 @@ const MessageBubble = ({
   otherUserPhoto,
   otherUserName,
   participantCount,
+  isLastSeenMessage = false,
 }) => {
   const { theme, isDarkMode, t, chatSettings } = useAppSettings();
   const [imageModalVisible, setImageModalVisible] = useState(false);
@@ -352,6 +405,7 @@ const MessageBubble = ({
             participantCount={participantCount}
             theme={theme}
             isDarkMode={isDarkMode}
+            isLastSeenMessage={isLastSeenMessage}
           />
         )}
       </View>

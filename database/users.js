@@ -153,6 +153,10 @@ export const followUser = async (followerId, followingId) => {
             }),
         ]);
 
+        // Invalidate cache for both users
+        await userCacheManager.invalidateUser(followerId);
+        await userCacheManager.invalidateUser(followingId);
+
         return { success: true };
     } catch (error) {
         throw error;
@@ -192,6 +196,10 @@ export const unfollowUser = async (followerId, followingId) => {
                 followersCount: newFollowers.length,
             }),
         ]);
+
+        // Invalidate cache for both users
+        await userCacheManager.invalidateUser(followerId);
+        await userCacheManager.invalidateUser(followingId);
 
         return { success: true };
     } catch (error) {
@@ -370,6 +378,10 @@ export const blockUser = async (userId, blockedUserId) => {
             // Blocked user update failed, continue
         }
 
+        // Invalidate cache for both users
+        await userCacheManager.invalidateUser(userId);
+        await userCacheManager.invalidateUser(blockedUserId);
+
         return { success: true };
     } catch (error) {
         throw error;
@@ -392,6 +404,9 @@ export const unblockUser = async (userId, blockedUserId) => {
         await databases.updateDocument(config.databaseId, config.usersCollectionId, userId, {
             blockedUsers: newBlockedUsers,
         });
+
+        // Invalidate cache for the user
+        await userCacheManager.invalidateUser(userId);
 
         return { success: true };
     } catch (error) {
