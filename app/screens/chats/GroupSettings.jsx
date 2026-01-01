@@ -33,6 +33,7 @@ import {
   leaveGroup,
   deleteGroup,
 } from '../../../database/chatHelpers';
+import { getUserChatSettings, muteChat, unmuteChat } from '../../../database/userChatSettings';
 import { 
   wp, 
   hp, 
@@ -58,11 +59,13 @@ const GroupSettings = ({ navigation, route }) => {
   const [settings, setSettings] = useState({
     allowMemberInvites: false,
     onlyAdminsCanPost: false,
-    muteNotifications: false,
     allowEveryoneMention: true,
     onlyAdminsCanMention: false,
     onlyAdminsCanPin: false,
   });
+  
+  // Per-user mute setting (separate from group settings)
+  const [userMuted, setUserMuted] = useState(false);
 
   const isAdmin = chat?.admins?.includes(currentUser?.$id) || 
                   chat?.representatives?.includes(currentUser?.$id);
@@ -143,6 +146,7 @@ const GroupSettings = ({ navigation, route }) => {
   useEffect(() => {
     loadMembers();
     loadSettings();
+    loadUserMuteSettings();
   }, [chat]);
 
   const loadSettings = () => {
@@ -155,6 +159,35 @@ const GroupSettings = ({ navigation, route }) => {
       }
     } catch (e) {
       // Keep default settings
+    }
+  };
+
+  // Load per-user mute settings
+  const loadUserMuteSettings = async () => {
+    if (!currentUser?.$id || !chat?.$id) return;
+    try {
+      const userSettings = await getUserChatSettings(currentUser.$id, chat.$id);
+      setUserMuted(userSettings?.isMuted || false);
+    } catch (e) {
+      // Keep default (not muted)
+    }
+  };
+
+  // Toggle per-user mute (available to everyone)
+  const handleToggleUserMute = async (value) => {
+    if (!currentUser?.$id || !chat?.$id) return;
+    
+    setUserMuted(value);
+    try {
+      if (value) {
+        await muteChat(currentUser.$id, chat.$id);
+      } else {
+        await unmuteChat(currentUser.$id, chat.$id);
+      }
+    } catch (error) {
+      // Revert on error
+      setUserMuted(!value);
+      Alert.alert(t('common.error'), t('chats.muteError') || 'Failed to update mute settings');
     }
   };
 
@@ -313,6 +346,17 @@ const GroupSettings = ({ navigation, route }) => {
             try {
               await removeGroupMember(chat.$id, userId);
               setMembers(prev => prev.filter(m => m.$id !== userId));
+              
+              // Update navigation params to reflect the change
+              const updatedParticipants = (chat.participants || []).filter(id => id !== userId);
+              const updatedAdmins = (chat.admins || []).filter(id => id !== userId);
+              navigation.setParams({
+                chat: {
+                  ...chat,
+                  participants: updatedParticipants,
+                  admins: updatedAdmins,
+                }
+              });
             } catch (error) {
               Alert.alert(t('common.error'), t('chats.removeMemberError'));
             }
@@ -636,13 +680,42 @@ const GroupSettings = ({ navigation, route }) => {
                   settings.onlyAdminsCanPin,
                   (val) => handleSettingToggle('onlyAdminsCanPin', val)
                 )}
-                {renderSettingItem(
-                  'notifications-off',
-                  t('chats.muteNotifications'),
-                  t('chats.muteNotificationsDesc'),
-                  settings.muteNotifications,
-                  (val) => handleSettingToggle('muteNotifications', val)
-                )}
+              </View>
+            </View>
+
+            {/* Personal Notification Settings - Available to everyone */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                {t('chats.yourSettings') || 'Your Settings'}
+              </Text>
+              <View style={[
+                styles.sectionCard,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: borderRadius.lg,
+                }
+              ]}>
+                <View style={styles.settingRow}>
+                  <View style={[styles.settingIcon, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                    <Ionicons name="notifications-off" size={moderateScale(20)} color={theme.primary} />
+                  </View>
+                  <View style={styles.settingContent}>
+                    <Text style={[styles.settingTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                      {t('chats.muteNotifications')}
+                    </Text>
+                    <Text style={[styles.settingSubtitle, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
+                      {t('chats.muteNotificationsDesc')}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={userMuted}
+                    onValueChange={handleToggleUserMute}
+                    trackColor={{ false: isDarkMode ? '#555' : '#ccc', true: `${theme.primary}80` }}
+                    thumbColor={userMuted ? theme.primary : isDarkMode ? '#888' : '#f4f3f4'}
+                  />
+                </View>
               </View>
             </View>
 
