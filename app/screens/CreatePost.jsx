@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,6 +79,37 @@ const CreatePost = ({ navigation, route }) => {
       }
     }
   }, [user]);
+
+  // Check if there's any unsaved content
+  const hasUnsavedContent = useCallback(() => {
+    return topic.trim().length > 0 || text.trim().length > 0 || images.length > 0 || tags.length > 0 || links.length > 0;
+  }, [topic, text, images, tags, links]);
+
+  // Confirm before discarding post
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedContent() || loading) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        t('post.discardPost') || 'Discard Post?',
+        t('post.discardPostMessage') || 'You have unsaved changes. Are you sure you want to discard this post?',
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('post.discard') || 'Discard',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasUnsavedContent, loading, t]);
 
   const validateForm = () => {
     if (!topic.trim()) {

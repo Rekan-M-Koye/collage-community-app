@@ -8,6 +8,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
@@ -94,6 +95,15 @@ const PostCard = ({
       });
     } catch (error) {
       // Share cancelled
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      const textToCopy = `${post.topic}${post.text ? '\n\n' + post.text : ''}`;
+      await Clipboard.setStringAsync(textToCopy);
+    } catch (error) {
+      // Copy failed
     }
   };
 
@@ -405,6 +415,7 @@ const PostCard = ({
           if (onMarkResolved) onMarkResolved();
           setResolved(true);
         }}
+        onCopy={handleCopy}
         theme={theme}
         t={t}
       />

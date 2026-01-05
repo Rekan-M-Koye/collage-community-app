@@ -463,11 +463,15 @@ const ProfileSettings = ({ navigation }) => {
                   editable={editMode}
                   multiline={true}
                   numberOfLines={4}
+                  maxLength={200}
                   placeholder={t('settings.bioPlaceholder')}
                   placeholderTextColor={theme.textSecondary}
                   autoCorrect={false}
                   scrollEnabled={false}
                 />
+                <Text style={[styles.charCounter, { color: theme.textSecondary }]}>
+                  {profileData.bio?.length || 0}/200
+                </Text>
               </View>
 
               <View style={styles.divider} />
@@ -733,6 +737,11 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
     paddingTop: spacing.sm,
+  },
+  charCounter: {
+    fontSize: responsiveFontSize(12),
+    textAlign: 'right',
+    marginTop: spacing.xs,
   },
   divider: {
     height: 1,

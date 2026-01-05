@@ -18,6 +18,7 @@ const PostCardMenu = ({
   onDelete,
   onReport,
   onMarkResolved,
+  onCopy,
   theme,
   t,
 }) => {
@@ -34,6 +35,9 @@ const PostCardMenu = ({
     }
     if (action === 'markResolved' && onMarkResolved) {
       onMarkResolved();
+    }
+    if (action === 'copy' && onCopy) {
+      onCopy();
     }
   };
 
@@ -97,6 +101,16 @@ const PostCardMenu = ({
               </Text>
             </TouchableOpacity>
           )}
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <TouchableOpacity 
+            style={styles.menuItem} 
+            onPress={() => handleAction('copy')}
+          >
+            <Ionicons name="copy-outline" size={22} color={theme.primary || '#007AFF'} />
+            <Text style={[styles.menuText, { color: theme.primary || '#007AFF' }]}>
+              {t('post.copyText') || 'Copy Text'}
+            </Text>
+          </TouchableOpacity>
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <TouchableOpacity 
             style={styles.menuItem} 
