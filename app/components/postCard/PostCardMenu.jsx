@@ -19,6 +19,8 @@ const PostCardMenu = ({
   onReport,
   onMarkResolved,
   onCopy,
+  onBookmark,
+  isBookmarked,
   theme,
   t,
 }) => {
@@ -38,6 +40,9 @@ const PostCardMenu = ({
     }
     if (action === 'copy' && onCopy) {
       onCopy();
+    }
+    if (action === 'bookmark' && onBookmark) {
+      onBookmark();
     }
   };
 
@@ -109,6 +114,20 @@ const PostCardMenu = ({
             <Ionicons name="copy-outline" size={22} color={theme.primary || '#007AFF'} />
             <Text style={[styles.menuText, { color: theme.primary || '#007AFF' }]}>
               {t('post.copyText') || 'Copy Text'}
+            </Text>
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <TouchableOpacity 
+            style={styles.menuItem} 
+            onPress={() => handleAction('bookmark')}
+          >
+            <Ionicons 
+              name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+              size={22} 
+              color={isBookmarked ? "#F59E0B" : theme.primary || '#007AFF'} 
+            />
+            <Text style={[styles.menuText, { color: isBookmarked ? "#F59E0B" : theme.primary || '#007AFF' }]}>
+              {isBookmarked ? (t('post.removeBookmark') || 'Remove Bookmark') : (t('post.bookmark') || 'Bookmark')}
             </Text>
           </TouchableOpacity>
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />

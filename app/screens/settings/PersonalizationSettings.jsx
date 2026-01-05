@@ -24,12 +24,25 @@ const PersonalizationSettings = ({ navigation }) => {
     setThemeMode,
     currentLanguage,
     changeLanguage,
+    fontScale,
+    updateFontScale,
+    reduceMotion,
+    updateReduceMotion,
+    hapticEnabled,
+    updateHapticEnabled,
   } = useAppSettings();
 
   const themeOptions = [
     { value: 'light', label: t('settings.lightMode'), icon: 'sunny-outline' },
     { value: 'dark', label: t('settings.darkMode'), icon: 'moon-outline' },
     { value: 'system', label: t('settings.systemDefault'), icon: 'phone-portrait-outline' },
+  ];
+
+  const fontSizeOptions = [
+    { value: 0.85, label: t('settings.fontSmall') || 'Small', icon: 'text-outline' },
+    { value: 1.0, label: t('settings.fontNormal') || 'Normal', icon: 'text-outline' },
+    { value: 1.15, label: t('settings.fontLarge') || 'Large', icon: 'text-outline' },
+    { value: 1.3, label: t('settings.fontExtraLarge') || 'Extra Large', icon: 'text-outline' },
   ];
 
   const languages = [
@@ -175,6 +188,147 @@ const PersonalizationSettings = ({ navigation }) => {
           </GlassCard>
         </View>
 
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.fontSize') || 'Font Size'}
+          </Text>
+          <GlassCard>
+            {fontSizeOptions.map((option, index) => (
+              <View key={option.value}>
+                <TouchableOpacity
+                  style={styles.optionItem}
+                  onPress={() => updateFontScale(option.value)}
+                  activeOpacity={0.7}>
+                  <View style={[
+                    styles.iconContainer,
+                    {
+                      backgroundColor: fontScale === option.value
+                        ? isDarkMode ? 'rgba(10, 132, 255, 0.2)' : 'rgba(0, 122, 255, 0.15)'
+                        : isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                    },
+                  ]}>
+                    <Text style={{
+                      fontSize: 14 * option.value,
+                      fontWeight: '600',
+                      color: fontScale === option.value ? theme.primary : theme.textSecondary,
+                    }}>
+                      Aa
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.optionLabel,
+                    { color: fontScale === option.value ? theme.text : theme.textSecondary },
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {fontScale === option.value && (
+                    <Ionicons name="checkmark-circle" size={22} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+                {index < fontSizeOptions.length - 1 && (
+                  <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                )}
+              </View>
+            ))}
+          </GlassCard>
+          <Text style={[styles.sectionNote, { color: theme.textSecondary }]}>
+            {t('settings.fontSizeNote') || 'Adjusts text size throughout the app'}
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.accessibility') || 'Accessibility'}
+          </Text>
+          <GlassCard>
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => updateReduceMotion(!reduceMotion)}
+              activeOpacity={0.7}>
+              <View style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                },
+              ]}>
+                <Ionicons 
+                  name="flash-off-outline" 
+                  size={20} 
+                  color={reduceMotion ? theme.primary : theme.textSecondary} 
+                />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[
+                  styles.optionLabel,
+                  { color: theme.text },
+                ]}>
+                  {t('settings.reduceMotion') || 'Reduce Motion'}
+                </Text>
+                <Text style={[styles.optionNote, { color: theme.textSecondary }]}>
+                  {t('settings.reduceMotionNote') || 'Disable animations'}
+                </Text>
+              </View>
+              <View style={[
+                styles.toggle,
+                { 
+                  backgroundColor: reduceMotion ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                }
+              ]}>
+                <View style={[
+                  styles.toggleKnob,
+                  { 
+                    transform: [{ translateX: reduceMotion ? 20 : 0 }],
+                    backgroundColor: '#FFFFFF',
+                  }
+                ]} />
+              </View>
+            </TouchableOpacity>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => updateHapticEnabled(!hapticEnabled)}
+              activeOpacity={0.7}>
+              <View style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                },
+              ]}>
+                <Ionicons 
+                  name="radio-button-on-outline" 
+                  size={20} 
+                  color={hapticEnabled ? theme.primary : theme.textSecondary} 
+                />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[
+                  styles.optionLabel,
+                  { color: theme.text },
+                ]}>
+                  {t('settings.hapticFeedback') || 'Haptic Feedback'}
+                </Text>
+                <Text style={[styles.optionNote, { color: theme.textSecondary }]}>
+                  {t('settings.hapticFeedbackNote') || 'Vibration on interactions'}
+                </Text>
+              </View>
+              <View style={[
+                styles.toggle,
+                { 
+                  backgroundColor: hapticEnabled ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                }
+              ]}>
+                <View style={[
+                  styles.toggleKnob,
+                  { 
+                    transform: [{ translateX: hapticEnabled ? 20 : 0 }],
+                    backgroundColor: '#FFFFFF',
+                  }
+                ]} />
+              </View>
+            </TouchableOpacity>
+          </GlassCard>
+        </View>
+
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
@@ -274,6 +428,30 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginLeft: spacing.md + 36 + spacing.md,
+  },
+  sectionNote: {
+    fontSize: responsiveFontSize(12),
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  optionContent: {
+    flex: 1,
+  },
+  optionNote: {
+    fontSize: responsiveFontSize(11),
+    marginTop: 2,
+  },
+  toggle: {
+    width: 50,
+    height: 30,
+    borderRadius: 15,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   bottomPadding: {
     height: hp(5),

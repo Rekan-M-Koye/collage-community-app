@@ -59,6 +59,17 @@ export const postCardStyles = StyleSheet.create({
     fontSize: 10,
     fontStyle: 'italic',
   },
+  youBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  youBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+  },
   stageBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,

@@ -87,6 +87,7 @@ const UserProfile = ({ route, navigation }) => {
           fullName: fetchedUser.name || fetchedUser.fullName,
           email: fetchedUser.email,
           bio: fetchedUser.bio || '',
+          pronouns: fetchedUser.pronouns || '',
           profilePicture: fetchedUser.profilePicture || '',
           university: fetchedUser.university || '',
           college: fetchedUser.major || fetchedUser.college || '',
@@ -298,6 +299,7 @@ const UserProfile = ({ route, navigation }) => {
     name: userData.fullName || 'User',
     email: userData.email || '',
     bio: userData.bio || t('profile.defaultBio'),
+    pronouns: userData.pronouns || '',
     avatar: avatarUri,
     university: userData.university ? t(`universities.${userData.university}`) : '',
     college: userData.college ? t(`colleges.${userData.college}`) : '',
@@ -475,6 +477,11 @@ const UserProfile = ({ route, navigation }) => {
             </View>
             
             <Text style={[styles.name, { fontSize: fontSize(22), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>{userProfile.name}</Text>
+            {userProfile.pronouns ? (
+              <Text style={[styles.pronouns, { fontSize: fontSize(12), color: 'rgba(255,255,255,0.6)' }]}>
+                {userProfile.pronouns}
+              </Text>
+            ) : null}
             {userProfile.bio && <Text style={[styles.bio, { fontSize: fontSize(13), color: 'rgba(255,255,255,0.8)' }]} numberOfLines={2}>{userProfile.bio}</Text>}
             
             <TouchableOpacity 
@@ -605,6 +612,7 @@ const styles = StyleSheet.create({
   avatarInner: { width: moderateScale(104), height: moderateScale(104), borderRadius: moderateScale(52), padding: 3 }, 
   avatar: { width: moderateScale(98), height: moderateScale(98), borderRadius: moderateScale(49) }, 
   name: { fontWeight: '700', marginBottom: spacing.xs / 2, textAlign: 'center', textShadowColor: 'rgba(0, 0, 0, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }, 
+  pronouns: { textAlign: 'center', marginBottom: spacing.xs, fontStyle: 'italic' },
   bio: { textAlign: 'center', marginBottom: spacing.md, lineHeight: fontSize(18), paddingHorizontal: wp(5) }, 
   followButtonContainer: {
     marginBottom: spacing.md,

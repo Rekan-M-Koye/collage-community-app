@@ -65,6 +65,7 @@ const ProfileSettings = ({ navigation }) => {
     department: '',
     stage: '',
     bio: '',
+    pronouns: '',
     profilePicture: '',
     lastAcademicUpdate: null,
   });
@@ -123,6 +124,7 @@ const ProfileSettings = ({ navigation }) => {
           department: user.department || '',
           stage: user.stage || '',
           bio: user.bio || '',
+          pronouns: user.pronouns || '',
           profilePicture: user.profilePicture || '',
           lastAcademicUpdate: user.lastAcademicUpdate || null,
         });
@@ -138,6 +140,7 @@ const ProfileSettings = ({ navigation }) => {
             department: parsedData.department || '',
             stage: parsedData.stage || '',
             bio: parsedData.bio || '',
+            pronouns: parsedData.pronouns || '',
             profilePicture: parsedData.profilePicture || '',
             lastAcademicUpdate: parsedData.lastAcademicUpdate || null,
           });
@@ -266,6 +269,10 @@ const ProfileSettings = ({ navigation }) => {
 
   const handleBioChange = (text) => {
     setProfileData(prev => ({ ...prev, bio: text }));
+  };
+
+  const handlePronounsChange = (text) => {
+    setProfileData(prev => ({ ...prev, pronouns: text }));
   };
 
   const handleFullNameChange = (text) => {
@@ -472,6 +479,29 @@ const ProfileSettings = ({ navigation }) => {
                 <Text style={[styles.charCounter, { color: theme.textSecondary }]}>
                   {profileData.bio?.length || 0}/200
                 </Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>
+                  {t('settings.pronouns') || 'Pronouns'}
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.text,
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                    },
+                  ]}
+                  value={profileData.pronouns}
+                  onChangeText={handlePronounsChange}
+                  editable={editMode}
+                  maxLength={30}
+                  placeholder={t('settings.pronounsPlaceholder') || 'e.g. he/him, she/her, they/them'}
+                  placeholderTextColor={theme.textSecondary}
+                  autoCorrect={false}
+                />
               </View>
 
               <View style={styles.divider} />

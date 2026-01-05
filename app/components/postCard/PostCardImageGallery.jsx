@@ -25,7 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const ZoomableImage = ({ uri }) => {
+const ZoomableImage = ({ uri, onLongPress }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -101,10 +101,18 @@ const ZoomableImage = ({ uri }) => {
       }
     });
 
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(500)
+    .onEnd((e, success) => {
+      if (success && onLongPress) {
+        runOnJS(onLongPress)();
+      }
+    });
+
   const composedGesture = Gesture.Simultaneous(
     pinchGesture,
     rotationGesture,
-    Gesture.Race(doubleTapGesture, panGesture)
+    Gesture.Race(doubleTapGesture, longPressGesture, panGesture)
   );
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -285,7 +293,7 @@ const PostCardImageGallery = ({ images, initialIndex, onClose, t }) => {
         scrollEventThrottle={16}
       >
         {images.map((img, index) => (
-          <ZoomableImage key={index} uri={img} />
+          <ZoomableImage key={index} uri={img} onLongPress={handleDownload} />
         ))}
       </ScrollView>
 

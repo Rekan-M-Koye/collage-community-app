@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,42 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../../context/AppSettingsContext';
 import { useUser } from '../../context/UserContext';
 import { signOut } from '../../../database/auth';
+import { cacheManager } from '../../utils/cacheManager';
 import { borderRadius, shadows } from '../../theme/designTokens';
 import { wp, hp, fontSize as responsiveFontSize, spacing } from '../../utils/responsive';
 
 const AccountSettings = ({ navigation }) => {
   const { t, theme, isDarkMode, resetSettings } = useAppSettings();
   const { clearUser } = useUser();
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const handleClearCache = () => {
+    Alert.alert(
+      t('settings.clearCache') || 'Clear Cache',
+      t('settings.clearCacheConfirm') || 'This will clear all cached data. The app may load slower temporarily.',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.clear') || 'Clear',
+          onPress: async () => {
+            setIsClearingCache(true);
+            try {
+              await cacheManager.clear();
+              Alert.alert(
+                t('common.success'),
+                t('settings.cacheCleared') || 'Cache cleared successfully!'
+              );
+            } catch (error) {
+              Alert.alert(t('common.error'), t('settings.clearCacheError') || 'Failed to clear cache');
+            } finally {
+              setIsClearingCache(false);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   const handleResetSettings = () => {
     Alert.alert(
@@ -155,6 +185,21 @@ const AccountSettings = ({ navigation }) => {
               title={t('settings.changePassword')}
               description={t('settings.changePasswordDesc')}
               onPress={() => navigation.navigate('ChangePassword')}
+            />
+          </GlassCard>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.storage') || 'Storage'}
+          </Text>
+          <GlassCard>
+            <SettingItem
+              icon="trash-outline"
+              iconColor="#5856D6"
+              title={t('settings.clearCache') || 'Clear Cache'}
+              description={t('settings.clearCacheDesc') || 'Free up space by clearing cached data'}
+              onPress={handleClearCache}
             />
           </GlassCard>
         </View>

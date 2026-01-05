@@ -109,6 +109,15 @@ export const AppSettingsProvider = ({ children }) => {
     backgroundImage: null, // URL or null for default
   });
 
+  // Font size scale (1.0 = normal, 0.85 = small, 1.15 = large, 1.3 = extra large)
+  const [fontScale, setFontScale] = useState(1.0);
+  
+  // Reduce motion for accessibility
+  const [reduceMotion, setReduceMotion] = useState(false);
+  
+  // Haptic feedback toggle
+  const [hapticEnabled, setHapticEnabled] = useState(true);
+
   const theme = isDarkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
@@ -127,12 +136,15 @@ export const AppSettingsProvider = ({ children }) => {
 
   const loadSettings = async () => {
     try {
-      const [savedLanguage, savedThemePreference, savedNotifications, savedNotificationSettings, savedChatSettings] = await Promise.all([
+      const [savedLanguage, savedThemePreference, savedNotifications, savedNotificationSettings, savedChatSettings, savedFontScale, savedReduceMotion, savedHapticEnabled] = await Promise.all([
         AsyncStorage.getItem('appLanguage'),
         AsyncStorage.getItem('themePreference'),
         AsyncStorage.getItem('notificationsEnabled'),
         AsyncStorage.getItem('notificationSettings'),
         AsyncStorage.getItem('chatSettings'),
+        AsyncStorage.getItem('fontScale'),
+        AsyncStorage.getItem('reduceMotion'),
+        AsyncStorage.getItem('hapticEnabled'),
       ]);
 
       if (savedLanguage) {
@@ -186,6 +198,21 @@ export const AppSettingsProvider = ({ children }) => {
         } catch (e) {
           // Invalid JSON, use defaults
         }
+      }
+      
+      if (savedFontScale) {
+        const scale = parseFloat(savedFontScale);
+        if (!isNaN(scale) && scale >= 0.85 && scale <= 1.3) {
+          setFontScale(scale);
+        }
+      }
+      
+      if (savedReduceMotion !== null) {
+        setReduceMotion(savedReduceMotion === 'true');
+      }
+      
+      if (savedHapticEnabled !== null) {
+        setHapticEnabled(savedHapticEnabled === 'true');
       }
     } catch (error) {
       // Failed to load settings, using defaults
@@ -270,6 +297,33 @@ export const AppSettingsProvider = ({ children }) => {
     }
   };
 
+  const updateFontScale = async (scale) => {
+    try {
+      setFontScale(scale);
+      await AsyncStorage.setItem('fontScale', scale.toString());
+    } catch (error) {
+      // Failed to save font scale
+    }
+  };
+
+  const updateReduceMotion = async (value) => {
+    try {
+      setReduceMotion(value);
+      await AsyncStorage.setItem('reduceMotion', value.toString());
+    } catch (error) {
+      // Failed to save reduce motion setting
+    }
+  };
+
+  const updateHapticEnabled = async (value) => {
+    try {
+      setHapticEnabled(value);
+      await AsyncStorage.setItem('hapticEnabled', value.toString());
+    } catch (error) {
+      // Failed to save haptic setting
+    }
+  };
+
   const resetSettings = async () => {
     try {
       await AsyncStorage.multiRemove([
@@ -278,6 +332,9 @@ export const AppSettingsProvider = ({ children }) => {
         'notificationsEnabled',
         'notificationSettings',
         'chatSettings',
+        'fontScale',
+        'reduceMotion',
+        'hapticEnabled',
       ]);
       setCurrentLanguage('en');
       i18n.locale = 'en';
@@ -295,6 +352,9 @@ export const AppSettingsProvider = ({ children }) => {
         bubbleColor: '#667eea',
         backgroundImage: null,
       });
+      setFontScale(1.0);
+      setReduceMotion(false);
+      setHapticEnabled(true);
     } catch (error) {
       // Failed to reset settings
     }
@@ -323,6 +383,15 @@ export const AppSettingsProvider = ({ children }) => {
     
     chatSettings,
     updateChatSetting,
+
+    fontScale,
+    updateFontScale,
+    
+    reduceMotion,
+    updateReduceMotion,
+    
+    hapticEnabled,
+    updateHapticEnabled,
 
     isLoading,
     resetSettings,

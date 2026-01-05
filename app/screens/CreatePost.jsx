@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/useTranslation';
@@ -31,6 +32,8 @@ import {
 import { uploadImage } from '../../services/imgbbService';
 import { createPost } from '../../database/posts';
 
+const DRAFT_STORAGE_KEY = 'post_draft';
+
 const CreatePost = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { showAlert } = useCustomAlert();
@@ -48,6 +51,9 @@ const CreatePost = ({ navigation, route }) => {
   const [links, setLinks] = useState([]);
   const [linkInput, setLinkInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  
+  const autoSaveTimerRef = useRef(null);
 
   const convertUserStageToStageValue = (userStage) => {
     const stageMap = {
@@ -80,6 +86,73 @@ const CreatePost = ({ navigation, route }) => {
     }
   }, [user]);
 
+  // Load draft on mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const savedDraft = await AsyncStorage.getItem(DRAFT_STORAGE_KEY);
+        if (savedDraft) {
+          const draft = JSON.parse(savedDraft);
+          if (draft.topic) setTopic(draft.topic);
+          if (draft.text) setText(draft.text);
+          if (draft.postType) setPostType(draft.postType);
+          if (draft.tags) setTags(draft.tags);
+          if (draft.links) setLinks(draft.links);
+          if (draft.visibility) setVisibility(draft.visibility);
+        }
+      } catch (error) {
+        // Failed to load draft
+      } finally {
+        setDraftLoaded(true);
+      }
+    };
+    loadDraft();
+  }, []);
+
+  // Auto-save draft when content changes
+  useEffect(() => {
+    if (!draftLoaded) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      const hasContent = topic.trim() || text.trim() || tags.length > 0 || links.length > 0;
+      
+      if (hasContent) {
+        try {
+          const draft = { topic, text, postType, tags, links, visibility, savedAt: Date.now() };
+          await AsyncStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        } catch (error) {
+          // Failed to save draft
+        }
+      } else {
+        // Clear draft if no content
+        try {
+          await AsyncStorage.removeItem(DRAFT_STORAGE_KEY);
+        } catch (error) {
+          // Failed to clear draft
+        }
+      }
+    }, 1000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [topic, text, postType, tags, links, visibility, draftLoaded]);
+
+  // Clear draft after successful post
+  const clearDraft = async () => {
+    try {
+      await AsyncStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      // Failed to clear draft
+    }
+  };
+
   // Check if there's any unsaved content
   const hasUnsavedContent = useCallback(() => {
     return topic.trim().length > 0 || text.trim().length > 0 || images.length > 0 || tags.length > 0 || links.length > 0;
@@ -102,7 +175,10 @@ const CreatePost = ({ navigation, route }) => {
           {
             text: t('post.discard') || 'Discard',
             style: 'destructive',
-            onPress: () => navigation.dispatch(e.data.action),
+            onPress: async () => {
+              await clearDraft();
+              navigation.dispatch(e.data.action);
+            },
           },
         ]
       );
@@ -220,6 +296,9 @@ const CreatePost = ({ navigation, route }) => {
       }
 
       const createdPost = await createPost(postData);
+
+      // Clear the draft after successful post
+      await clearDraft();
 
       showAlert(
         t('common.success'),

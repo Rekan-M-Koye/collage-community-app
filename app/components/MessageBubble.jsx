@@ -14,6 +14,7 @@ import {
   LayoutAnimation,
   UIManager,
   Platform as RNPlatform,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -266,15 +267,32 @@ const MessageBubble = ({
     }
   };
 
-  // Render message content with @everyone highlighting
+  // Render message content with @everyone highlighting and link detection
   const renderMessageContent = () => {
     if (!hasText) return null;
     
     const content = message.content;
     
-    // Check if contains @everyone or @all
-    if (mentionsAll || content.toLowerCase().includes('@everyone') || content.toLowerCase().includes('@all')) {
-      const parts = content.split(/(@everyone|@all)/gi);
+    // URL regex pattern
+    const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const mentionPattern = /(@everyone|@all)/gi;
+    
+    // Combined pattern for both links and mentions
+    const combinedPattern = new RegExp(`(${urlPattern.source}|${mentionPattern.source})`, 'gi');
+    
+    const parts = content.split(combinedPattern).filter(Boolean);
+    
+    const handleLinkPress = (url) => {
+      let finalUrl = url;
+      if (url.startsWith('www.')) {
+        finalUrl = 'https://' + url;
+      }
+      Linking.openURL(finalUrl);
+    };
+    
+    const hasSpecialContent = urlPattern.test(content) || mentionPattern.test(content);
+    
+    if (hasSpecialContent) {
       return (
         <Text style={[
           styles.messageText,
@@ -288,6 +306,17 @@ const MessageBubble = ({
             if (part.toLowerCase() === '@everyone' || part.toLowerCase() === '@all') {
               return (
                 <Text key={index} style={styles.mentionHighlight}>
+                  {part}
+                </Text>
+              );
+            }
+            if (urlPattern.test(part)) {
+              return (
+                <Text 
+                  key={index} 
+                  style={[styles.linkText, { color: isCurrentUser ? '#93C5FD' : theme.primary }]}
+                  onPress={() => handleLinkPress(part)}
+                >
                   {part}
                 </Text>
               );
@@ -663,6 +692,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(102, 126, 234, 0.3)',
     borderRadius: 2,
     fontWeight: '600',
+  },
+  linkText: {
+    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   replyContainer: {
     paddingHorizontal: spacing.sm,

@@ -34,7 +34,7 @@ import {
 import { borderRadius } from '../theme/designTokens';
 import { FEED_TYPES, getDepartmentsInSameMajor } from '../constants/feedCategories';
 import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, deletePost, enrichPostsWithUserData, reportPost, incrementPostViewCount, markQuestionAsResolved, getPost } from '../../database/posts';
-import { notifyPostLike } from '../../database/notifications';
+import { notifyPostLike, getUnreadNotificationCount } from '../../database/notifications';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
 import { usePosts } from '../hooks/useRealtimeSubscription';
@@ -58,6 +58,8 @@ const Home = ({ navigation }) => {
   const [page, setPage] = useState(0);
   const [userInteractions, setUserInteractions] = useState({});
   const [showStageModal, setShowStageModal] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
 
   const flatListRef = useRef(null);
   const searchBarRef = useRef(null);
@@ -65,6 +67,7 @@ const Home = ({ navigation }) => {
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const lastTapTime = useRef(0);
+  const scrollToTopOpacity = useRef(new Animated.Value(0)).current;
 
   // Real-time subscription for new/updated posts
   const handleRealtimePostUpdate = useCallback(async (payload) => {
@@ -114,6 +117,25 @@ const Home = ({ navigation }) => {
     }
   }, [selectedFeed, selectedStage, user]);
 
+  // Load unread notification count
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (user?.$id) {
+        try {
+          const count = await getUnreadNotificationCount(user.$id);
+          setUnreadNotifications(count);
+        } catch (error) {
+          // Failed to load notification count
+        }
+      }
+    };
+    loadUnreadCount();
+    
+    // Refresh count when screen is focused
+    const unsubscribe = navigation.addListener('focus', loadUnreadCount);
+    return unsubscribe;
+  }, [user?.$id, navigation]);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress', (e) => {
       const now = Date.now();
@@ -149,6 +171,17 @@ const Home = ({ navigation }) => {
         } else if (diff < -5 || currentScrollY < 50) {
           Animated.timing(headerTranslateY, {
             toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+
+        // Show/hide scroll to top button
+        const shouldShow = currentScrollY > 300;
+        if (shouldShow !== showScrollToTop) {
+          setShowScrollToTop(shouldShow);
+          Animated.timing(scrollToTopOpacity, {
+            toValue: shouldShow ? 1 : 0,
             duration: 200,
             useNativeDriver: true,
           }).start();
@@ -222,6 +255,10 @@ const Home = ({ navigation }) => {
     setIsRefreshing(true);
     loadPosts(true);
   }, [selectedFeed, selectedStage, user]);
+
+  const handleScrollToTop = useCallback(() => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore && !isLoadingPosts) {
@@ -407,40 +444,49 @@ const Home = ({ navigation }) => {
     );
   };
 
-  const handleReportPost = async (post) => {
+  const handleReportPost = async (post, reason = null) => {
     if (!user?.$id) return;
 
-    showAlert(
-      t('post.reportPost'),
-      t('post.reportReason'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('post.report'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await reportPost(post.$id, user.$id);
-              if (result.alreadyReported) {
-                showAlert(t('common.info'), t('post.alreadyReported') || 'You have already reported this post', 'info');
-              } else {
-                showAlert(t('common.success'), t('post.reportSuccess'), 'success');
-              }
-            } catch (error) {
-              const errorInfo = handleNetworkError(error);
-              showAlert(
-                errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
-                t('post.reportError'),
-                [{ text: t('common.ok') }]
-              );
-            }
-          },
-        },
-      ]
-    );
+    // If no reason provided, show reason selection first
+    if (!reason) {
+      const reasons = [
+        { key: 'spam', label: t('report.spam') || 'Spam' },
+        { key: 'harassment', label: t('report.harassment') || 'Harassment or bullying' },
+        { key: 'inappropriate', label: t('report.inappropriate') || 'Inappropriate content' },
+        { key: 'misinformation', label: t('report.misinformation') || 'Misinformation' },
+        { key: 'other', label: t('report.other') || 'Other' },
+      ];
+
+      Alert.alert(
+        t('post.reportPost'),
+        t('report.selectReason') || 'Why are you reporting this post?',
+        [
+          ...reasons.map(r => ({
+            text: r.label,
+            onPress: () => handleReportPost(post, r.key),
+          })),
+          { text: t('common.cancel'), style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    // Submit the report with reason
+    try {
+      const result = await reportPost(post.$id, user.$id, reason);
+      if (result.alreadyReported) {
+        showAlert(t('common.info'), t('post.alreadyReported') || 'You have already reported this post', 'info');
+      } else {
+        showAlert(t('common.success'), t('post.reportSuccess'), 'success');
+      }
+    } catch (error) {
+      const errorInfo = handleNetworkError(error);
+      showAlert(
+        errorInfo.isNetworkError ? t('error.noInternet') : t('error.title'),
+        t('post.reportError'),
+        [{ text: t('common.ok') }]
+      );
+    }
   };
 
   const renderFooter = () => {
@@ -666,6 +712,13 @@ const Home = ({ navigation }) => {
                 ]}
               >
                 <Ionicons name="notifications-outline" size={moderateScale(18)} color={theme.text} />
+                {unreadNotifications > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                    </Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -682,6 +735,36 @@ const Home = ({ navigation }) => {
         visible={showStageModal}
         onClose={() => setShowStageModal(false)}
       />
+
+      {/* Scroll to Top Button */}
+      <Animated.View
+        style={[
+          styles.scrollToTopButton,
+          {
+            opacity: scrollToTopOpacity,
+            transform: [{
+              scale: scrollToTopOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.8, 1],
+              })
+            }],
+          }
+        ]}
+        pointerEvents={showScrollToTop ? 'auto' : 'none'}
+      >
+        <TouchableOpacity
+          onPress={handleScrollToTop}
+          activeOpacity={0.8}
+          style={[
+            styles.scrollToTopTouchable,
+            {
+              backgroundColor: theme.primary,
+            }
+          ]}
+        >
+          <Ionicons name="arrow-up" size={moderateScale(22)} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -750,6 +833,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: borderRadius.md,
   },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
   searchSection: {
     paddingHorizontal: wp(4),
     marginBottom: spacing.sm,
@@ -816,6 +916,27 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: spacing.lg,
     alignItems: 'center',
+  },
+  scrollToTopButton: {
+    position: 'absolute',
+    bottom: hp(12),
+    right: wp(5),
+    zIndex: 100,
+  },
+  scrollToTopTouchable: {
+    width: moderateScale(48),
+    height: moderateScale(48),
+    borderRadius: moderateScale(24),
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });
 

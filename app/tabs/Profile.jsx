@@ -335,6 +335,21 @@ const Profile = ({ navigation }) => {
             </View>
           </>
         )}
+        
+        {user.$createdAt && (
+          <>
+            <View style={[styles.infoDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={moderateScale(20)} color={theme.textSecondary} />
+              <View style={styles.infoTextContainer}>
+                <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary }]}>{t('profile.joinedDate') || 'Joined'}</Text>
+                <Text style={[styles.infoValue, { fontSize: fontSize(13), color: theme.text }]}>
+                  {new Date(user.$createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );

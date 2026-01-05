@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   Share,
   Linking,
   Modal,
+  Pressable,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -15,6 +17,7 @@ import { useUser } from '../context/UserContext';
 import { POST_COLORS, POST_ICONS } from '../constants/postConstants';
 import PostCardImageGallery from './postCard/PostCardImageGallery';
 import PostCardMenu from './postCard/PostCardMenu';
+import ImageWithPlaceholder from './ImageWithPlaceholder';
 import { 
   postCardStyles as styles, 
   STAGE_COLORS, 
@@ -22,6 +25,8 @@ import {
   formatTimeAgo, 
   getDefaultAvatar 
 } from './postCard/styles';
+
+const BOOKMARKS_KEY = '@bookmarked_posts';
 
 const PostCard = ({ 
   post, 
@@ -47,6 +52,10 @@ const PostCard = ({
   const [isLiking, setIsLiking] = useState(false);
   const [resolved, setResolved] = useState(post.isResolved || false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  const lastTapTime = useRef(0);
+  const DOUBLE_TAP_DELAY = 300;
 
   const postColor = POST_COLORS[post.postType] || '#6B7280';
   const postIcon = POST_ICONS[post.postType] || 'document-outline';
@@ -64,6 +73,42 @@ const PostCard = ({
     setLiked(isLiked);
     setLikeCount(post.likeCount || 0);
   }, [isLiked, post.likeCount]);
+
+  // Check if post is bookmarked on mount
+  useEffect(() => {
+    const checkBookmark = async () => {
+      try {
+        const bookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
+        if (bookmarks) {
+          const bookmarkList = JSON.parse(bookmarks);
+          setIsBookmarked(bookmarkList.includes(post.$id));
+        }
+      } catch (error) {
+        // Ignore bookmark check errors
+      }
+    };
+    checkBookmark();
+  }, [post.$id]);
+
+  const handleBookmark = async () => {
+    try {
+      const bookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
+      let bookmarkList = bookmarks ? JSON.parse(bookmarks) : [];
+      
+      if (isBookmarked) {
+        // Remove from bookmarks
+        bookmarkList = bookmarkList.filter(id => id !== post.$id);
+      } else {
+        // Add to bookmarks
+        bookmarkList.push(post.$id);
+      }
+      
+      await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarkList));
+      setIsBookmarked(!isBookmarked);
+    } catch (error) {
+      // Ignore bookmark errors
+    }
+  };
 
   const handleLike = async () => {
     if (isLiking) return;
@@ -107,6 +152,17 @@ const PostCard = ({
     }
   };
 
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapTime.current < DOUBLE_TAP_DELAY) {
+      // Double tap detected - like the post if not already liked
+      if (!liked && !isLiking) {
+        handleLike();
+      }
+    }
+    lastTapTime.current = now;
+  };
+
   const openImageGallery = (index) => {
     setSelectedImageIndex(index);
     setImageGalleryVisible(true);
@@ -120,7 +176,7 @@ const PostCard = ({
     if (imageCount === 1) {
       return (
         <TouchableOpacity onPress={() => openImageGallery(0)} activeOpacity={0.9}>
-          <Image 
+          <ImageWithPlaceholder 
             source={{ uri: post.images[0] }}
             style={styles.singleImage}
             resizeMode="cover"
@@ -139,7 +195,7 @@ const PostCard = ({
               onPress={() => openImageGallery(index)}
               activeOpacity={0.9}
             >
-              <Image source={{ uri: img }} style={styles.twoImage} resizeMode="cover" />
+              <ImageWithPlaceholder source={{ uri: img }} style={styles.twoImage} resizeMode="cover" />
             </TouchableOpacity>
           ))}
         </View>
@@ -154,7 +210,7 @@ const PostCard = ({
             onPress={() => openImageGallery(0)}
             activeOpacity={0.9}
           >
-            <Image source={{ uri: post.images[0] }} style={styles.threeMainImage} resizeMode="cover" />
+            <ImageWithPlaceholder source={{ uri: post.images[0] }} style={styles.threeMainImage} resizeMode="cover" />
           </TouchableOpacity>
           <View style={styles.threeImageSide}>
             {post.images.slice(1, 3).map((img, index) => (
@@ -164,7 +220,7 @@ const PostCard = ({
                 onPress={() => openImageGallery(index + 1)}
                 activeOpacity={0.9}
               >
-                <Image source={{ uri: img }} style={styles.threeSideImage} resizeMode="cover" />
+                <ImageWithPlaceholder source={{ uri: img }} style={styles.threeSideImage} resizeMode="cover" />
               </TouchableOpacity>
             ))}
           </View>
@@ -182,7 +238,7 @@ const PostCard = ({
               onPress={() => openImageGallery(index)}
               activeOpacity={0.9}
             >
-              <Image source={{ uri: img }} style={styles.gridImage} resizeMode="cover" />
+              <ImageWithPlaceholder source={{ uri: img }} style={styles.gridImage} resizeMode="cover" />
               {index === 3 && imageCount > 4 && (
                 <View style={styles.moreImagesOverlay}>
                   <Text style={styles.moreImagesText}>+{imageCount - 4}</Text>
@@ -203,7 +259,8 @@ const PostCard = ({
         styles.card, 
         { 
           backgroundColor: theme.card || theme.cardBackground,
-          borderColor: theme.border,
+          borderColor: isOwner ? theme.primary : theme.border,
+          borderWidth: isOwner ? 1.5 : 1,
         }
       ]}
     >
@@ -222,12 +279,18 @@ const PostCard = ({
                 {postOwnerName}
               </Text>
             </TouchableOpacity>
+            {isOwner && (
+              <View style={[styles.youBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.youBadgeText}>{t('common.you') || 'You'}</Text>
+              </View>
+            )}
             <Text style={[styles.timeText, { color: theme.textSecondary }]}>
               {formatTimeAgo(post.$createdAt, t)}
             </Text>
+            </Text>
             {post.isEdited === true && (
               <Text style={[styles.editedText, { color: theme.textTertiary }]}>
-                ({t('post.edited')})
+                ({t('post.edited')} {post.$updatedAt ? formatTimeAgo(post.$updatedAt, t) : ''})
               </Text>
             )}
           </View>
@@ -254,8 +317,8 @@ const PostCard = ({
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
+      {/* Content - Double tap to like */}
+      <Pressable onPress={handleDoubleTap} style={styles.content}>
         <Text style={[styles.topic, { color: theme.text }]} numberOfLines={2} selectable>
           {post.topic}
         </Text>
@@ -325,7 +388,7 @@ const PostCard = ({
         )}
 
         {showImages && renderImageLayout()}
-      </View>
+      </Pressable>
 
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: theme.border }]}>
@@ -416,6 +479,8 @@ const PostCard = ({
           setResolved(true);
         }}
         onCopy={handleCopy}
+        onBookmark={handleBookmark}
+        isBookmarked={isBookmarked}
         theme={theme}
         t={t}
       />

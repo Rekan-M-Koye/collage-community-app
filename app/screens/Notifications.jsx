@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,7 @@ import { useUser } from '../context/UserContext';
 import ProfilePicture from '../components/ProfilePicture';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
-import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../database/notifications';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, deleteAllNotifications } from '../../database/notifications';
 
 const NOTIFICATION_TYPES = {
   POST_LIKE: 'post_like',
@@ -44,7 +45,7 @@ const getNotificationIcon = (type) => {
   }
 };
 
-const NotificationItem = ({ notification, onPress, theme, isDarkMode, t }) => {
+const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme, isDarkMode, t }) => {
   const icon = getNotificationIcon(notification.type);
   const isUnread = !notification.isRead;
   
@@ -93,6 +94,8 @@ const NotificationItem = ({ notification, onPress, theme, isDarkMode, t }) => {
         },
       ]}
       onPress={() => onPress(notification)}
+      onLongPress={() => onLongPress && onLongPress(notification)}
+      delayLongPress={500}
       activeOpacity={0.7}
     >
       <View style={styles.notificationContent}>
@@ -140,6 +143,14 @@ const NotificationItem = ({ notification, onPress, theme, isDarkMode, t }) => {
         {isUnread && (
           <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
         )}
+        
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete && onDelete(notification)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close" size={18} color={theme.subText} />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -232,6 +243,54 @@ const Notifications = ({ navigation }) => {
     }
   };
 
+  const handleMarkSingleAsRead = async (notification) => {
+    if (notification.isRead) return;
+    
+    try {
+      await markNotificationAsRead(notification.$id);
+      setNotifications(prev =>
+        prev.map(n =>
+          n.$id === notification.$id ? { ...n, isRead: true } : n
+        )
+      );
+    } catch (error) {
+      // Handle error silently
+    }
+  };
+
+  const handleDeleteNotification = async (notification) => {
+    try {
+      await deleteNotification(notification.$id);
+      setNotifications(prev => prev.filter(n => n.$id !== notification.$id));
+    } catch (error) {
+      // Handle error silently
+    }
+  };
+
+  const handleClearAll = () => {
+    if (notifications.length === 0) return;
+    
+    Alert.alert(
+      t('notifications.clearAll') || 'Clear All',
+      t('notifications.clearAllConfirm') || 'Are you sure you want to clear all notifications?',
+      [
+        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+        {
+          text: t('common.clear') || 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAllNotifications(user.$id);
+              setNotifications([]);
+            } catch (error) {
+              // Handle error silently
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const renderEmptyState = () => (
@@ -273,7 +332,7 @@ const Notifications = ({ navigation }) => {
             {t('notifications.title') || 'Notifications'}
           </Text>
           
-          {unreadCount > 0 && (
+          {unreadCount > 0 ? (
             <TouchableOpacity
               style={styles.markAllButton}
               onPress={handleMarkAllAsRead}
@@ -282,9 +341,18 @@ const Notifications = ({ navigation }) => {
                 {t('notifications.markAllRead') || 'Mark all read'}
               </Text>
             </TouchableOpacity>
+          ) : notifications.length > 0 ? (
+            <TouchableOpacity
+              style={styles.markAllButton}
+              onPress={handleClearAll}
+            >
+              <Text style={[styles.markAllText, { color: '#FF3B30' }]}>
+                {t('notifications.clearAll') || 'Clear all'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.placeholder} />
           )}
-          
-          {unreadCount === 0 && <View style={styles.placeholder} />}
         </View>
 
         {isLoading ? (
@@ -299,6 +367,8 @@ const Notifications = ({ navigation }) => {
               <NotificationItem
                 notification={item}
                 onPress={handleNotificationPress}
+                onLongPress={handleMarkSingleAsRead}
+                onDelete={handleDeleteNotification}
                 theme={theme}
                 isDarkMode={isDarkMode}
                 t={t}
@@ -421,6 +491,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginLeft: spacing.sm,
     marginTop: 6,
+  },
+  deleteButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
+    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,
