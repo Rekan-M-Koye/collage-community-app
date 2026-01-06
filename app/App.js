@@ -36,6 +36,7 @@ import PostDetails from './screens/PostDetails';
 import EditPost from './screens/EditPost';
 import ChatRoom from './screens/ChatRoom';
 import UserProfile from './screens/UserProfile';
+import FollowList from './screens/FollowList';
 import ManageRepresentatives from './screens/ManageRepresentatives';
 import Notifications from './screens/Notifications';
 import { NewChat, UserSearch, CreateGroup, GroupSettings, ForwardMessage, AddMembers } from './screens/chats';
@@ -339,6 +340,11 @@ const MainStack = () => {
       <Stack.Screen 
         name="UserProfile" 
         component={UserProfile}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="FollowList" 
+        component={FollowList}
         options={{ headerShown: false }}
       />
       <Stack.Screen 

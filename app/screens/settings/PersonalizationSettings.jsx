@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -30,12 +32,44 @@ const PersonalizationSettings = ({ navigation }) => {
     updateReduceMotion,
     hapticEnabled,
     updateHapticEnabled,
+    showActivityStatus,
+    updateShowActivityStatus,
+    compactMode,
+    updateCompactMode,
+    accentColor,
+    updateAccentColor,
+    dataSaverMode,
+    updateDataSaverMode,
+    darkModeSchedule,
+    updateDarkModeSchedule,
   } = useAppSettings();
+
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [timePickerType, setTimePickerType] = useState('start'); // 'start' or 'end'
+  const [tempTime, setTempTime] = useState('');
+
+  const openTimePicker = (type) => {
+    setTimePickerType(type);
+    setTempTime(type === 'start' ? darkModeSchedule.startTime : darkModeSchedule.endTime);
+    setTimePickerVisible(true);
+  };
+
+  const saveTime = () => {
+    if (tempTime && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(tempTime)) {
+      if (timePickerType === 'start') {
+        updateDarkModeSchedule({ startTime: tempTime, enabled: true });
+      } else {
+        updateDarkModeSchedule({ endTime: tempTime, enabled: true });
+      }
+    }
+    setTimePickerVisible(false);
+  };
 
   const themeOptions = [
     { value: 'light', label: t('settings.lightMode'), icon: 'sunny-outline' },
     { value: 'dark', label: t('settings.darkMode'), icon: 'moon-outline' },
     { value: 'system', label: t('settings.systemDefault'), icon: 'phone-portrait-outline' },
+    { value: 'scheduled', label: t('settings.scheduled') || 'Scheduled', icon: 'time-outline' },
   ];
 
   const fontSizeOptions = [
@@ -155,6 +189,82 @@ const PersonalizationSettings = ({ navigation }) => {
               </View>
             ))}
           </GlassCard>
+          
+          {themePreference === 'scheduled' && (
+            <View style={{ marginTop: spacing.sm }}>
+              <GlassCard>
+                <View style={styles.scheduleRow}>
+                  <View style={styles.scheduleItem}>
+                    <Text style={[styles.scheduleLabel, { color: theme.textSecondary }]}>
+                      {t('settings.darkModeStart') || 'Dark mode starts'}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.timeButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+                      onPress={() => openTimePicker('start')}>
+                      <Ionicons name="moon-outline" size={18} color={theme.primary} />
+                      <Text style={[styles.timeText, { color: theme.text }]}>{darkModeSchedule.startTime}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.scheduleItem}>
+                    <Text style={[styles.scheduleLabel, { color: theme.textSecondary }]}>
+                      {t('settings.darkModeEnd') || 'Dark mode ends'}
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.timeButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+                      onPress={() => openTimePicker('end')}>
+                      <Ionicons name="sunny-outline" size={18} color={theme.primary} />
+                      <Text style={[styles.timeText, { color: theme.text }]}>{darkModeSchedule.endTime}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </GlassCard>
+              <Text style={[styles.sectionNote, { color: theme.textSecondary }]}>
+                {t('settings.scheduleNote') || 'Dark mode will automatically switch based on these times'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Accent Color Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.accentColor') || 'Accent Color'}
+          </Text>
+          <GlassCard>
+            <View style={styles.colorPickerContainer}>
+              {[
+                { color: null, label: 'Default' },
+                { color: '#007AFF', label: 'Blue' },
+                { color: '#34C759', label: 'Green' },
+                { color: '#FF9500', label: 'Orange' },
+                { color: '#FF3B30', label: 'Red' },
+                { color: '#AF52DE', label: 'Purple' },
+                { color: '#FF2D55', label: 'Pink' },
+                { color: '#5AC8FA', label: 'Cyan' },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.color || 'default'}
+                  style={[
+                    styles.colorOption,
+                    {
+                      backgroundColor: item.color || (isDarkMode ? '#0A84FF' : '#007AFF'),
+                      borderWidth: (accentColor === item.color || (!accentColor && !item.color)) ? 3 : 0,
+                      borderColor: '#FFFFFF',
+                    },
+                  ]}
+                  onPress={() => updateAccentColor(item.color)}
+                  activeOpacity={0.7}
+                >
+                  {(accentColor === item.color || (!accentColor && !item.color)) && (
+                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </GlassCard>
+          <Text style={[styles.sectionNote, { color: theme.textSecondary }]}>
+            {t('settings.accentColorNote') || 'Customize the app primary color'}
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -326,11 +436,204 @@ const PersonalizationSettings = ({ navigation }) => {
                 ]} />
               </View>
             </TouchableOpacity>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => updateCompactMode(!compactMode)}
+              activeOpacity={0.7}>
+              <View style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                },
+              ]}>
+                <Ionicons 
+                  name="grid-outline" 
+                  size={20} 
+                  color={compactMode ? theme.primary : theme.textSecondary} 
+                />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[
+                  styles.optionLabel,
+                  { color: theme.text },
+                ]}>
+                  {t('settings.compactMode') || 'Compact Mode'}
+                </Text>
+                <Text style={[styles.optionNote, { color: theme.textSecondary }]}>
+                  {t('settings.compactModeNote') || 'Show more posts with smaller cards'}
+                </Text>
+              </View>
+              <View style={[
+                styles.toggle,
+                { 
+                  backgroundColor: compactMode ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                }
+              ]}>
+                <View style={[
+                  styles.toggleKnob,
+                  { 
+                    transform: [{ translateX: compactMode ? 20 : 0 }],
+                    backgroundColor: '#FFFFFF',
+                  }
+                ]} />
+              </View>
+            </TouchableOpacity>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => updateDataSaverMode(!dataSaverMode)}
+              activeOpacity={0.7}>
+              <View style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                },
+              ]}>
+                <Ionicons 
+                  name="leaf-outline" 
+                  size={20} 
+                  color={dataSaverMode ? theme.primary : theme.textSecondary} 
+                />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[
+                  styles.optionLabel,
+                  { color: theme.text },
+                ]}>
+                  {t('settings.dataSaverMode') || 'Data Saver Mode'}
+                </Text>
+                <Text style={[styles.optionNote, { color: theme.textSecondary }]}>
+                  {t('settings.dataSaverModeNote') || 'Reduce data usage by loading lower quality images'}
+                </Text>
+              </View>
+              <View style={[
+                styles.toggle,
+                { 
+                  backgroundColor: dataSaverMode ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                }
+              ]}>
+                <View style={[
+                  styles.toggleKnob,
+                  { 
+                    transform: [{ translateX: dataSaverMode ? 20 : 0 }],
+                    backgroundColor: '#FFFFFF',
+                  }
+                ]} />
+              </View>
+            </TouchableOpacity>
           </GlassCard>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {t('settings.privacy') || 'Privacy'}
+          </Text>
+          <GlassCard>
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={() => updateShowActivityStatus(!showActivityStatus)}
+              activeOpacity={0.7}>
+              <View style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                },
+              ]}>
+                <Ionicons 
+                  name="eye-outline" 
+                  size={20} 
+                  color={showActivityStatus ? theme.primary : theme.textSecondary} 
+                />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[
+                  styles.optionLabel,
+                  { color: theme.text },
+                ]}>
+                  {t('settings.showActivityStatus') || 'Show Activity Status'}
+                </Text>
+                <Text style={[styles.optionNote, { color: theme.textSecondary }]}>
+                  {t('settings.showActivityStatusNote') || 'Let others see when you\'re online'}
+                </Text>
+              </View>
+              <View style={[
+                styles.toggle,
+                { 
+                  backgroundColor: showActivityStatus ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                }
+              ]}>
+                <View style={[
+                  styles.toggleKnob,
+                  { 
+                    transform: [{ translateX: showActivityStatus ? 20 : 0 }],
+                    backgroundColor: '#FFFFFF',
+                  }
+                ]} />
+              </View>
+            </TouchableOpacity>
+          </GlassCard>
+          <Text style={[styles.sectionNote, { color: theme.textSecondary }]}>
+            {t('settings.activityStatusDisclaimer') || 'If disabled, you won\'t see others\' activity status either'}
+          </Text>
         </View>
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={timePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTimePickerVisible(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setTimePickerVisible(false)}>
+          <View style={[styles.timePickerModal, { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }]}>
+            <Text style={[styles.timePickerTitle, { color: theme.text }]}>
+              {t('settings.setTime') || 'Set Time'}
+            </Text>
+            <Text style={[styles.timePickerSubtitle, { color: theme.textSecondary }]}>
+              {t('settings.enterTime') || 'Enter time (HH:MM)'}
+            </Text>
+            <TextInput
+              style={[
+                styles.timeInput,
+                { 
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                  color: theme.text,
+                  borderColor: theme.border,
+                }
+              ]}
+              value={tempTime}
+              onChangeText={setTempTime}
+              placeholder="HH:MM"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="numbers-and-punctuation"
+              maxLength={5}
+              autoFocus
+            />
+            <View style={styles.timePickerButtons}>
+              <TouchableOpacity
+                style={[styles.timePickerButton, { backgroundColor: 'transparent' }]}
+                onPress={() => setTimePickerVisible(false)}>
+                <Text style={[styles.timePickerButtonText, { color: theme.textSecondary }]}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.timePickerButton, { backgroundColor: theme.primary }]}
+                onPress={saveTime}>
+                <Text style={[styles.timePickerButtonText, { color: '#FFFFFF' }]}>
+                  {t('common.ok')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -452,6 +755,102 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  scheduleItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  scheduleLabel: {
+    fontSize: responsiveFontSize(12),
+    marginBottom: spacing.sm,
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  timeText: {
+    fontSize: responsiveFontSize(16),
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  timePickerModal: {
+    width: '80%',
+    maxWidth: 300,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  timePickerTitle: {
+    fontSize: responsiveFontSize(18),
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  timePickerSubtitle: {
+    fontSize: responsiveFontSize(14),
+    marginBottom: spacing.md,
+  },
+  timeInput: {
+    width: '100%',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    fontSize: responsiveFontSize(18),
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  timePickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    width: '100%',
+  },
+  timePickerButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  timePickerButtonText: {
+    fontSize: responsiveFontSize(14),
+    fontWeight: '600',
+  },
+  colorPickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: spacing.md,
+    gap: spacing.md,
+    justifyContent: 'center',
+  },
+  colorOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   bottomPadding: {
     height: hp(5),

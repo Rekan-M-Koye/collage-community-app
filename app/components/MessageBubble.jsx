@@ -190,6 +190,7 @@ const MessageBubble = ({
   senderName,
   senderPhoto,
   showAvatar = true,
+  isRepresentative = false,
   onCopy,
   onDelete,
   onReply,
@@ -459,12 +460,20 @@ const MessageBubble = ({
     ]}>
       {/* Show sender name for other users */}
       {!isCurrentUser && senderName && (
-        <Text style={[
-          styles.senderName, 
-          { fontSize: fontSize(11), color: theme.primary, marginLeft: showAvatar ? moderateScale(40) : spacing.xs }
-        ]}>
-          {senderName}
-        </Text>
+        <View style={[styles.senderNameRow, { marginLeft: showAvatar ? moderateScale(40) : spacing.xs }]}>
+          <Text style={[
+            styles.senderName, 
+            { fontSize: fontSize(11), color: theme.primary }
+          ]}>
+            {senderName}
+          </Text>
+          {isRepresentative && (
+            <View style={[styles.repBadge, { backgroundColor: theme.warning }]}>
+              <Ionicons name="star" size={8} color="#FFFFFF" />
+              <Text style={styles.repBadgeText}>{t('chats.rep') || 'Rep'}</Text>
+            </View>
+          )}
+        </View>
       )}
       
       <View style={styles.messageRow}>
@@ -656,7 +665,25 @@ const styles = StyleSheet.create({
   senderName: {
     fontWeight: '600',
     marginBottom: 2,
-    marginLeft: spacing.xs,
+  },
+  senderNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+    gap: 4,
+  },
+  repBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    gap: 2,
+  },
+  repBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   bubble: {
     maxWidth: moderateScale(280),

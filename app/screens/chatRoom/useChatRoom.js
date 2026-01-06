@@ -13,6 +13,7 @@ import {
   canUserMentionEveryone,
   markChatAsRead,
   markAllMessagesAsRead,
+  clearChatMessages,
 } from '../../../database/chats';
 import { getUserById, blockUser, getFriends } from '../../../database/users';
 import { 
@@ -520,6 +521,19 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     );
   };
 
+  const handleClearChat = async () => {
+    try {
+      const result = await clearChatMessages(chat.$id);
+      setMessages([]);
+      Alert.alert(
+        t('common.success'), 
+        (t('chats.chatCleared') || 'Chat cleared successfully. {count} messages deleted.').replace('{count}', result.deletedCount)
+      );
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.clearChatError') || 'Failed to clear chat');
+    }
+  };
+
   const handleChatHeaderPress = () => {
     // Open chat options modal for all chat types
     setShowChatOptionsModal(true);
@@ -570,5 +584,6 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     handleRetryMessage,
     handleVisitProfile,
     handleBlockUser,
+    handleClearChat,
   };
 };

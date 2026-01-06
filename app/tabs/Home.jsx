@@ -22,6 +22,7 @@ import AnimatedBackground from '../components/AnimatedBackground';
 import SearchBar from '../components/SearchBar';
 import FeedSelector from '../components/FeedSelector';
 import StageFilter from '../components/StageFilter';
+import FilterSortModal, { SORT_OPTIONS } from '../components/FilterSortModal';
 import PostCard from '../components/PostCard';
 import { PostCardSkeleton } from '../components/SkeletonLoader';
 import {
@@ -44,12 +45,14 @@ const POSTS_PER_PAGE = 15;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const Home = ({ navigation }) => {
-  const { t, theme, isDarkMode } = useAppSettings();
+  const { t, theme, isDarkMode, compactMode } = useAppSettings();
   const { user } = useUser();
   const { showAlert } = useCustomAlert();
   const insets = useSafeAreaInsets();
   const [selectedFeed, setSelectedFeed] = useState(FEED_TYPES.DEPARTMENT);
   const [selectedStage, setSelectedStage] = useState('all');
+  const [sortBy, setSortBy] = useState(SORT_OPTIONS.NEWEST);
+  const [filterType, setFilterType] = useState('all');
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -58,6 +61,7 @@ const Home = ({ navigation }) => {
   const [page, setPage] = useState(0);
   const [userInteractions, setUserInteractions] = useState({});
   const [showStageModal, setShowStageModal] = useState(false);
+  const [showFilterSortModal, setShowFilterSortModal] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
@@ -115,7 +119,7 @@ const Home = ({ navigation }) => {
     if (user && user.department) {
       loadPosts(true);
     }
-  }, [selectedFeed, selectedStage, user]);
+  }, [selectedFeed, selectedStage, sortBy, filterType, user]);
 
   // Load unread notification count
   useEffect(() => {
@@ -208,22 +212,26 @@ const Home = ({ navigation }) => {
 
       if (selectedFeed === FEED_TYPES.DEPARTMENT) {
         const filters = {
-          department: user.department
+          department: user.department,
+          postType: filterType,
         };
         if (selectedStage !== 'all') {
           filters.stage = selectedStage;
         }
-        fetchedPosts = await getPosts(filters, POSTS_PER_PAGE, offset);
+        fetchedPosts = await getPosts(filters, POSTS_PER_PAGE, offset, true, sortBy);
       } else if (selectedFeed === FEED_TYPES.MAJOR) {
         const relatedDepartments = getDepartmentsInSameMajor(user.department);
         fetchedPosts = await getPostsByDepartments(
           relatedDepartments,
           selectedStage,
           POSTS_PER_PAGE,
-          offset
+          offset,
+          true,
+          sortBy,
+          filterType
         );
       } else if (selectedFeed === FEED_TYPES.PUBLIC) {
-        fetchedPosts = await getAllPublicPosts(selectedStage, POSTS_PER_PAGE, offset);
+        fetchedPosts = await getAllPublicPosts(selectedStage, POSTS_PER_PAGE, offset, true, sortBy, filterType);
       }
 
       // Enrich posts with user data for those missing userName
@@ -254,7 +262,7 @@ const Home = ({ navigation }) => {
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     loadPosts(true);
-  }, [selectedFeed, selectedStage, user]);
+  }, [selectedFeed, selectedStage, sortBy, filterType, user]);
 
   const handleScrollToTop = useCallback(() => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -292,6 +300,26 @@ const Home = ({ navigation }) => {
     setPage(0);
     setHasMore(true);
     setIsLoadingPosts(true);
+  };
+
+  const handleSortChange = (sort) => {
+    if (sort !== sortBy) {
+      setSortBy(sort);
+      setPosts([]);
+      setPage(0);
+      setHasMore(true);
+      setIsLoadingPosts(true);
+    }
+  };
+
+  const handleFilterTypeChange = (type) => {
+    if (type !== filterType) {
+      setFilterType(type);
+      setPosts([]);
+      setPage(0);
+      setHasMore(true);
+      setIsLoadingPosts(true);
+    }
   };
 
   const getStagePreviewText = () => {
@@ -597,6 +625,7 @@ const Home = ({ navigation }) => {
               onTagPress={(tag) => searchBarRef.current?.openWithQuery(`#${tag}`)}
               isLiked={item.likedBy?.includes(user?.$id)}
               isOwner={item.userId === user?.$id}
+              compact={compactMode}
             />
           </View>
         )}
@@ -685,10 +714,37 @@ const Home = ({ navigation }) => {
                   }
                 ]}
               >
-                <Ionicons name="filter-outline" size={moderateScale(18)} color={theme.primary} />
+                <Ionicons name="school-outline" size={moderateScale(18)} color={theme.primary} />
                 <Text style={[styles.stageText, { color: theme.text, fontSize: fontSize(12) }]}>
                   {getStagePreviewText()}
                 </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => setShowFilterSortModal(true)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.sortContainer,
+                  {
+                    backgroundColor: (sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all')
+                      ? (isDarkMode ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.1)')
+                      : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'),
+                    borderWidth: 0.5,
+                    borderColor: (sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all')
+                      ? theme.primary + '40'
+                      : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'),
+                  }
+                ]}
+              >
+                <Ionicons 
+                  name="options-outline" 
+                  size={moderateScale(18)} 
+                  color={(sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all') ? theme.primary : theme.text} 
+                />
               </View>
             </TouchableOpacity>
 
@@ -734,6 +790,15 @@ const Home = ({ navigation }) => {
         onStageChange={handleStageChange}
         visible={showStageModal}
         onClose={() => setShowStageModal(false)}
+      />
+
+      <FilterSortModal
+        visible={showFilterSortModal}
+        onClose={() => setShowFilterSortModal(false)}
+        sortBy={sortBy}
+        onSortChange={handleSortChange}
+        filterType={filterType}
+        onFilterTypeChange={handleFilterTypeChange}
       />
 
       {/* Scroll to Top Button */}
@@ -821,6 +886,17 @@ const styles = StyleSheet.create({
   },
   stageText: {
     fontWeight: '600',
+  },
+  sortButton: {
+    height: 40,
+    width: 40,
+  },
+  sortContainer: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.md,
   },
   notificationButton: {
     height: 40,

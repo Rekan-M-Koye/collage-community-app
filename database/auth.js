@@ -732,6 +732,9 @@ export const updateUserDocument = async (userId, data) => {
         if (data.bio) {
             data.bio = sanitizeInput(data.bio);
         }
+        if (data.pronouns) {
+            data.pronouns = sanitizeInput(data.pronouns);
+        }
         if (data.university) {
             data.university = sanitizeInput(data.university);
         }

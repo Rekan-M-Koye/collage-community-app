@@ -56,8 +56,8 @@ export const getPost = async (postId) => {
     }
 };
 
-export const getPosts = async (filters = {}, limit = 20, offset = 0, useCache = true) => {
-    const cacheKey = postsCacheManager.generateCacheKey(filters, limit, offset);
+export const getPosts = async (filters = {}, limit = 20, offset = 0, useCache = true, sortBy = 'newest') => {
+    const cacheKey = postsCacheManager.generateCacheKey(filters, limit, offset) + `_sort_${sortBy}`;
     
     try {
         // Try to get cached data first
@@ -71,8 +71,16 @@ export const getPosts = async (filters = {}, limit = 20, offset = 0, useCache = 
         const queries = [
             Query.limit(limit),
             Query.offset(offset),
-            Query.orderDesc('$createdAt')
         ];
+
+        // Add sort order
+        if (sortBy === 'oldest') {
+            queries.push(Query.orderAsc('$createdAt'));
+        } else if (sortBy === 'popular') {
+            queries.push(Query.orderDesc('likeCount'));
+        } else {
+            queries.push(Query.orderDesc('$createdAt'));
+        }
 
         if (filters.department) {
             queries.push(Query.equal('department', filters.department));
@@ -80,7 +88,7 @@ export const getPosts = async (filters = {}, limit = 20, offset = 0, useCache = 
         if (filters.stage && filters.stage !== 'all') {
             queries.push(Query.equal('stage', filters.stage));
         }
-        if (filters.postType) {
+        if (filters.postType && filters.postType !== 'all') {
             queries.push(Query.equal('postType', filters.postType));
         }
         if (filters.userId) {
@@ -112,8 +120,8 @@ export const getPosts = async (filters = {}, limit = 20, offset = 0, useCache = 
     }
 };
 
-export const getPostsByDepartments = async (departments = [], stage = 'all', limit = 20, offset = 0, useCache = true) => {
-    const cacheKey = `posts_multi_depts_${departments.sort().join('-')}_stage_${stage}_l${limit}_o${offset}`;
+export const getPostsByDepartments = async (departments = [], stage = 'all', limit = 20, offset = 0, useCache = true, sortBy = 'newest', postType = 'all') => {
+    const cacheKey = `posts_multi_depts_${departments.sort().join('-')}_stage_${stage}_type_${postType}_sort_${sortBy}_l${limit}_o${offset}`;
     
     try {
         if (!departments || departments.length === 0) {
@@ -132,11 +140,23 @@ export const getPostsByDepartments = async (departments = [], stage = 'all', lim
             Query.equal('department', departments),
             Query.limit(limit),
             Query.offset(offset),
-            Query.orderDesc('$createdAt')
         ];
+
+        // Add sort order
+        if (sortBy === 'oldest') {
+            queries.push(Query.orderAsc('$createdAt'));
+        } else if (sortBy === 'popular') {
+            queries.push(Query.orderDesc('likeCount'));
+        } else {
+            queries.push(Query.orderDesc('$createdAt'));
+        }
 
         if (stage && stage !== 'all') {
             queries.push(Query.equal('stage', stage));
+        }
+
+        if (postType && postType !== 'all') {
+            queries.push(Query.equal('postType', postType));
         }
 
         const posts = await databases.listDocuments(
@@ -164,8 +184,8 @@ export const getPostsByDepartments = async (departments = [], stage = 'all', lim
     }
 };
 
-export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0, useCache = true) => {
-    const cacheKey = `posts_public_stage_${stage}_l${limit}_o${offset}`;
+export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0, useCache = true, sortBy = 'newest', postType = 'all') => {
+    const cacheKey = `posts_public_stage_${stage}_type_${postType}_sort_${sortBy}_l${limit}_o${offset}`;
     
     try {
         // Try to get cached data first
@@ -179,11 +199,23 @@ export const getAllPublicPosts = async (stage = 'all', limit = 20, offset = 0, u
         const queries = [
             Query.limit(limit),
             Query.offset(offset),
-            Query.orderDesc('$createdAt')
         ];
+
+        // Add sort order
+        if (sortBy === 'oldest') {
+            queries.push(Query.orderAsc('$createdAt'));
+        } else if (sortBy === 'popular') {
+            queries.push(Query.orderDesc('likeCount'));
+        } else {
+            queries.push(Query.orderDesc('$createdAt'));
+        }
 
         if (stage && stage !== 'all') {
             queries.push(Query.equal('stage', stage));
+        }
+
+        if (postType && postType !== 'all') {
+            queries.push(Query.equal('postType', postType));
         }
 
         const posts = await databases.listDocuments(

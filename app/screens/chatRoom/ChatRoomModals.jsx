@@ -207,6 +207,7 @@ export const ChatOptionsModal = ({
   onViewPinnedMessages,
   onBlockUser,
   onOpenGroupSettings,
+  onClearChat,
   theme,
   isDarkMode,
   t 
@@ -286,7 +287,20 @@ export const ChatOptionsModal = ({
             style={[styles.muteOption, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
             onPress={() => {
               onClose();
-              Alert.alert(t('common.info'), t('chats.clearChatComingSoon'));
+              if (onClearChat) {
+                Alert.alert(
+                  t('chats.clearChat'),
+                  t('chats.clearChatConfirm') || 'Are you sure you want to clear all messages in this chat? This action cannot be undone.',
+                  [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    { 
+                      text: t('common.clear') || 'Clear', 
+                      style: 'destructive',
+                      onPress: onClearChat
+                    },
+                  ]
+                );
+              }
             }}>
             <Ionicons name="trash-outline" size={moderateScale(22)} color="#EF4444" />
             <Text style={[styles.muteOptionText, { color: '#EF4444', fontSize: fontSize(15) }]}>

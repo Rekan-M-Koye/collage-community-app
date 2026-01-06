@@ -73,6 +73,7 @@ const ChatRoom = ({ route, navigation }) => {
     handleRetryMessage,
     handleVisitProfile,
     handleBlockUser,
+    handleClearChat,
   } = useChatRoom({ chat, user, t, navigation });
 
   useEffect(() => {
@@ -171,6 +172,9 @@ const ChatRoom = ({ route, navigation }) => {
     );
 
     const isBookmarked = bookmarkedMsgIds.includes(item.$id);
+    
+    // Check if sender is a representative in this chat
+    const isRepresentative = chat.representatives?.includes(item.senderId) || false;
 
     const handleAvatarPress = (senderId) => {
       if (senderId) {
@@ -193,6 +197,7 @@ const ChatRoom = ({ route, navigation }) => {
         senderName={showSenderName ? senderName : null}
         senderPhoto={senderPhoto}
         showAvatar={showAvatar}
+        isRepresentative={isRepresentative}
         onCopy={() => handleCopyMessage(item)}
         onDelete={isCurrentUser ? () => handleDeleteMessage(item) : null}
         onReply={() => handleReplyMessage(item)}
@@ -416,6 +421,7 @@ const ChatRoom = ({ route, navigation }) => {
           navigation.navigate('GroupSettings', { chat });
         }}
         onBlockUser={handleBlockUser}
+        onClearChat={handleClearChat}
         theme={theme}
         isDarkMode={isDarkMode}
         t={t}

@@ -517,12 +517,28 @@ const Profile = ({ navigation }) => {
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.posts')}</Text>
               </TouchableOpacity>
               <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-              <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <TouchableOpacity 
+                style={styles.statItem} 
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('FollowList', { 
+                  userId: user?.$id, 
+                  initialTab: 'followers',
+                  userName: user?.name 
+                })}
+              >
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.followers}</Text>
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.followers')}</Text>
               </TouchableOpacity>
               <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-              <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <TouchableOpacity 
+                style={styles.statItem} 
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('FollowList', { 
+                  userId: user?.$id, 
+                  initialTab: 'following',
+                  userName: user?.name 
+                })}
+              >
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.following}</Text>
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.following')}</Text>
               </TouchableOpacity>

@@ -270,6 +270,32 @@ export const postCardStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  // Compact mode styles
+  cardCompact: {
+    padding: 12,
+    marginBottom: 10,
+    borderRadius: 16,
+  },
+  headerCompact: {
+    marginBottom: 8,
+  },
+  userAvatarCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  contentCompact: {
+    marginBottom: 8,
+  },
+  topicCompact: {
+    fontSize: 15,
+    marginBottom: 4,
+    lineHeight: 22,
+  },
+  footerCompact: {
+    paddingTop: 8,
+    marginTop: 8,
+  },
 });
 
 export const STAGE_COLORS = {

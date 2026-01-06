@@ -370,6 +370,73 @@ export const deleteMessage = async (messageId, imageDeleteUrl = null) => {
     }
 };
 
+export const clearChatMessages = async (chatId) => {
+    try {
+        if (!chatId || typeof chatId !== 'string') {
+            throw new Error('Invalid chat ID');
+        }
+        
+        // Get all messages in batches and delete them
+        let hasMore = true;
+        let deletedCount = 0;
+        
+        while (hasMore) {
+            const messages = await databases.listDocuments(
+                config.databaseId,
+                config.messagesCollectionId,
+                [
+                    Query.equal('chatId', chatId),
+                    Query.limit(100)
+                ]
+            );
+            
+            if (messages.documents.length === 0) {
+                hasMore = false;
+                break;
+            }
+            
+            // Delete messages in parallel (batch of 10 at a time)
+            const deletePromises = messages.documents.map(async (msg) => {
+                try {
+                    await databases.deleteDocument(
+                        config.databaseId,
+                        config.messagesCollectionId,
+                        msg.$id
+                    );
+                    
+                    // Try to delete associated image
+                    if (msg.imageDeleteUrl) {
+                        try {
+                            const { deleteImageFromImgbb } = require('../services/imgbbService');
+                            await deleteImageFromImgbb(msg.imageDeleteUrl);
+                        } catch (imgError) {
+                            // Image deletion failed but continue
+                        }
+                    }
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            });
+            
+            const results = await Promise.all(deletePromises);
+            deletedCount += results.filter(r => r).length;
+            
+            // If we got less than 100, we're done
+            if (messages.documents.length < 100) {
+                hasMore = false;
+            }
+        }
+        
+        // Clear messages cache for this chat
+        await messagesCacheManager.invalidateChatMessages(chatId);
+        
+        return { success: true, deletedCount };
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const updateMessage = async (messageId, messageData) => {
     try {
         if (!messageId || typeof messageId !== 'string') {

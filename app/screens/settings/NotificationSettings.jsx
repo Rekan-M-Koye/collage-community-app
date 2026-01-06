@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Switch,
   Platform,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -24,7 +26,30 @@ const NotificationSettings = ({ navigation }) => {
     toggleNotifications,
     notificationSettings,
     updateNotificationSetting,
+    quietHours,
+    updateQuietHours,
   } = useAppSettings();
+
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [timePickerType, setTimePickerType] = useState('start');
+  const [tempTime, setTempTime] = useState('');
+
+  const openTimePicker = (type) => {
+    setTimePickerType(type);
+    setTempTime(type === 'start' ? quietHours.startTime : quietHours.endTime);
+    setTimePickerVisible(true);
+  };
+
+  const saveTime = () => {
+    if (tempTime && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(tempTime)) {
+      if (timePickerType === 'start') {
+        updateQuietHours({ startTime: tempTime, enabled: true });
+      } else {
+        updateQuietHours({ endTime: tempTime, enabled: true });
+      }
+    }
+    setTimePickerVisible(false);
+  };
 
   const GlassCard = ({ children, style }) => (
     <BlurView
@@ -103,11 +128,78 @@ const NotificationSettings = ({ navigation }) => {
         </View>
 
         {notificationsEnabled && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-              {t('settings.notificationCategories') || 'Categories'}
-            </Text>
-            <GlassCard>
+          <>
+            {/* Quiet Hours Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                {t('settings.quietHours') || 'Quiet Hours'}
+              </Text>
+              <GlassCard>
+                <View style={styles.settingItem}>
+                  <View style={[
+                    styles.iconContainer,
+                    { backgroundColor: isDarkMode ? 'rgba(175, 82, 222, 0.15)' : 'rgba(175, 82, 222, 0.1)' },
+                  ]}>
+                    <Ionicons name="moon-outline" size={20} color="#AF52DE" />
+                  </View>
+                  <View style={styles.settingContent}>
+                    <Text style={[styles.settingTitle, { color: theme.text }]}>
+                      {t('settings.enableQuietHours') || 'Enable Quiet Hours'}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: theme.textSecondary }]}>
+                      {t('settings.quietHoursDesc') || 'Disable notifications during set hours'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={quietHours.enabled}
+                    onValueChange={(value) => updateQuietHours({ enabled: value })}
+                    trackColor={{ false: theme.border, true: '#AF52DE' }}
+                    thumbColor="#FFFFFF"
+                    ios_backgroundColor={theme.border}
+                  />
+                </View>
+                
+                {quietHours.enabled && (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                    <View style={styles.scheduleRow}>
+                      <View style={styles.scheduleItem}>
+                        <Text style={[styles.scheduleLabel, { color: theme.textSecondary }]}>
+                          {t('settings.quietStart') || 'Start'}
+                        </Text>
+                        <TouchableOpacity
+                          style={[styles.timeButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }]}
+                          onPress={() => openTimePicker('start')}>
+                          <Ionicons name="time-outline" size={18} color="#AF52DE" />
+                          <Text style={[styles.timeText, { color: theme.text }]}>
+                            {quietHours.startTime}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.scheduleItem}>
+                        <Text style={[styles.scheduleLabel, { color: theme.textSecondary }]}>
+                          {t('settings.quietEnd') || 'End'}
+                        </Text>
+                        <TouchableOpacity
+                          style={[styles.timeButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }]}
+                          onPress={() => openTimePicker('end')}>
+                          <Ionicons name="time-outline" size={18} color="#AF52DE" />
+                          <Text style={[styles.timeText, { color: theme.text }]}>
+                            {quietHours.endTime}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </GlassCard>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                {t('settings.notificationCategories') || 'Categories'}
+              </Text>
+              <GlassCard>
               <View style={styles.settingItem}>
                 <View style={[
                   styles.iconContainer,
@@ -263,6 +355,7 @@ const NotificationSettings = ({ navigation }) => {
               </View>
             </GlassCard>
           </View>
+          </>
         )}
 
         <View style={styles.infoBox}>
@@ -274,6 +367,60 @@ const NotificationSettings = ({ navigation }) => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Time Picker Modal for Quiet Hours */}
+      <Modal
+        visible={timePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTimePickerVisible(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setTimePickerVisible(false)}>
+          <View style={[styles.timePickerModal, { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }]}>
+            <Text style={[styles.timePickerTitle, { color: theme.text }]}>
+              {t('settings.setTime') || 'Set Time'}
+            </Text>
+            <Text style={[styles.timePickerSubtitle, { color: theme.textSecondary }]}>
+              {t('settings.enterTime') || 'Enter time (HH:MM)'}
+            </Text>
+            <TextInput
+              style={[
+                styles.timeInput,
+                { 
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                  color: theme.text,
+                  borderColor: theme.border,
+                }
+              ]}
+              value={tempTime}
+              onChangeText={setTempTime}
+              placeholder="HH:MM"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="numbers-and-punctuation"
+              maxLength={5}
+              autoFocus
+            />
+            <View style={styles.timePickerButtons}>
+              <TouchableOpacity
+                style={[styles.timePickerButton, { backgroundColor: 'transparent' }]}
+                onPress={() => setTimePickerVisible(false)}>
+                <Text style={[styles.timePickerButtonText, { color: theme.textSecondary }]}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.timePickerButton, { backgroundColor: '#AF52DE' }]}
+                onPress={saveTime}>
+                <Text style={[styles.timePickerButtonText, { color: '#FFFFFF' }]}>
+                  {t('common.ok')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -377,6 +524,83 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: hp(5),
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  scheduleItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  scheduleLabel: {
+    fontSize: responsiveFontSize(12),
+    marginBottom: spacing.sm,
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  timeText: {
+    fontSize: responsiveFontSize(16),
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  timePickerModal: {
+    width: '80%',
+    maxWidth: 300,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  timePickerTitle: {
+    fontSize: responsiveFontSize(18),
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  timePickerSubtitle: {
+    fontSize: responsiveFontSize(14),
+    marginBottom: spacing.md,
+  },
+  timeInput: {
+    width: '100%',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    fontSize: responsiveFontSize(18),
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  timePickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    width: '100%',
+  },
+  timePickerButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  timePickerButtonText: {
+    fontSize: responsiveFontSize(14),
+    fontWeight: '600',
   },
 });
 

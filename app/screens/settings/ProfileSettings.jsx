@@ -68,6 +68,13 @@ const ProfileSettings = ({ navigation }) => {
     pronouns: '',
     profilePicture: '',
     lastAcademicUpdate: null,
+    socialLinks: {
+      instagram: '',
+      twitter: '',
+      linkedin: '',
+      github: '',
+      website: '',
+    },
   });
 
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -127,6 +134,7 @@ const ProfileSettings = ({ navigation }) => {
           pronouns: user.pronouns || '',
           profilePicture: user.profilePicture || '',
           lastAcademicUpdate: user.lastAcademicUpdate || null,
+          socialLinks: user.socialLinks || { instagram: '', twitter: '', linkedin: '', github: '', website: '' },
         });
       } else {
         const userData = await AsyncStorage.getItem('userData');
@@ -143,6 +151,7 @@ const ProfileSettings = ({ navigation }) => {
             pronouns: parsedData.pronouns || '',
             profilePicture: parsedData.profilePicture || '',
             lastAcademicUpdate: parsedData.lastAcademicUpdate || null,
+            socialLinks: parsedData.socialLinks || { instagram: '', twitter: '', linkedin: '', github: '', website: '' },
           });
         }
       }
@@ -273,6 +282,16 @@ const ProfileSettings = ({ navigation }) => {
 
   const handlePronounsChange = (text) => {
     setProfileData(prev => ({ ...prev, pronouns: text }));
+  };
+
+  const handleSocialLinkChange = (platform, text) => {
+    setProfileData(prev => ({
+      ...prev,
+      socialLinks: {
+        ...prev.socialLinks,
+        [platform]: text,
+      },
+    }));
   };
 
   const handleFullNameChange = (text) => {
@@ -503,6 +522,44 @@ const ProfileSettings = ({ navigation }) => {
                   autoCorrect={false}
                 />
               </View>
+
+              <View style={styles.divider} />
+
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                {t('settings.socialLinks') || 'Social Links'}
+              </Text>
+
+              {[
+                { key: 'instagram', icon: 'logo-instagram', placeholder: '@username', color: '#E4405F' },
+                { key: 'twitter', icon: 'logo-twitter', placeholder: '@username', color: '#1DA1F2' },
+                { key: 'linkedin', icon: 'logo-linkedin', placeholder: 'linkedin.com/in/username', color: '#0A66C2' },
+                { key: 'github', icon: 'logo-github', placeholder: 'github.com/username', color: isDarkMode ? '#FFFFFF' : '#333333' },
+                { key: 'website', icon: 'globe-outline', placeholder: 'https://yourwebsite.com', color: theme.primary },
+              ].map(({ key, icon, placeholder, color }) => (
+                <View key={key} style={styles.socialLinkRow}>
+                  <View style={[styles.socialIconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }]}>
+                    <Ionicons name={icon} size={20} color={color} />
+                  </View>
+                  <TextInput
+                    style={[
+                      styles.socialInput,
+                      {
+                        color: theme.text,
+                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                      },
+                    ]}
+                    value={profileData.socialLinks?.[key] || ''}
+                    onChangeText={(text) => handleSocialLinkChange(key, text)}
+                    editable={editMode}
+                    placeholder={placeholder}
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType={key === 'website' ? 'url' : 'default'}
+                  />
+                </View>
+              ))}
 
               <View style={styles.divider} />
 
@@ -832,6 +889,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: responsiveFontSize(16),
     fontWeight: '600',
+  },
+  socialLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  socialIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  socialInput: {
+    flex: 1,
+    fontSize: responsiveFontSize(15),
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    height: 44,
   },
   bottomPadding: {
     height: hp(5),

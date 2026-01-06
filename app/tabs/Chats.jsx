@@ -254,15 +254,25 @@ const Chats = ({ navigation }) => {
     
     return (
       <View style={styles.emptyContainer}>
-        <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : 'rgba(0, 122, 255, 0.08)' }]}>
-          <Ionicons name="chatbubbles" size={moderateScale(56)} color={theme.primary} />
+        <View style={[styles.emptyCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)' }]}>
+          <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : 'rgba(0, 122, 255, 0.08)' }]}>
+            <Ionicons name="chatbubbles" size={moderateScale(48)} color={theme.primary} />
+          </View>
+          <Text style={[styles.emptyTitle, { fontSize: fontSize(20), color: theme.text }]}>
+            {t('chats.emptyTitle')}
+          </Text>
+          <Text style={[styles.emptyMessage, { fontSize: fontSize(14), color: theme.textSecondary }]}>
+            {t('chats.emptyMessage')}
+          </Text>
+          <TouchableOpacity
+            style={[styles.emptyActionButton, { backgroundColor: theme.primary }]}
+            onPress={() => navigation.navigate('UserSearch')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="search" size={moderateScale(18)} color="#FFFFFF" />
+            <Text style={styles.emptyActionButtonText}>{t('chats.startNewChat')}</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={[styles.emptyTitle, { fontSize: fontSize(20), color: theme.text }]}>
-          {t('chats.emptyTitle')}
-        </Text>
-        <Text style={[styles.emptyMessage, { fontSize: fontSize(14), color: theme.textSecondary }]}>
-          {t('chats.emptyMessage')}
-        </Text>
       </View>
     );
   };
@@ -544,13 +554,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
     paddingTop: hp(5),
   },
+  emptyCard: {
+    borderRadius: 20,
+    padding: spacing.xl,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   emptyIconContainer: {
-    width: moderateScale(100),
-    height: moderateScale(100),
-    borderRadius: moderateScale(50),
+    width: moderateScale(80),
+    height: moderateScale(80),
+    borderRadius: moderateScale(40),
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     fontWeight: '700',
@@ -561,6 +583,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: fontSize(20),
     paddingHorizontal: wp(5),
+  },
+  emptyActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 12,
+    marginTop: spacing.lg,
+    gap: spacing.xs,
+  },
+  emptyActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: fontSize(14),
+    fontWeight: '600',
   },
 });
 

@@ -8,6 +8,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -234,6 +235,12 @@ const AccountSettings = ({ navigation }) => {
           </Text>
         </View>
 
+        <View style={styles.versionContainer}>
+          <Text style={[styles.versionText, { color: theme.textTertiary }]}>
+            {t('settings.appVersion') || 'App Version'} {Constants.expoConfig?.version || '1.0.0'}
+          </Text>
+        </View>
+
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
@@ -337,6 +344,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: responsiveFontSize(13),
     lineHeight: responsiveFontSize(18),
+  },
+  versionContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  versionText: {
+    fontSize: responsiveFontSize(12),
   },
   bottomPadding: {
     height: hp(5),

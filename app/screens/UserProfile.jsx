@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, Alert, Share, Modal, Linking } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +29,25 @@ const UserProfile = ({ route, navigation }) => {
   const [userError, setUserError] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+
+  // Generate profile link for sharing
+  const getProfileLink = () => {
+    // Deep link format for the app
+    return `collegecommunity://profile/${userId}`;
+  };
+
+  const handleShareProfile = async () => {
+    try {
+      const profileLink = getProfileLink();
+      await Share.share({
+        message: t('profile.shareMessage')?.replace('{name}', userData?.fullName || 'User') + '\n' + profileLink,
+        title: t('profile.shareProfile'),
+      });
+    } catch (error) {
+      // Share cancelled or failed
+    }
+  };
 
   // Smart realtime subscription for user profile updates (followers, etc.)
   const handleProfileUpdate = useCallback((payload) => {
@@ -375,6 +394,43 @@ const UserProfile = ({ route, navigation }) => {
           </>
         )}
       </GlassContainer>
+
+      {/* Social Links */}
+      {userData?.socialLinks && Object.values(userData.socialLinks).some(v => v) && (
+        <GlassContainer borderRadius={borderRadius.lg} style={[styles.infoCard, { marginTop: spacing.md }]}>
+          <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary, marginBottom: spacing.sm }]}>
+            {t('settings.socialLinks') || 'Social Links'}
+          </Text>
+          <View style={styles.socialLinksContainer}>
+            {[
+              { key: 'instagram', icon: 'logo-instagram', color: '#E4405F', prefix: 'https://instagram.com/' },
+              { key: 'twitter', icon: 'logo-twitter', color: '#1DA1F2', prefix: 'https://twitter.com/' },
+              { key: 'linkedin', icon: 'logo-linkedin', color: '#0A66C2', prefix: '' },
+              { key: 'github', icon: 'logo-github', color: isDarkMode ? '#FFFFFF' : '#333333', prefix: '' },
+              { key: 'website', icon: 'globe-outline', color: theme.primary, prefix: '' },
+            ].map(({ key, icon, color, prefix }) => {
+              const value = userData.socialLinks?.[key];
+              if (!value) return null;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.socialLinkButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }]}
+                  onPress={() => {
+                    let url = value;
+                    if (!url.startsWith('http') && prefix) {
+                      url = prefix + url.replace('@', '');
+                    } else if (!url.startsWith('http') && key === 'website') {
+                      url = 'https://' + url;
+                    }
+                    Linking.openURL(url).catch(() => {});
+                  }}>
+                  <Ionicons name={icon} size={moderateScale(22)} color={color} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </GlassContainer>
+      )}
     </View>
   );
 
@@ -465,6 +521,20 @@ const UserProfile = ({ route, navigation }) => {
               </GlassContainer>
             </TouchableOpacity>
             
+            {/* Header Right Actions - Share & QR */}
+            <View style={styles.headerRightActions}>
+              <TouchableOpacity style={styles.headerActionButton} onPress={handleShareProfile} activeOpacity={0.7}>
+                <GlassContainer borderRadius={borderRadius.round} style={styles.backButtonInner}>
+                  <Ionicons name="share-outline" size={moderateScale(22)} color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} />
+                </GlassContainer>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerActionButton} onPress={() => setShowQRModal(true)} activeOpacity={0.7}>
+                <GlassContainer borderRadius={borderRadius.round} style={styles.backButtonInner}>
+                  <Ionicons name="qr-code-outline" size={moderateScale(22)} color={isDarkMode ? "#FFFFFF" : "#1C1C1E"} />
+                </GlassContainer>
+              </TouchableOpacity>
+            </View>
+            
             <View style={styles.avatarContainer}>
               <LinearGradient colors={theme.gradient} style={styles.avatarBorder} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={[styles.avatarInner, { backgroundColor: theme.background }]}>
@@ -542,12 +612,28 @@ const UserProfile = ({ route, navigation }) => {
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.posts')}</Text>
               </TouchableOpacity>
               <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-              <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <TouchableOpacity 
+                style={styles.statItem} 
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('FollowList', { 
+                  userId, 
+                  initialTab: 'followers',
+                  userName: userData?.fullName 
+                })}
+              >
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.followers}</Text>
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.followers')}</Text>
               </TouchableOpacity>
               <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-              <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <TouchableOpacity 
+                style={styles.statItem} 
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('FollowList', { 
+                  userId, 
+                  initialTab: 'following',
+                  userName: userData?.fullName 
+                })}
+              >
                 <Text style={[styles.statNumber, { fontSize: fontSize(18), color: theme.text }]}>{userProfile.stats.following}</Text>
                 <Text style={[styles.statLabel, { fontSize: fontSize(11), color: theme.textSecondary }]}>{t('profile.following')}</Text>
               </TouchableOpacity>
@@ -575,6 +661,48 @@ const UserProfile = ({ route, navigation }) => {
           </View>
         </ScrollView>
       </LinearGradient>
+
+      {/* QR Code Modal */}
+      <Modal
+        visible={showQRModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQRModal(false)}>
+        <TouchableOpacity
+          style={styles.qrModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowQRModal(false)}>
+          <View style={[styles.qrModalContent, { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }]}>
+            <View style={styles.qrModalHeader}>
+              <Text style={[styles.qrModalTitle, { color: theme.text }]}>
+                {t('profile.scanToConnect') || 'Scan to Connect'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowQRModal(false)}>
+                <Ionicons name="close" size={moderateScale(24)} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.qrCodeContainer}>
+              <Image
+                source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getProfileLink())}` }}
+                style={styles.qrCodeImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={[styles.qrModalName, { color: theme.text }]}>
+              {userData?.fullName || 'User'}
+            </Text>
+            <Text style={[styles.qrModalHint, { color: theme.textSecondary }]}>
+              {t('profile.qrHint') || 'Scan this QR code to view this profile'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.shareButton, { backgroundColor: theme.primary }]}
+              onPress={handleShareProfile}>
+              <Ionicons name="share-outline" size={moderateScale(18)} color="#FFFFFF" />
+              <Text style={styles.shareButtonText}>{t('profile.shareProfile') || 'Share Profile'}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -607,6 +735,8 @@ const styles = StyleSheet.create({
   profileHeader: { alignItems: 'center', paddingHorizontal: wp(5), marginBottom: spacing.md, position: 'relative' }, 
   backButton: { position: 'absolute', top: spacing.md, left: wp(5), zIndex: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }, 
   backButtonInner: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' }, 
+  headerRightActions: { position: 'absolute', top: spacing.md, right: wp(5), zIndex: 10, flexDirection: 'row', gap: spacing.sm },
+  headerActionButton: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   avatarContainer: { marginBottom: spacing.sm }, 
   avatarBorder: { width: moderateScale(110), height: moderateScale(110), borderRadius: moderateScale(55), padding: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }, 
   avatarInner: { width: moderateScale(104), height: moderateScale(104), borderRadius: moderateScale(52), padding: 3 }, 
@@ -700,6 +830,77 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontWeight: '600',
     fontSize: moderateScale(14),
+  },
+  // QR Modal styles
+  qrModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  qrModalContent: {
+    width: '85%',
+    maxWidth: 320,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  qrModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: spacing.md,
+  },
+  qrModalTitle: {
+    fontSize: fontSize(18),
+    fontWeight: '700',
+  },
+  qrCodeContainer: {
+    padding: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+  },
+  qrCodeImage: {
+    width: moderateScale(200),
+    height: moderateScale(200),
+  },
+  qrModalName: {
+    fontSize: fontSize(16),
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  qrModalHint: {
+    fontSize: fontSize(12),
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+  },
+  shareButtonText: {
+    color: '#FFFFFF',
+    fontSize: fontSize(14),
+    fontWeight: '600',
+  },
+  socialLinksContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  socialLinkButton: {
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

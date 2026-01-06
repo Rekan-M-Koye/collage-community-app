@@ -41,6 +41,7 @@ const PostCard = ({
   showImages = true,
   isLiked = false,
   isOwner = false,
+  compact = false,
 }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
@@ -261,15 +262,16 @@ const PostCard = ({
           backgroundColor: theme.card || theme.cardBackground,
           borderColor: isOwner ? theme.primary : theme.border,
           borderWidth: isOwner ? 1.5 : 1,
-        }
+        },
+        compact && styles.cardCompact,
       ]}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, compact && styles.headerCompact]}>
         <TouchableOpacity onPress={onUserPress} activeOpacity={0.8}>
           <Image 
             source={{ uri: postOwnerAvatar || getDefaultAvatar(postOwnerName) }} 
-            style={styles.userAvatar}
+            style={[styles.userAvatar, compact && styles.userAvatarCompact]}
           />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
@@ -318,11 +320,11 @@ const PostCard = ({
       </View>
 
       {/* Content - Double tap to like */}
-      <Pressable onPress={handleDoubleTap} style={styles.content}>
-        <Text style={[styles.topic, { color: theme.text }]} numberOfLines={2} selectable>
+      <Pressable onPress={handleDoubleTap} style={[styles.content, compact && styles.contentCompact]}>
+        <Text style={[styles.topic, { color: theme.text }, compact && styles.topicCompact]} numberOfLines={compact ? 1 : 2} selectable>
           {post.topic}
         </Text>
-        {post.text && (
+        {post.text && !compact && (
           <Text 
             style={[styles.text, { color: theme.textSecondary }]} 
             numberOfLines={isExpanded ? undefined : 3} 
@@ -387,11 +389,11 @@ const PostCard = ({
           </TouchableOpacity>
         )}
 
-        {showImages && renderImageLayout()}
+        {showImages && !compact && renderImageLayout()}
       </Pressable>
 
       {/* Footer */}
-      <View style={[styles.footer, { borderTopColor: theme.border }]}>
+      <View style={[styles.footer, { borderTopColor: theme.border }, compact && styles.footerCompact]}>
         <View style={styles.footerLeft}>
           <TouchableOpacity 
             style={styles.actionButton}

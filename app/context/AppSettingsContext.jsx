@@ -88,6 +88,31 @@ export const darkTheme = {
   overlay: 'rgba(0, 0, 0, 0.6)',
 };
 
+// Helper function to adjust color brightness
+const adjustColor = (hex, amount) => {
+  if (!hex || typeof hex !== 'string') return hex;
+  const cleanHex = hex.replace('#', '');
+  const num = parseInt(cleanHex, 16);
+  let r = (num >> 16) + amount;
+  let g = ((num >> 8) & 0x00FF) + amount;
+  let b = (num & 0x0000FF) + amount;
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+};
+
+// Helper function to convert hex to rgba
+const hexToRgba = (hex, alpha) => {
+  if (!hex || typeof hex !== 'string') return `rgba(0, 0, 0, ${alpha})`;
+  const cleanHex = hex.replace('#', '');
+  const num = parseInt(cleanHex, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 export const AppSettingsProvider = ({ children }) => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -117,8 +142,83 @@ export const AppSettingsProvider = ({ children }) => {
   
   // Haptic feedback toggle
   const [hapticEnabled, setHapticEnabled] = useState(true);
+  
+  // Show activity status (online/last seen)
+  const [showActivityStatus, setShowActivityStatus] = useState(true);
+  
+  // Compact mode for posts (show more posts with smaller cards)
+  const [compactMode, setCompactMode] = useState(false);
+  
+  // Custom accent color (null means use default theme color)
+  const [accentColor, setAccentColor] = useState(null);
+  
+  // Data saver mode (reduce image quality, disable auto-load)
+  const [dataSaverMode, setDataSaverMode] = useState(false);
+  
+  // Quiet hours for notifications
+  const [quietHours, setQuietHours] = useState({
+    enabled: false,
+    startTime: '22:00', // 10 PM - when quiet hours start
+    endTime: '07:00',   // 7 AM - when quiet hours end
+  });
+  
+  // Dark mode schedule
+  const [darkModeSchedule, setDarkModeSchedule] = useState({
+    enabled: false,
+    startTime: '20:00', // 8 PM - when dark mode starts
+    endTime: '06:00',   // 6 AM - when dark mode ends
+  });
 
   const theme = isDarkMode ? darkTheme : lightTheme;
+
+  // Apply custom accent color to theme
+  const themedWithAccent = accentColor ? {
+    ...theme,
+    primary: accentColor,
+    gradient: [accentColor, adjustColor(accentColor, -20)],
+    gradientLight: [hexToRgba(accentColor, 0.1), hexToRgba(adjustColor(accentColor, -20), 0.1)],
+  } : theme;
+
+  // Check if current time is within dark mode schedule
+  const isWithinDarkModeSchedule = () => {
+    if (!darkModeSchedule.enabled) return null;
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    const [startHour, startMin] = darkModeSchedule.startTime.split(':').map(Number);
+    const [endHour, endMin] = darkModeSchedule.endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    // Handle overnight schedules (e.g., 20:00 to 06:00)
+    if (startMinutes > endMinutes) {
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+    // Normal schedule (e.g., 08:00 to 18:00)
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  };
+
+  // Apply dark mode schedule
+  useEffect(() => {
+    if (darkModeSchedule.enabled && themePreference === 'scheduled') {
+      const shouldBeDark = isWithinDarkModeSchedule();
+      if (shouldBeDark !== null && shouldBeDark !== isDarkMode) {
+        setIsDarkMode(shouldBeDark);
+      }
+      
+      // Check every minute
+      const interval = setInterval(() => {
+        const shouldBeDark = isWithinDarkModeSchedule();
+        if (shouldBeDark !== null && shouldBeDark !== isDarkMode) {
+          setIsDarkMode(shouldBeDark);
+        }
+      }, 60000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [darkModeSchedule, themePreference]);
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
@@ -136,7 +236,7 @@ export const AppSettingsProvider = ({ children }) => {
 
   const loadSettings = async () => {
     try {
-      const [savedLanguage, savedThemePreference, savedNotifications, savedNotificationSettings, savedChatSettings, savedFontScale, savedReduceMotion, savedHapticEnabled] = await Promise.all([
+      const [savedLanguage, savedThemePreference, savedNotifications, savedNotificationSettings, savedChatSettings, savedFontScale, savedReduceMotion, savedHapticEnabled, savedShowActivityStatus, savedCompactMode, savedQuietHours, savedDarkModeSchedule, savedAccentColor, savedDataSaverMode] = await Promise.all([
         AsyncStorage.getItem('appLanguage'),
         AsyncStorage.getItem('themePreference'),
         AsyncStorage.getItem('notificationsEnabled'),
@@ -145,6 +245,12 @@ export const AppSettingsProvider = ({ children }) => {
         AsyncStorage.getItem('fontScale'),
         AsyncStorage.getItem('reduceMotion'),
         AsyncStorage.getItem('hapticEnabled'),
+        AsyncStorage.getItem('showActivityStatus'),
+        AsyncStorage.getItem('compactMode'),
+        AsyncStorage.getItem('quietHours'),
+        AsyncStorage.getItem('darkModeSchedule'),
+        AsyncStorage.getItem('accentColor'),
+        AsyncStorage.getItem('dataSaverMode'),
       ]);
 
       if (savedLanguage) {
@@ -214,6 +320,58 @@ export const AppSettingsProvider = ({ children }) => {
       if (savedHapticEnabled !== null) {
         setHapticEnabled(savedHapticEnabled === 'true');
       }
+      
+      if (savedShowActivityStatus !== null) {
+        setShowActivityStatus(savedShowActivityStatus === 'true');
+      }
+      
+      if (savedCompactMode !== null) {
+        setCompactMode(savedCompactMode === 'true');
+      }
+      
+      if (savedQuietHours) {
+        try {
+          const parsed = JSON.parse(savedQuietHours);
+          setQuietHours(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          // Failed to parse quiet hours
+        }
+      }
+      
+      if (savedDarkModeSchedule) {
+        try {
+          const parsed = JSON.parse(savedDarkModeSchedule);
+          setDarkModeSchedule(prev => ({ ...prev, ...parsed }));
+          
+          // If schedule is enabled and theme is scheduled, apply it immediately
+          if (parsed.enabled && savedThemePreference === 'scheduled') {
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const [startHour, startMin] = (parsed.startTime || '20:00').split(':').map(Number);
+            const [endHour, endMin] = (parsed.endTime || '06:00').split(':').map(Number);
+            const startMinutes = startHour * 60 + startMin;
+            const endMinutes = endHour * 60 + endMin;
+            
+            let shouldBeDark;
+            if (startMinutes > endMinutes) {
+              shouldBeDark = currentMinutes >= startMinutes || currentMinutes < endMinutes;
+            } else {
+              shouldBeDark = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+            }
+            setIsDarkMode(shouldBeDark);
+          }
+        } catch (e) {
+          // Invalid JSON, use defaults
+        }
+      }
+      
+      if (savedAccentColor) {
+        setAccentColor(savedAccentColor);
+      }
+      
+      if (savedDataSaverMode !== null) {
+        setDataSaverMode(savedDataSaverMode === 'true');
+      }
     } catch (error) {
       // Failed to load settings, using defaults
     } finally {
@@ -259,11 +417,31 @@ export const AppSettingsProvider = ({ children }) => {
       if (mode === 'system') {
         const systemColorScheme = Appearance.getColorScheme();
         setIsDarkMode(systemColorScheme === 'dark');
+      } else if (mode === 'scheduled') {
+        // Apply scheduled dark mode based on current time
+        const shouldBeDark = isWithinDarkModeSchedule();
+        setIsDarkMode(shouldBeDark ?? false);
       } else {
         setIsDarkMode(mode === 'dark');
       }
     } catch (error) {
       // Failed to save theme preference
+    }
+  };
+
+  const updateDarkModeSchedule = async (schedule) => {
+    try {
+      const newSchedule = { ...darkModeSchedule, ...schedule };
+      setDarkModeSchedule(newSchedule);
+      await AsyncStorage.setItem('darkModeSchedule', JSON.stringify(newSchedule));
+      
+      // If we're in scheduled mode, apply the change immediately
+      if (themePreference === 'scheduled' && newSchedule.enabled) {
+        const shouldBeDark = isWithinDarkModeSchedule();
+        setIsDarkMode(shouldBeDark ?? false);
+      }
+    } catch (error) {
+      // Failed to save dark mode schedule
     }
   };
 
@@ -324,6 +502,76 @@ export const AppSettingsProvider = ({ children }) => {
     }
   };
 
+  const updateShowActivityStatus = async (value) => {
+    try {
+      setShowActivityStatus(value);
+      await AsyncStorage.setItem('showActivityStatus', value.toString());
+    } catch (error) {
+      // Failed to save activity status setting
+    }
+  };
+
+  const updateCompactMode = async (value) => {
+    try {
+      setCompactMode(value);
+      await AsyncStorage.setItem('compactMode', value.toString());
+    } catch (error) {
+      // Failed to save compact mode setting
+    }
+  };
+
+  const updateAccentColor = async (color) => {
+    try {
+      setAccentColor(color);
+      if (color) {
+        await AsyncStorage.setItem('accentColor', color);
+      } else {
+        await AsyncStorage.removeItem('accentColor');
+      }
+    } catch (error) {
+      // Failed to save accent color setting
+    }
+  };
+
+  const updateDataSaverMode = async (value) => {
+    try {
+      setDataSaverMode(value);
+      await AsyncStorage.setItem('dataSaverMode', value.toString());
+    } catch (error) {
+      // Failed to save data saver mode setting
+    }
+  };
+
+  const updateQuietHours = async (updates) => {
+    try {
+      const newQuietHours = { ...quietHours, ...updates };
+      setQuietHours(newQuietHours);
+      await AsyncStorage.setItem('quietHours', JSON.stringify(newQuietHours));
+    } catch (error) {
+      // Failed to save quiet hours setting
+    }
+  };
+
+  // Check if current time is within quiet hours
+  const isWithinQuietHours = () => {
+    if (!quietHours.enabled) return false;
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    const [startHour, startMin] = quietHours.startTime.split(':').map(Number);
+    const [endHour, endMin] = quietHours.endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    // Handle overnight quiet hours (e.g., 22:00 - 07:00)
+    if (startMinutes > endMinutes) {
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  };
+
   const resetSettings = async () => {
     try {
       await AsyncStorage.multiRemove([
@@ -335,6 +583,12 @@ export const AppSettingsProvider = ({ children }) => {
         'fontScale',
         'reduceMotion',
         'hapticEnabled',
+        'showActivityStatus',
+        'compactMode',
+        'quietHours',
+        'darkModeSchedule',
+        'accentColor',
+        'dataSaverMode',
       ]);
       setCurrentLanguage('en');
       i18n.locale = 'en';
@@ -355,6 +609,20 @@ export const AppSettingsProvider = ({ children }) => {
       setFontScale(1.0);
       setReduceMotion(false);
       setHapticEnabled(true);
+      setShowActivityStatus(true);
+      setCompactMode(false);
+      setAccentColor(null);
+      setDataSaverMode(false);
+      setQuietHours({
+        enabled: false,
+        startTime: '22:00',
+        endTime: '07:00',
+      });
+      setDarkModeSchedule({
+        enabled: false,
+        startTime: '20:00',
+        endTime: '06:00',
+      });
     } catch (error) {
       // Failed to reset settings
     }
@@ -374,7 +642,7 @@ export const AppSettingsProvider = ({ children }) => {
     toggleDarkMode,
     themePreference,
     setThemeMode,
-    theme,
+    theme: themedWithAccent,
 
     notificationsEnabled,
     toggleNotifications,
@@ -392,6 +660,25 @@ export const AppSettingsProvider = ({ children }) => {
     
     hapticEnabled,
     updateHapticEnabled,
+    
+    showActivityStatus,
+    updateShowActivityStatus,
+    
+    compactMode,
+    updateCompactMode,
+    
+    accentColor,
+    updateAccentColor,
+    
+    dataSaverMode,
+    updateDataSaverMode,
+    
+    quietHours,
+    updateQuietHours,
+    isWithinQuietHours,
+    
+    darkModeSchedule,
+    updateDarkModeSchedule,
 
     isLoading,
     resetSettings,
