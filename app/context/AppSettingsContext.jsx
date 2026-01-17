@@ -133,6 +133,9 @@ export const AppSettingsProvider = ({ children }) => {
     bubbleColor: '#667eea', // Primary bubble color for sent messages
     backgroundImage: null, // URL or null for default
   });
+  
+  // Current user ID for per-account settings
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   // Font size scale (1.0 = normal, 0.85 = small, 1.15 = large, 1.3 = extra large)
   const [fontScale, setFontScale] = useState(1.0);
@@ -465,13 +468,45 @@ export const AppSettingsProvider = ({ children }) => {
     }
   };
 
-  const updateChatSetting = async (key, value) => {
+  const updateChatSetting = async (key, value, userId = null) => {
     try {
       const newSettings = { ...chatSettings, [key]: value };
       setChatSettings(newSettings);
-      await AsyncStorage.setItem('chatSettings', JSON.stringify(newSettings));
+      // Save with user-specific key if userId is provided
+      const storageKey = userId ? `chatSettings_${userId}` : (currentUserId ? `chatSettings_${currentUserId}` : 'chatSettings');
+      await AsyncStorage.setItem(storageKey, JSON.stringify(newSettings));
     } catch (error) {
       // Failed to save chat setting
+    }
+  };
+
+  // Load chat settings for a specific user
+  const loadUserChatSettings = async (userId) => {
+    try {
+      setCurrentUserId(userId);
+      if (!userId) {
+        setChatSettings({
+          bubbleStyle: 'modern',
+          bubbleColor: '#667eea',
+          backgroundImage: null,
+        });
+        return;
+      }
+      
+      const savedChatSettings = await AsyncStorage.getItem(`chatSettings_${userId}`);
+      if (savedChatSettings) {
+        const parsed = JSON.parse(savedChatSettings);
+        setChatSettings(prev => ({ ...prev, ...parsed }));
+      } else {
+        // Reset to defaults for new user
+        setChatSettings({
+          bubbleStyle: 'modern',
+          bubbleColor: '#667eea',
+          backgroundImage: null,
+        });
+      }
+    } catch (error) {
+      // Failed to load user chat settings
     }
   };
 
@@ -651,6 +686,7 @@ export const AppSettingsProvider = ({ children }) => {
     
     chatSettings,
     updateChatSetting,
+    loadUserChatSettings,
 
     fontScale,
     updateFontScale,

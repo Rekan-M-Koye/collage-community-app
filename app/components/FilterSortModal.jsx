@@ -20,6 +20,17 @@ export const SORT_OPTIONS = {
   POPULAR: 'popular',
 };
 
+const STAGES = [
+  { key: 'all', label: 'filter.allStages', icon: 'school-outline' },
+  { key: 'stage_1', label: 'filter.stage1', icon: 'school-outline' },
+  { key: 'stage_2', label: 'filter.stage2', icon: 'school-outline' },
+  { key: 'stage_3', label: 'filter.stage3', icon: 'school-outline' },
+  { key: 'stage_4', label: 'filter.stage4', icon: 'school-outline' },
+  { key: 'stage_5', label: 'filter.stage5', icon: 'school-outline' },
+  { key: 'stage_6', label: 'filter.stage6', icon: 'school-outline' },
+  { key: 'graduate', label: 'filter.graduate', icon: 'ribbon-outline' },
+];
+
 const FilterSortModal = ({
   visible = false,
   onClose,
@@ -27,6 +38,8 @@ const FilterSortModal = ({
   onSortChange,
   filterType,
   onFilterTypeChange,
+  selectedStage,
+  onStageChange,
 }) => {
   const { t, theme, isDarkMode } = useAppSettings();
 
@@ -44,12 +57,24 @@ const FilterSortModal = ({
     { key: POST_TYPES.ANNOUNCEMENT, label: t('post.types.announcement'), icon: 'megaphone-outline' },
   ];
 
+  const stageOptions = STAGES.map(stage => ({
+    key: stage.key,
+    label: t(stage.label),
+    icon: stage.icon,
+  }));
+
   const handleSortSelect = (key) => {
     onSortChange(key);
   };
 
   const handleTypeSelect = (key) => {
     onFilterTypeChange(key);
+  };
+
+  const handleStageSelect = (key) => {
+    if (onStageChange) {
+      onStageChange(key);
+    }
   };
 
   const renderOption = (option, isSelected, onSelect) => (
@@ -143,13 +168,28 @@ const FilterSortModal = ({
 
             <ScrollView
               style={styles.optionsList}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={styles.optionsListContent}
+              nestedScrollEnabled={true}
             >
-              {/* Sort Section */}
+              {/* Stage Section */}
               <Text
                 style={[
                   styles.sectionTitle,
                   { color: theme.textSecondary, fontSize: fontSize(13) },
+                ]}
+              >
+                {t('filter.selectStage')}
+              </Text>
+              {stageOptions.map((option) =>
+                renderOption(option, selectedStage === option.key, handleStageSelect)
+              )}
+
+              {/* Sort Section */}
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.textSecondary, fontSize: fontSize(13), marginTop: spacing.lg },
                 ]}
               >
                 {t('sort.sortBy')}
@@ -196,10 +236,11 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: wp(85),
-    maxHeight: hp(70),
+    maxHeight: hp(80),
   },
   modalCard: {
     overflow: 'hidden',
+    maxHeight: hp(75),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -217,7 +258,10 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     paddingHorizontal: spacing.lg,
-    maxHeight: hp(45),
+    flexGrow: 0,
+  },
+  optionsListContent: {
+    paddingBottom: spacing.md,
   },
   sectionTitle: {
     fontWeight: '600',

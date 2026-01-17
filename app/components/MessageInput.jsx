@@ -316,15 +316,18 @@ const MessageInput = ({
         <View style={styles.inputRow}>
           <TouchableOpacity
             style={[
-              styles.iconButton,
-              { opacity: disabled || uploading ? 0.5 : 1 }
+              styles.imageIconButton,
+              { 
+                opacity: disabled || uploading ? 0.5 : 1,
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              }
             ]}
             onPress={showImageOptions}
             disabled={disabled || uploading}
             activeOpacity={0.7}>
             <Ionicons 
-              name="image-outline" 
-              size={moderateScale(24)} 
+              name="camera-outline" 
+              size={moderateScale(20)} 
               color={theme.primary} 
             />
           </TouchableOpacity>
@@ -460,6 +463,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.xs,
+  },
+  imageIconButton: {
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: moderateScale(18),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
   },
   inputContainer: {
     flex: 1,

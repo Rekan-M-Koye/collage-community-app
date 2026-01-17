@@ -504,26 +504,24 @@ const Notifications = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)' }]}>
-        <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255, 149, 0, 0.15)' : 'rgba(255, 149, 0, 0.1)' }]}>
-          <Ionicons
-            name="notifications-outline"
-            size={moderateScale(48)}
-            color={theme.warning}
-          />
-        </View>
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          {t('notifications.noNotifications') || 'No notifications yet'}
+      <View style={[styles.emptyIconContainer, { backgroundColor: isDarkMode ? 'rgba(255, 149, 0, 0.15)' : 'rgba(255, 149, 0, 0.1)' }]}>
+        <Ionicons
+          name="notifications-outline"
+          size={moderateScale(48)}
+          color={theme.warning}
+        />
+      </View>
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>
+        {t('notifications.noNotifications') || 'No notifications yet'}
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: theme.subText }]}>
+        {t('notifications.noNotificationsDesc') || 'When you get notifications, they will appear here'}
+      </Text>
+      <View style={[styles.emptyHintContainer, { borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+        <Ionicons name="bulb-outline" size={moderateScale(16)} color={theme.textSecondary} />
+        <Text style={[styles.emptyHint, { color: theme.textSecondary }]}>
+          {t('notifications.hintText') || 'Follow users and interact with posts to receive updates'}
         </Text>
-        <Text style={[styles.emptySubtitle, { color: theme.subText }]}>
-          {t('notifications.noNotificationsDesc') || 'When you get notifications, they will appear here'}
-        </Text>
-        <View style={styles.emptyHintContainer}>
-          <Ionicons name="bulb-outline" size={moderateScale(16)} color={theme.textSecondary} />
-          <Text style={[styles.emptyHint, { color: theme.textSecondary }]}>
-            {t('notifications.hintText') || 'Follow users and interact with posts to receive updates'}
-          </Text>
-        </View>
       </View>
     </View>
   );
@@ -770,19 +768,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  emptyCard: {
-    borderRadius: 20,
-    padding: spacing.xl,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 320,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingHorizontal: spacing.xl,
   },
   emptyIconContainer: {
     width: moderateScale(80),

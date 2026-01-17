@@ -411,13 +411,13 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
                 <Ionicons
                   name={filter.icon}
                   size={moderateScale(14)}
-                  color={activeFilter === filter.key ? theme.primary : theme.subText}
+                  color={activeFilter === filter.key ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary)}
                 />
                 <Text
                   style={[
                     styles.filterTabText,
                     {
-                      color: activeFilter === filter.key ? theme.primary : theme.subText,
+                      color: activeFilter === filter.key ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary),
                       fontWeight: activeFilter === filter.key ? '600' : '400',
                     },
                   ]}

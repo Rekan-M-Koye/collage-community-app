@@ -296,6 +296,32 @@ export const postCardStyles = StyleSheet.create({
     paddingTop: 8,
     marginTop: 8,
   },
+  // Compact image styles
+  compactImageContainer: {
+    marginTop: 8,
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  compactImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
+  },
+  compactImageCount: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  compactImageCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
 
 export const STAGE_COLORS = {

@@ -63,9 +63,16 @@ const AnimatedTabIcon = ({ focused, iconName, color, size }) => {
 };
 
 const TabNavigator = () => {
-  const { t, theme, isDarkMode } = useAppSettings();
+  const { t, theme, isDarkMode, loadUserChatSettings } = useAppSettings();
   const { user } = useUser();
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Load user-specific chat settings when user changes
+  useEffect(() => {
+    if (user?.$id) {
+      loadUserChatSettings(user.$id);
+    }
+  }, [user?.$id]);
 
   const stageToValue = (stage) => {
     if (!stage) return null;
@@ -362,7 +369,6 @@ const MainStack = () => {
 };
 
 export default function App() {
-  console.log('=== APP STARTING ===');
   try {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>

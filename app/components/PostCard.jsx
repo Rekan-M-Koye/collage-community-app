@@ -254,6 +254,32 @@ const PostCard = ({
     return null;
   };
 
+  const renderCompactOrFullImages = () => {
+    if (!post.images || post.images.length === 0) return null;
+    
+    if (compact) {
+      // Show a single small preview image in compact mode
+      return (
+        <TouchableOpacity onPress={() => openImageGallery(0)} activeOpacity={0.9}>
+          <View style={styles.compactImageContainer}>
+            <ImageWithPlaceholder 
+              source={{ uri: post.images[0] }}
+              style={styles.compactImage}
+              resizeMode="cover"
+            />
+            {post.images.length > 1 && (
+              <View style={styles.compactImageCount}>
+                <Text style={styles.compactImageCountText}>+{post.images.length - 1}</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    
+    return renderImageLayout();
+  };
+
   return (
     <View 
       style={[
@@ -288,7 +314,6 @@ const PostCard = ({
             )}
             <Text style={[styles.timeText, { color: theme.textSecondary }]}>
               {formatTimeAgo(post.$createdAt, t)}
-            </Text>
             </Text>
             {post.isEdited === true && (
               <Text style={[styles.editedText, { color: theme.textTertiary }]}>
@@ -377,7 +402,7 @@ const PostCard = ({
 
         {((post.text && post.text.length > 150) || 
           (post.links && post.links.length > 2) || 
-          (post.tags && post.tags.length > 4)) && (
+          (post.tags && post.tags.length > 4)) && !compact && (
           <TouchableOpacity 
             onPress={() => setIsExpanded(!isExpanded)}
             style={styles.seeMoreButton}
@@ -389,7 +414,7 @@ const PostCard = ({
           </TouchableOpacity>
         )}
 
-        {showImages && !compact && renderImageLayout()}
+        {showImages && renderCompactOrFullImages()}
       </Pressable>
 
       {/* Footer */}

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   StatusBar,
-  Platform,
   FlatList,
   ActivityIndicator,
   RefreshControl,
@@ -17,11 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
-import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
 import SearchBar from '../components/SearchBar';
 import FeedSelector from '../components/FeedSelector';
-import StageFilter from '../components/StageFilter';
 import FilterSortModal, { SORT_OPTIONS } from '../components/FilterSortModal';
 import PostCard from '../components/PostCard';
 import { PostCardSkeleton } from '../components/SkeletonLoader';
@@ -60,7 +57,6 @@ const Home = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [userInteractions, setUserInteractions] = useState({});
-  const [showStageModal, setShowStageModal] = useState(false);
   const [showFilterSortModal, setShowFilterSortModal] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -320,12 +316,6 @@ const Home = ({ navigation }) => {
       setHasMore(true);
       setIsLoadingPosts(true);
     }
-  };
-
-  const getStagePreviewText = () => {
-    if (selectedStage === 'all') return t('filter.all');
-    if (selectedStage === 'graduate') return 'G';
-    return selectedStage.replace('stage_', '');
   };
 
   const viewedPostsRef = useRef(new Set());
@@ -696,32 +686,6 @@ const Home = ({ navigation }) => {
             </View>
 
             <TouchableOpacity
-              style={styles.stageButton}
-              onPress={() => setShowStageModal(true)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.stageContainer,
-                  {
-                    backgroundColor: isDarkMode
-                      ? 'rgba(255, 255, 255, 0.1)'
-                      : 'rgba(0, 0, 0, 0.04)',
-                    borderWidth: 0.5,
-                    borderColor: isDarkMode
-                      ? 'rgba(255, 255, 255, 0.15)'
-                      : 'rgba(0, 0, 0, 0.08)',
-                  }
-                ]}
-              >
-                <Ionicons name="school-outline" size={moderateScale(18)} color={theme.primary} />
-                <Text style={[styles.stageText, { color: theme.text, fontSize: fontSize(12) }]}>
-                  {getStagePreviewText()}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.sortButton}
               onPress={() => setShowFilterSortModal(true)}
               activeOpacity={0.7}
@@ -730,11 +694,11 @@ const Home = ({ navigation }) => {
                 style={[
                   styles.sortContainer,
                   {
-                    backgroundColor: (sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all')
+                    backgroundColor: (sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all' || selectedStage !== 'all')
                       ? (isDarkMode ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.1)')
                       : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'),
                     borderWidth: 0.5,
-                    borderColor: (sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all')
+                    borderColor: (sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all' || selectedStage !== 'all')
                       ? theme.primary + '40'
                       : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'),
                   }
@@ -743,7 +707,7 @@ const Home = ({ navigation }) => {
                 <Ionicons 
                   name="options-outline" 
                   size={moderateScale(18)} 
-                  color={(sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all') ? theme.primary : theme.text} 
+                  color={(sortBy !== SORT_OPTIONS.NEWEST || filterType !== 'all' || selectedStage !== 'all') ? theme.primary : theme.text} 
                 />
               </View>
             </TouchableOpacity>
@@ -785,13 +749,6 @@ const Home = ({ navigation }) => {
         </View>
       </LinearGradient>
 
-      <StageFilter
-        selectedStage={selectedStage}
-        onStageChange={handleStageChange}
-        visible={showStageModal}
-        onClose={() => setShowStageModal(false)}
-      />
-
       <FilterSortModal
         visible={showFilterSortModal}
         onClose={() => setShowFilterSortModal(false)}
@@ -799,6 +756,8 @@ const Home = ({ navigation }) => {
         onSortChange={handleSortChange}
         filterType={filterType}
         onFilterTypeChange={handleFilterTypeChange}
+        selectedStage={selectedStage}
+        onStageChange={handleStageChange}
       />
 
       {/* Scroll to Top Button */}
@@ -871,21 +830,6 @@ const styles = StyleSheet.create({
   feedSelectorWrapper: {
     flex: 1,
     height: 44,
-  },
-  stageButton: {
-    height: 44,
-  },
-  stageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    paddingHorizontal: spacing.md,
-    gap: 6,
-    borderRadius: borderRadius.lg,
-  },
-  stageText: {
-    fontWeight: '600',
   },
   sortButton: {
     height: 40,
