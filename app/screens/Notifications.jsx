@@ -19,6 +19,7 @@ import ProfilePicture from '../components/ProfilePicture';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, deleteAllNotifications } from '../../database/notifications';
+import { useNotifications } from '../hooks/useRealtimeSubscription';
 
 const NOTIFICATION_TYPES = {
   POST_LIKE: 'post_like',
@@ -345,7 +346,10 @@ const Notifications = ({ navigation }) => {
   const [page, setPage] = useState(0);
 
   const loadNotifications = useCallback(async (reset = false) => {
-    if (!user?.$id) return;
+    if (!user?.$id) {
+      setIsLoading(false);
+      return;
+    }
 
     const currentPage = reset ? 0 : page;
     
@@ -362,16 +366,49 @@ const Notifications = ({ navigation }) => {
       
       setHasMore((fetchedNotifications?.length || 0) === 20);
     } catch (error) {
-      // Handle error silently
+      // Handle error - set empty array on error
+      if (reset) {
+        setNotifications([]);
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [user?.$id, page]);
 
+  // Handle real-time notification updates
+  const handleNewNotification = useCallback((newNotification) => {
+    setNotifications(prev => {
+      // Check if notification already exists
+      const exists = prev.some(n => n.$id === newNotification.$id);
+      if (exists) {
+        // Update existing notification
+        return prev.map(n => n.$id === newNotification.$id ? newNotification : n);
+      }
+      // Add new notification at the beginning
+      return [newNotification, ...prev];
+    });
+  }, []);
+
+  // Subscribe to real-time notification updates
+  useNotifications(user?.$id, handleNewNotification, handleNewNotification, !!user?.$id);
+
   useEffect(() => {
-    loadNotifications(true);
+    if (user?.$id) {
+      setIsLoading(true);
+      loadNotifications(true);
+    }
   }, [user?.$id]);
+
+  // Reload notifications when screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (user?.$id) {
+        loadNotifications(true);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, user?.$id]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

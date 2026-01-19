@@ -458,3 +458,95 @@ export const isUserBlocked = async (userId, targetUserId) => {
         return false;
     }
 };
+
+/**
+ * Save or update user's push notification token
+ * Uses separate pushTokens collection to avoid column limit on users collection
+ */
+export const updateUserPushToken = async (userId, token, platform = 'unknown') => {
+    try {
+        if (!userId || !token) {
+            return null;
+        }
+
+        // Check if user already has a token document
+        const existing = await databases.listDocuments(
+            config.databaseId,
+            config.pushTokensCollectionId,
+            [Query.equal('userId', userId), Query.limit(1)]
+        );
+
+        if (existing.documents.length > 0) {
+            // Update existing token
+            const doc = existing.documents[0];
+            if (doc.token !== token) {
+                return await databases.updateDocument(
+                    config.databaseId,
+                    config.pushTokensCollectionId,
+                    doc.$id,
+                    { token, platform }
+                );
+            }
+            return doc;
+        } else {
+            // Create new token document
+            return await databases.createDocument(
+                config.databaseId,
+                config.pushTokensCollectionId,
+                ID.unique(),
+                { userId, token, platform }
+            );
+        }
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get user's push notification token
+ */
+export const getUserPushToken = async (userId) => {
+    try {
+        if (!userId) {
+            return null;
+        }
+
+        const result = await databases.listDocuments(
+            config.databaseId,
+            config.pushTokensCollectionId,
+            [Query.equal('userId', userId), Query.limit(1)]
+        );
+
+        if (result.documents.length > 0) {
+            return result.documents[0].token;
+        }
+        return null;
+    } catch (error) {
+        return null;
+    }
+};
+
+/**
+ * Delete user's push token (for logout)
+ */
+export const deleteUserPushToken = async (userId) => {
+    try {
+        if (!userId) return;
+
+        const existing = await databases.listDocuments(
+            config.databaseId,
+            config.pushTokensCollectionId,
+            [Query.equal('userId', userId), Query.limit(1)]
+        );
+
+        if (existing.documents.length > 0) {
+            await databases.deleteDocument(
+                config.databaseId,
+                config.pushTokensCollectionId,
+                existing.documents[0].$id
+            );
+        }
+    } catch (error) {
+        // Silent fail
+    }
+};

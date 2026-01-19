@@ -15,13 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../../context/AppSettingsContext';
 import { useUser } from '../../context/UserContext';
 import { signOut } from '../../../database/auth';
+import { deleteUserPushToken } from '../../../database/users';
 import { cacheManager } from '../../utils/cacheManager';
 import { borderRadius, shadows } from '../../theme/designTokens';
 import { wp, hp, fontSize as responsiveFontSize, spacing } from '../../utils/responsive';
 
 const AccountSettings = ({ navigation }) => {
   const { t, theme, isDarkMode, resetSettings } = useAppSettings();
-  const { clearUser } = useUser();
+  const { user, clearUser } = useUser();
   const [isClearingCache, setIsClearingCache] = useState(false);
 
   const handleClearCache = () => {
@@ -77,6 +78,10 @@ const AccountSettings = ({ navigation }) => {
           text: t('common.yes'),
           onPress: async () => {
             try {
+              // Delete push token before signing out
+              if (user?.$id) {
+                await deleteUserPushToken(user.$id);
+              }
               await signOut();
               await clearUser();
               navigation.replace('SignIn');

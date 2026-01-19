@@ -1,6 +1,7 @@
 import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
 import { messagesCacheManager } from '../app/utils/cacheManager';
+import { sendChatPushNotification } from '../services/pushNotificationService';
 
 export const CHAT_TYPES = {
     STAGE_GROUP: 'stage_group',
@@ -246,6 +247,9 @@ export const sendMessage = async (chatId, messageData) => {
             senderName: messageData.senderName,
             content: messageData.content || '',
             mentionsAll,
+            status: 'sent', // Message status: sent -> delivered -> read
+            deliveredTo: [], // Array of userIds who received push notification
+            readBy: [], // Array of userIds who have read the message
         };
         
         // Handle image - use imageUrl field only (most reliable)
@@ -290,6 +294,21 @@ export const sendMessage = async (chatId, messageData) => {
         
         // Add message to cache
         await messagesCacheManager.addMessageToCache(chatId, message, 100);
+        
+        // Send push notifications to other participants
+        try {
+            await sendChatPushNotification({
+                chatId,
+                messageId: message.$id,
+                senderId: messageData.senderId,
+                senderName: messageData.senderName,
+                content: lastMessagePreview,
+                chatName: chat.name,
+                chatType: chat.type,
+            });
+        } catch (pushError) {
+            // Push notification failed but message was sent successfully
+        }
         
         return message;
     } catch (error) {
@@ -459,6 +478,41 @@ export const updateMessage = async (messageId, messageData) => {
     }
 };
 
+// Mark a message as delivered to a user (when push notification is received)
+export const markMessageAsDelivered = async (messageId, userId) => {
+    try {
+        if (!messageId || !userId) {
+            return null;
+        }
+        
+        const message = await databases.getDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId
+        );
+        
+        const currentDeliveredTo = message.deliveredTo || [];
+        if (currentDeliveredTo.includes(userId)) {
+            return message;
+        }
+        
+        const updatedMessage = await databases.updateDocument(
+            config.databaseId,
+            config.messagesCollectionId,
+            messageId,
+            {
+                deliveredTo: [...currentDeliveredTo, userId],
+                status: 'delivered',
+            }
+        );
+        
+        return updatedMessage;
+    } catch (error) {
+        // Silently fail - delivery receipts are not critical
+        return null;
+    }
+};
+
 // Mark a message as read by a user
 export const markMessageAsRead = async (messageId, userId) => {
     try {
@@ -482,7 +536,8 @@ export const markMessageAsRead = async (messageId, userId) => {
             config.messagesCollectionId,
             messageId,
             {
-                readBy: [...currentReadBy, userId]
+                readBy: [...currentReadBy, userId],
+                status: 'read',
             }
         );
         

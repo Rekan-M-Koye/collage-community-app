@@ -666,6 +666,17 @@ export default {
     representativeRemoved: 'تمت إزالة الممثل بنجاح',
     representativeAddError: 'فشل في إضافة الممثل',
     representativeRemoveError: 'فشل في إزالة الممثل',
+    // Attachments menu
+    attachments: 'المرفقات',
+    location: 'الموقع',
+    file: 'ملف',
+    sendLocation: 'إرسال الموقع',
+    sendFile: 'إرسال ملف',
+    comingSoon: 'هذه الميزة قادمة قريباً!',
+    // Message status
+    messageSent: 'تم الإرسال',
+    messageDelivered: 'تم التوصيل',
+    messageRead: 'تمت القراءة',
   },
   
   // Lecture Screen
@@ -1098,6 +1109,15 @@ export default {
     newPost: 'شارك منشورًا جديدًا',
     startedFollowing: 'بدأ بمتابعتك',
     others: 'آخرين',
+    permissionRequired: 'مطلوب إذن الإشعارات',
+    permissionRequiredDesc: 'فعّل الإشعارات للبقاء على اطلاع على الرسائل الجديدة والردود والمزيد.',
+    enableNotificationsButton: 'تفعيل الإشعارات',
+    notNow: 'ليس الآن',
+    newNotification: 'إشعار جديد',
+    newMessage: 'رسالة جديدة',
+    pushDisabled: 'الإشعارات الفورية معطلة',
+    pushDisabledDesc: 'فعّل الإشعارات في إعدادات جهازك لتلقي التحديثات',
+    openSettings: 'فتح الإعدادات',
   },
 
   report: {

@@ -35,8 +35,9 @@ import { getPosts, getPostsByDepartments, getAllPublicPosts, togglePostLike, del
 import { notifyPostLike, getUnreadNotificationCount } from '../../database/notifications';
 import { handleNetworkError } from '../utils/networkErrorHandler';
 import { useCustomAlert } from '../hooks/useCustomAlert';
-import { usePosts } from '../hooks/useRealtimeSubscription';
+import { usePosts, useNotifications } from '../hooks/useRealtimeSubscription';
 import { postsCacheManager } from '../utils/cacheManager';
+import { scheduleLocalNotification } from '../../services/pushNotificationService';
 
 const POSTS_PER_PAGE = 15;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
@@ -135,6 +136,43 @@ const Home = ({ navigation }) => {
     const unsubscribe = navigation.addListener('focus', loadUnreadCount);
     return unsubscribe;
   }, [user?.$id, navigation]);
+
+  // Real-time notification subscription for badge updates
+  const handleNewNotification = useCallback((notification) => {
+    // Increment unread count
+    setUnreadNotifications(prev => prev + 1);
+    
+    // Show local notification if app is in foreground
+    const getNotificationTitle = (type, senderName) => {
+      switch (type) {
+        case 'post_like':
+          return `${senderName} ${t('notifications.likedPost') || 'liked your post'}`;
+        case 'post_reply':
+          return `${senderName} ${t('notifications.repliedPost') || 'replied to your post'}`;
+        case 'follow':
+          return `${senderName} ${t('notifications.startedFollowing') || 'started following you'}`;
+        case 'mention':
+          return `${senderName} ${t('notifications.mentionedYou') || 'mentioned you'}`;
+        default:
+          return t('notifications.title') || 'New notification';
+      }
+    };
+
+    // Schedule local notification
+    scheduleLocalNotification({
+      title: t('notifications.title') || 'New Notification',
+      body: getNotificationTitle(notification.type, notification.senderName),
+      data: {
+        type: notification.type,
+        postId: notification.postId,
+        userId: notification.senderId,
+      },
+      channelId: notification.type === 'follow' ? 'social' : 'posts',
+    });
+  }, [t]);
+
+  // Subscribe to real-time notification updates
+  useNotifications(user?.$id, handleNewNotification, null, !!user?.$id);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress', (e) => {

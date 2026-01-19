@@ -204,4 +204,30 @@ export const usePosts = (department, onPostUpdate, onPostDelete, enabled = true)
   );
 };
 
+/**
+ * Hook for subscribing to notification updates in real-time
+ * Triggers when new notifications are created for the user
+ */
+export const useNotifications = (userId, onNewNotification, onNotificationUpdate, enabled = true) => {
+  const handleUpdate = useCallback((payload) => {
+    // Only notify if notification is for this user
+    if (payload.userId === userId) {
+      onNewNotification?.(payload);
+    }
+  }, [userId, onNewNotification]);
+
+  const handleNotificationUpdate = useCallback((payload) => {
+    if (payload.userId === userId) {
+      onNotificationUpdate?.(payload);
+    }
+  }, [userId, onNotificationUpdate]);
+
+  useRealtimeSubscription(
+    config.notificationsCollectionId,
+    handleUpdate,
+    null,
+    { enabled: enabled && !!userId }
+  );
+};
+
 export default useRealtimeSubscription;

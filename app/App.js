@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { getCurrentUser, getUserDocument, signOut } from '../database/auth';
 import { getAllUserChats } from '../database/chatHelpers';
 import { getTotalUnreadCount } from '../database/chats';
+import { updateUserPushToken } from '../database/users';
+import {
+  registerForPushNotifications,
+  addNotificationReceivedListener,
+  addNotificationResponseListener,
+  checkInitialNotification,
+  setBadgeCount,
+} from '../services/pushNotificationService';
 
 import SignIn from './auth/SignIn';
 import SignUp from './auth/SignUp';
@@ -368,7 +376,94 @@ const MainStack = () => {
   );
 };
 
+// Component to handle notification setup and listeners
+const NotificationSetup = ({ navigationRef }) => {
+  const { user } = useUser();
+  const { notificationsEnabled } = useAppSettings();
+  const notificationListenerRef = useRef();
+  const responseListenerRef = useRef();
+
+  useEffect(() => {
+    const setupNotifications = async () => {
+      if (!user?.$id || !notificationsEnabled) return;
+
+      try {
+        // Register for push notifications
+        const token = await registerForPushNotifications();
+        
+        if (token) {
+          // Save the token to the pushTokens collection
+          await updateUserPushToken(user.$id, token, Platform.OS);
+        }
+      } catch (error) {
+        // Silent fail for notification setup
+      }
+    };
+
+    setupNotifications();
+  }, [user?.$id, notificationsEnabled]);
+
+  useEffect(() => {
+    // Listen for notifications received while app is foregrounded
+    notificationListenerRef.current = addNotificationReceivedListener(notification => {
+      // Notification received while app is in foreground
+      // The notification will be displayed automatically based on our handler config
+    });
+
+    // Listen for user tapping on notifications
+    responseListenerRef.current = addNotificationResponseListener(response => {
+      const data = response.notification.request.content.data;
+      
+      // Navigate based on notification type
+      if (navigationRef.current) {
+        if (data.postId) {
+          navigationRef.current.navigate('PostDetails', { postId: data.postId });
+        } else if (data.chatId) {
+          navigationRef.current.navigate('ChatRoom', { chatId: data.chatId });
+        } else if (data.userId && data.type === 'follow') {
+          navigationRef.current.navigate('UserProfile', { userId: data.userId });
+        } else if (data.type) {
+          // General notification - go to notifications screen
+          navigationRef.current.navigate('Notifications');
+        }
+      }
+    });
+
+    // Check if app was opened from a notification
+    const checkInitialNotificationHandler = async () => {
+      const data = await checkInitialNotification();
+      if (data && navigationRef.current) {
+        // Small delay to ensure navigation is ready
+        setTimeout(() => {
+          if (data.postId) {
+            navigationRef.current.navigate('PostDetails', { postId: data.postId });
+          } else if (data.chatId) {
+            navigationRef.current.navigate('ChatRoom', { chatId: data.chatId });
+          } else if (data.userId && data.type === 'follow') {
+            navigationRef.current.navigate('UserProfile', { userId: data.userId });
+          }
+        }, 1000);
+      }
+    };
+
+    checkInitialNotificationHandler();
+
+    return () => {
+      if (notificationListenerRef.current) {
+        notificationListenerRef.current.remove();
+      }
+      if (responseListenerRef.current) {
+        responseListenerRef.current.remove();
+      }
+    };
+  }, [navigationRef]);
+
+  return null;
+};
+
 export default function App() {
+  const navigationRef = useNavigationContainerRef();
+  
   try {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -377,7 +472,8 @@ export default function App() {
             <LanguageProvider>
               <AppSettingsProvider>
                 <UserProvider>
-                  <NavigationContainer>
+                  <NavigationContainer ref={navigationRef}>
+                    <NotificationSetup navigationRef={navigationRef} />
                     <MainStack />
                   </NavigationContainer>
                 </UserProvider>
@@ -388,7 +484,6 @@ export default function App() {
       </GestureHandlerRootView>
     );
   } catch (error) {
-    console.error('=== APP ERROR ===', error);
     throw error;
   }
 }

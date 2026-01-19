@@ -9,6 +9,7 @@ import AnimatedBackground from '../components/AnimatedBackground';
 import PostCard from '../components/PostCard';
 import { getPostsByUser, togglePostLike } from '../../database/posts';
 import { getUserById, followUser, unfollowUser, isFollowing as checkIsFollowing, blockUser } from '../../database/users';
+import { notifyFollow } from '../../database/notifications';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { useUserProfile } from '../hooks/useRealtimeSubscription';
@@ -177,6 +178,17 @@ const UserProfile = ({ route, navigation }) => {
         await unfollowUser(currentUser.$id, userId);
       } else {
         await followUser(currentUser.$id, userId);
+        // Send follow notification
+        try {
+          await notifyFollow(
+            userId,
+            currentUser.$id,
+            currentUser.fullName || currentUser.name,
+            currentUser.profilePicture
+          );
+        } catch (notifyError) {
+          // Silent fail for notification
+        }
       }
     } catch (error) {
       // Revert on error

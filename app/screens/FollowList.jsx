@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
 import { getFollowers, getFollowing, followUser, unfollowUser, isFollowing as checkIsFollowing } from '../../database/users';
+import { notifyFollow } from '../../database/notifications';
 import UserCard from '../components/UserCard';
 import { GlassContainer } from '../components/GlassComponents';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -88,6 +89,17 @@ const FollowList = ({ route, navigation }) => {
         await unfollowUser(currentUser.$id, targetUserId);
       } else {
         await followUser(currentUser.$id, targetUserId);
+        // Send follow notification
+        try {
+          await notifyFollow(
+            targetUserId,
+            currentUser.$id,
+            currentUser.fullName || currentUser.name,
+            currentUser.profilePicture
+          );
+        } catch (notifyError) {
+          // Silent fail for notification
+        }
       }
     } catch (error) {
       // Revert on error

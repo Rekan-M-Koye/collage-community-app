@@ -671,6 +671,17 @@ export default {
     representativeRemoved: 'Representative removed successfully',
     representativeAddError: 'Failed to add representative',
     representativeRemoveError: 'Failed to remove representative',
+    // Attachments menu
+    attachments: 'Attachments',
+    location: 'Location',
+    file: 'File',
+    sendLocation: 'Send Location',
+    sendFile: 'Send File',
+    comingSoon: 'This feature is coming soon!',
+    // Message status
+    messageSent: 'Sent',
+    messageDelivered: 'Delivered',
+    messageRead: 'Read',
   },
   
   // Lecture Screen
@@ -1103,6 +1114,15 @@ export default {
     newPost: 'shared a new post',
     startedFollowing: 'started following you',
     others: 'others',
+    permissionRequired: 'Notification Permission Required',
+    permissionRequiredDesc: 'Enable notifications to stay updated on new messages, replies, and more.',
+    enableNotificationsButton: 'Enable Notifications',
+    notNow: 'Not Now',
+    newNotification: 'New Notification',
+    newMessage: 'New Message',
+    pushDisabled: 'Push notifications are disabled',
+    pushDisabledDesc: 'Enable notifications in your device settings to receive updates',
+    openSettings: 'Open Settings',
   },
 
   report: {

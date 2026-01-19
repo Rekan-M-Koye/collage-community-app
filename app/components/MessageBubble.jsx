@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
 import ProfilePicture from './ProfilePicture';
+import ZoomableImageModal from './ZoomableImageModal';
 import { 
   fontSize, 
   spacing, 
@@ -35,9 +36,11 @@ if (RNPlatform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperiment
 const SWIPE_THRESHOLD = 60;
 
 // Message status indicator component
+// Status flow: sending -> sent (1 check) -> delivered (2 checks) -> read (pfp in private, blue checks in group)
 const MessageStatusIndicator = ({ 
   status, 
   readBy, 
+  deliveredTo,
   chatType, 
   otherUserPhoto, 
   otherUserName,
@@ -73,7 +76,7 @@ const MessageStatusIndicator = ({
     }
   }, [isLastSeenMessage]);
 
-  // For optimistic/sending messages
+  // For optimistic/sending messages - show loading spinner
   if (status === 'sending') {
     return (
       <View style={statusStyles.container}>
@@ -82,7 +85,7 @@ const MessageStatusIndicator = ({
     );
   }
   
-  // For failed messages
+  // For failed messages - show error icon
   if (status === 'failed') {
     return (
       <View style={statusStyles.container}>
@@ -91,8 +94,57 @@ const MessageStatusIndicator = ({
     );
   }
   
-  // Message sent but not read
-  if (status === 'sent' || !readBy || readBy.length === 0) {
+  // Check if message has been read
+  const hasBeenRead = readBy && readBy.length > 0;
+  // Check if message has been delivered (push notification received)
+  const hasBeenDelivered = deliveredTo && deliveredTo.length > 0;
+  
+  // For private chats
+  if (chatType === 'private') {
+    // Message has been read - show recipient's profile picture on last read message
+    if (hasBeenRead) {
+      if (isLastSeenMessage) {
+        return (
+          <Animated.View style={[
+            statusStyles.container,
+            {
+              transform: [{ scale: scaleAnim }],
+              opacity: opacityAnim,
+            }
+          ]}>
+            {otherUserPhoto ? (
+              <Image 
+                source={{ uri: otherUserPhoto }} 
+                style={statusStyles.readAvatar}
+              />
+            ) : (
+              <View style={[statusStyles.readAvatarPlaceholder, { backgroundColor: theme.primary }]}>
+                <Text style={statusStyles.readAvatarText}>
+                  {(otherUserName || '?')[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        );
+      }
+      // For other read messages (not the last), show double checkmark in blue
+      return (
+        <View style={statusStyles.container}>
+          <Ionicons name="checkmark-done" size={moderateScale(12)} color="#60A5FA" />
+        </View>
+      );
+    }
+    
+    // Message delivered (push notification received) - show 2 checks
+    if (hasBeenDelivered || status === 'delivered') {
+      return (
+        <View style={statusStyles.container}>
+          <Ionicons name="checkmark-done" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
+        </View>
+      );
+    }
+    
+    // Message sent to server - show 1 check
     return (
       <View style={statusStyles.container}>
         <Ionicons name="checkmark" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
@@ -100,57 +152,40 @@ const MessageStatusIndicator = ({
     );
   }
   
-  // For private chats - only show animated avatar on the LAST seen message
-  if (chatType === 'private' && readBy.length > 0) {
-    // If this is the last seen message, show animated avatar
-    if (isLastSeenMessage) {
+  // For group chats
+  if (chatType === 'custom_group' || chatType === 'stage_group' || chatType === 'department_group') {
+    // Message has been read by some participants
+    if (hasBeenRead) {
+      const allRead = participantCount && readBy.length >= participantCount - 1; // -1 for sender
       return (
-        <Animated.View style={[
-          statusStyles.container,
-          {
-            transform: [{ scale: scaleAnim }],
-            opacity: opacityAnim,
-          }
-        ]}>
-          {otherUserPhoto ? (
-            <Image 
-              source={{ uri: otherUserPhoto }} 
-              style={statusStyles.readAvatar}
-            />
-          ) : (
-            <View style={[statusStyles.readAvatarPlaceholder, { backgroundColor: theme.primary }]}>
-              <Text style={statusStyles.readAvatarText}>
-                {(otherUserName || '?')[0].toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </Animated.View>
+        <View style={statusStyles.container}>
+          <Ionicons 
+            name="checkmark-done" 
+            size={moderateScale(12)} 
+            color={allRead ? "#60A5FA" : "rgba(255,255,255,0.8)"} 
+          />
+        </View>
       );
     }
     
-    // For other read messages (not the last), show double checkmark
+    // Message delivered to some participants
+    if (hasBeenDelivered || status === 'delivered') {
+      return (
+        <View style={statusStyles.container}>
+          <Ionicons name="checkmark-done" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
+        </View>
+      );
+    }
+    
+    // Message sent to server
     return (
       <View style={statusStyles.container}>
-        <Ionicons name="checkmark-done" size={moderateScale(12)} color="#60A5FA" />
+        <Ionicons name="checkmark" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
       </View>
     );
   }
   
-  // For group chats - show double check when all have read
-  if ((chatType === 'custom_group' || chatType === 'stage_group' || chatType === 'department_group') && readBy.length > 0) {
-    const allRead = participantCount && readBy.length >= participantCount - 1; // -1 for sender
-    return (
-      <View style={statusStyles.container}>
-        <Ionicons 
-          name={allRead ? "checkmark-done" : "checkmark"} 
-          size={moderateScale(12)} 
-          color={allRead ? "#60A5FA" : "rgba(255,255,255,0.6)"} 
-        />
-      </View>
-    );
-  }
-  
-  // Default - single check
+  // Default - single check (sent)
   return (
     <View style={statusStyles.container}>
       <Ionicons name="checkmark" size={moderateScale(12)} color="rgba(255,255,255,0.6)" />
@@ -427,8 +462,9 @@ const MessageBubble = ({
         {/* Status indicator for current user's messages */}
         {isCurrentUser && (
           <MessageStatusIndicator
-            status={message._status}
+            status={message._status || message.status}
             readBy={message.readBy}
+            deliveredTo={message.deliveredTo}
             chatType={chatType}
             otherUserPhoto={otherUserPhoto}
             otherUserName={otherUserName}
@@ -551,32 +587,15 @@ const MessageBubble = ({
         />
       </View>
 
-      {/* Image Modal */}
-      <Modal
+      {/* Image Modal - Zoomable */}
+      <ZoomableImageModal
         visible={imageModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setImageModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          <TouchableOpacity 
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setImageModalVisible(false)}>
-            <View style={styles.modalContent}>
-              <TouchableOpacity 
-                style={styles.closeButton}
-                onPress={() => setImageModalVisible(false)}>
-                <Ionicons name="close" size={moderateScale(28)} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Image 
-                source={{ uri: imageUrl }}
-                style={styles.fullImage}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        images={hasImages ? message.images : (imageUrl ? [imageUrl] : [])}
+        initialIndex={0}
+        onClose={() => setImageModalVisible(false)}
+        showDownload={true}
+        showShare={true}
+      />
 
       {/* Actions Modal */}
       <Modal

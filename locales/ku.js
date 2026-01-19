@@ -666,6 +666,17 @@ export default {
     representativeRemoved: 'نوێنەر بە سەرکەوتوویی سڕایەوە',
     representativeAddError: 'نەتوانرا نوێنەر زیادبکرێت',
     representativeRemoveError: 'نەتوانرا نوێنەر سڕدرێتەوە',
+    // Attachments menu
+    attachments: 'هاوپێچەکان',
+    location: 'شوێن',
+    file: 'فایل',
+    sendLocation: 'ناردنی شوێن',
+    sendFile: 'ناردنی فایل',
+    comingSoon: 'ئەم تایبەتمەندییە بەم زووانە دێت!',
+    // Message status
+    messageSent: 'نێردرا',
+    messageDelivered: 'گەیشت',
+    messageRead: 'خوێندرایەوە',
   },
   
   // Lecture Screen
@@ -1098,6 +1109,15 @@ export default {
     newPost: 'پۆستێکی نوێی بڵاوکردەوە',
     startedFollowing: 'دەستی کرد بە فۆڵۆکردنت',
     others: 'کەسی تر',
+    permissionRequired: 'ڕێگەپێدانی ئاگاداری پێویستە',
+    permissionRequiredDesc: 'ئاگاداریەکان چالاک بکە بۆ ئەوەی لە نامەی نوێ و وەڵام و زۆرتر باخەبەر بیت.',
+    enableNotificationsButton: 'چالاککردنی ئاگاداریەکان',
+    notNow: 'ئێستا نا',
+    newNotification: 'ئاگادارییەکی نوێ',
+    newMessage: 'نامەیەکی نوێ',
+    pushDisabled: 'ئاگاداری ڕاستەوخۆ ناچالاکە',
+    pushDisabledDesc: 'ئاگاداریەکان لە ڕێکخستنەکانی ئامێرەکەتدا چالاک بکە بۆ وەرگرتنی نوێکردنەوەکان',
+    openSettings: 'کردنەوەی ڕێکخستنەکان',
   },
 
   report: {

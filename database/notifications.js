@@ -343,3 +343,20 @@ export const notifyFriendPost = async (followerId, posterId, posterName, posterP
         postPreview: postPreview?.substring(0, 50),
     });
 };
+
+/**
+ * Create notification for new follower
+ * @param {string} followedUserId - User who was followed
+ * @param {string} followerId - User who followed
+ * @param {string} followerName - Name of user who followed
+ * @param {string} followerPhoto - Profile picture of follower
+ */
+export const notifyFollow = async (followedUserId, followerId, followerName, followerPhoto) => {
+    return createNotification({
+        userId: followedUserId,
+        senderId: followerId,
+        senderName: followerName,
+        senderProfilePicture: followerPhoto,
+        type: NOTIFICATION_TYPES.FOLLOW,
+    });
+};

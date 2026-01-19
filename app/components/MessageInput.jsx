@@ -10,6 +10,8 @@ import {
   Alert,
   Text,
   FlatList,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -40,6 +42,7 @@ const MessageInput = ({
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+  const [showAttachmentsMenu, setShowAttachmentsMenu] = useState(false);
   const inputRef = useRef(null);
 
   // Get mention suggestions based on context
@@ -124,6 +127,7 @@ const MessageInput = ({
 
   const handlePickImage = async () => {
     if (disabled || uploading) return;
+    setShowAttachmentsMenu(false);
     
     try {
       const result = await pickAndCompressImages({
@@ -142,6 +146,7 @@ const MessageInput = ({
 
   const handleTakePicture = async () => {
     if (disabled || uploading) return;
+    setShowAttachmentsMenu(false);
     
     try {
       const result = await takePictureAndCompress({
@@ -154,6 +159,22 @@ const MessageInput = ({
     } catch (error) {
       Alert.alert(t('common.error'), error.message || t('chats.cameraError'));
     }
+  };
+
+  const handleSendLocation = () => {
+    setShowAttachmentsMenu(false);
+    Alert.alert(
+      t('chats.sendLocation') || 'Send Location',
+      t('chats.comingSoon') || 'This feature is coming soon!'
+    );
+  };
+
+  const handleSendFile = () => {
+    setShowAttachmentsMenu(false);
+    Alert.alert(
+      t('chats.sendFile') || 'Send File',
+      t('chats.comingSoon') || 'This feature is coming soon!'
+    );
   };
 
   const showImageOptions = () => {
@@ -314,6 +335,7 @@ const MessageInput = ({
         )}
 
         <View style={styles.inputRow}>
+          {/* Attachments menu button (9-dot grid) */}
           <TouchableOpacity
             style={[
               styles.imageIconButton,
@@ -322,11 +344,11 @@ const MessageInput = ({
                 backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
               }
             ]}
-            onPress={showImageOptions}
+            onPress={() => setShowAttachmentsMenu(true)}
             disabled={disabled || uploading}
             activeOpacity={0.7}>
             <Ionicons 
-              name="camera-outline" 
+              name="apps-outline" 
               size={moderateScale(20)} 
               color={theme.primary} 
             />
@@ -405,6 +427,80 @@ const MessageInput = ({
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Attachments Menu Modal */}
+        <Modal
+          visible={showAttachmentsMenu}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowAttachmentsMenu(false)}>
+          <Pressable 
+            style={styles.attachmentsOverlay}
+            onPress={() => setShowAttachmentsMenu(false)}>
+            <View style={[
+              styles.attachmentsMenu,
+              { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
+            ]}>
+              <Text style={[styles.attachmentsTitle, { color: theme.text, fontSize: fontSize(16) }]}>
+                {t('chats.attachments') || 'Attachments'}
+              </Text>
+              
+              <View style={styles.attachmentsGrid}>
+                {/* Camera */}
+                <TouchableOpacity 
+                  style={styles.attachmentItem}
+                  onPress={handleTakePicture}
+                  activeOpacity={0.7}>
+                  <View style={[styles.attachmentIconContainer, { backgroundColor: '#10B981' }]}>
+                    <Ionicons name="camera" size={moderateScale(24)} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.attachmentLabel, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {t('chats.camera') || 'Camera'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {/* Gallery */}
+                <TouchableOpacity 
+                  style={styles.attachmentItem}
+                  onPress={handlePickImage}
+                  activeOpacity={0.7}>
+                  <View style={[styles.attachmentIconContainer, { backgroundColor: '#8B5CF6' }]}>
+                    <Ionicons name="images" size={moderateScale(24)} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.attachmentLabel, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {t('chats.gallery') || 'Gallery'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {/* Location (Coming Soon) */}
+                <TouchableOpacity 
+                  style={styles.attachmentItem}
+                  onPress={handleSendLocation}
+                  activeOpacity={0.7}>
+                  <View style={[styles.attachmentIconContainer, { backgroundColor: '#F59E0B' }]}>
+                    <Ionicons name="location" size={moderateScale(24)} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.attachmentLabel, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {t('chats.location') || 'Location'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {/* Files (Coming Soon) */}
+                <TouchableOpacity 
+                  style={styles.attachmentItem}
+                  onPress={handleSendFile}
+                  activeOpacity={0.7}>
+                  <View style={[styles.attachmentIconContainer, { backgroundColor: '#3B82F6' }]}>
+                    <Ionicons name="document" size={moderateScale(24)} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.attachmentLabel, { color: theme.text, fontSize: fontSize(12) }]}>
+                    {t('chats.file') || 'File'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
       </View>
   );
 };
@@ -528,6 +624,51 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(14),
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Attachments Menu Styles
+  attachmentsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  attachmentsMenu: {
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl + spacing.lg,
+    paddingHorizontal: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  attachmentsTitle: {
+    fontWeight: '600',
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  attachmentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    gap: spacing.md,
+  },
+  attachmentItem: {
+    alignItems: 'center',
+    width: moderateScale(70),
+  },
+  attachmentIconContainer: {
+    width: moderateScale(56),
+    height: moderateScale(56),
+    borderRadius: moderateScale(28),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  attachmentLabel: {
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 
