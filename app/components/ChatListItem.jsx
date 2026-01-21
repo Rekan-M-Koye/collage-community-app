@@ -122,13 +122,13 @@ const ChatListItem = ({ chat, onPress, currentUserId, unreadCount = 0 }) => {
         <ProfilePicture 
           uri={chat.otherUser.profilePicture}
           name={chatName}
-          size={moderateScale(48)}
+          size={moderateScale(42)}
         />
       ) : chat.type === CHAT_TYPES.CUSTOM_GROUP ? (
         <ProfilePicture 
           uri={chat.groupPhoto}
           name={chatName}
-          size={moderateScale(48)}
+          size={moderateScale(42)}
         />
       ) : (
         <View style={[
@@ -137,7 +137,7 @@ const ChatListItem = ({ chat, onPress, currentUserId, unreadCount = 0 }) => {
         ]}>
           <Ionicons 
             name={getChatIcon()} 
-            size={moderateScale(22)} 
+            size={moderateScale(18)} 
             color={iconColor} 
           />
         </View>
@@ -199,22 +199,22 @@ const ChatListItem = ({ chat, onPress, currentUserId, unreadCount = 0 }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.xs,
     alignItems: 'center',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
   },
   iconContainer: {
-    width: moderateScale(48),
-    height: moderateScale(48),
-    borderRadius: moderateScale(24),
+    width: moderateScale(42),
+    height: moderateScale(42),
+    borderRadius: moderateScale(21),
     justifyContent: 'center',
     alignItems: 'center',
   },
   contentContainer: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: spacing.sm,
     justifyContent: 'center',
   },
   headerRow: {
@@ -237,16 +237,16 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   unreadBadge: {
-    minWidth: moderateScale(20),
-    height: moderateScale(20),
-    borderRadius: moderateScale(10),
-    paddingHorizontal: moderateScale(6),
+    minWidth: moderateScale(18),
+    height: moderateScale(18),
+    borderRadius: moderateScale(9),
+    paddingHorizontal: moderateScale(5),
     justifyContent: 'center',
     alignItems: 'center',
   },
   unreadBadgeText: {
     color: '#FFFFFF',
-    fontSize: fontSize(11),
+    fontSize: fontSize(10),
     fontWeight: '700',
   },
   lastMessage: {

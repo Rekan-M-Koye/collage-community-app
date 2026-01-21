@@ -182,6 +182,12 @@ const ChatRoom = ({ route, navigation }) => {
       }
     };
 
+    const handleNavigateToProfile = (userId) => {
+      if (userId) {
+        navigation.navigate('UserProfile', { userId });
+      }
+    };
+
     // Get other user info for private chats (for read receipts)
     const otherUserPhoto = chat.type === 'private' ? chat.otherUser?.profilePicture : null;
     const otherUserName = chat.type === 'private' ? (chat.otherUser?.name || chat.otherUser?.fullName) : null;
@@ -214,6 +220,8 @@ const ChatRoom = ({ route, navigation }) => {
         otherUserName={otherUserName}
         participantCount={participantCount}
         isLastSeenMessage={isLastSeenMessage}
+        groupMembers={groupMembers}
+        onNavigateToProfile={handleNavigateToProfile}
       />
     );
   };

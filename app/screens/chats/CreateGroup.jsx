@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,6 +32,8 @@ import {
   moderateScale,
 } from '../../utils/responsive';
 import { borderRadius } from '../../theme/designTokens';
+import { pickAndCompressImages } from '../../utils/imageCompression';
+import { uploadToImgbb } from '../../../services/imgbbService';
 
 const CreateGroup = ({ navigation }) => {
   const { t, theme, isDarkMode } = useAppSettings();
@@ -44,6 +48,15 @@ const CreateGroup = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [groupPhoto, setGroupPhoto] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [settings, setSettings] = useState({
+    allowMemberInvites: false,
+    onlyAdminsCanPost: false,
+    allowEveryoneMention: true,
+    onlyAdminsCanMention: false,
+    onlyAdminsCanPin: false,
+  });
 
   useEffect(() => {
     loadUsers();
@@ -120,6 +133,47 @@ const CreateGroup = ({ navigation }) => {
     });
   };
 
+  const handlePickGroupPhoto = async () => {
+    try {
+      setUploadingPhoto(true);
+      const result = await pickAndCompressImages({
+        allowsMultipleSelection: false,
+        maxImages: 1,
+        quality: 'medium',
+      });
+
+      if (!result || result.length === 0) {
+        setUploadingPhoto(false);
+        return;
+      }
+
+      const imageData = result[0];
+      if (!imageData || !imageData.base64) {
+        throw new Error('Failed to get image data');
+      }
+
+      const uploadResult = await uploadToImgbb(imageData.base64);
+      if (!uploadResult || !uploadResult.url) {
+        throw new Error('Failed to upload image');
+      }
+
+      setGroupPhoto(uploadResult.url);
+    } catch (error) {
+      const errorMessage = error?.message || t('chats.groupPhotoError');
+      Alert.alert(t('common.error'), errorMessage);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemoveGroupPhoto = () => {
+    setGroupPhoto(null);
+  };
+
+  const handleSettingToggle = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
       Alert.alert(t('common.error'), t('chats.groupName'));
@@ -139,6 +193,9 @@ const CreateGroup = ({ navigation }) => {
         description: description.trim(),
         members: selectedUsers,
         department: currentUser?.department,
+        groupPhoto: groupPhoto,
+        settings: JSON.stringify(settings),
+        requiresRepresentative: settings.onlyAdminsCanPost,
       }, currentUser.$id);
 
       if (chat) {
@@ -243,6 +300,47 @@ const CreateGroup = ({ navigation }) => {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
             
+            {/* Group Photo Section */}
+            <View style={styles.formSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                {t('chats.groupPhoto')}
+              </Text>
+              <View style={styles.photoSection}>
+                <TouchableOpacity
+                  style={[
+                    styles.photoContainer,
+                    { 
+                      backgroundColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.08)' 
+                        : 'rgba(255, 255, 255, 0.7)',
+                      borderColor: theme.primary,
+                    }
+                  ]}
+                  onPress={handlePickGroupPhoto}
+                  disabled={uploadingPhoto}>
+                  {uploadingPhoto ? (
+                    <ActivityIndicator size="large" color={theme.primary} />
+                  ) : groupPhoto ? (
+                    <Image source={{ uri: groupPhoto }} style={styles.groupPhotoImage} />
+                  ) : (
+                    <View style={styles.photoPlaceholder}>
+                      <Ionicons name="camera-outline" size={moderateScale(32)} color={theme.primary} />
+                      <Text style={[styles.photoText, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+                        {t('chats.addGroupPhoto')}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                {groupPhoto && !uploadingPhoto && (
+                  <TouchableOpacity 
+                    style={styles.removePhotoButton}
+                    onPress={handleRemoveGroupPhoto}>
+                    <Ionicons name="close-circle" size={moderateScale(24)} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
             <View style={styles.formSection}>
               <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(14) }]}>
                 {t('chats.groupName')}
@@ -275,6 +373,113 @@ const CreateGroup = ({ navigation }) => {
                   maxLength={200}
                 />
               </GlassInput>
+            </View>
+
+            {/* Group Settings Section */}
+            <View style={styles.formSection}>
+              <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                {t('chats.groupSettings')}
+              </Text>
+              
+              {/* Only Admins Can Post */}
+              <View style={[
+                styles.settingItem,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                }
+              ]}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                    {t('chats.onlyAdminsCanPost')}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
+                    {t('chats.onlyAdminsCanPostDesc')}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.onlyAdminsCanPost}
+                  onValueChange={(value) => handleSettingToggle('onlyAdminsCanPost', value)}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={settings.onlyAdminsCanPost ? theme.primary : isDarkMode ? '#888' : '#f4f3f4'}
+                />
+              </View>
+
+              {/* Allow Member Invites */}
+              <View style={[
+                styles.settingItem,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                }
+              ]}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                    {t('chats.allowMemberInvites')}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
+                    {t('chats.allowMemberInvitesDesc')}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.allowMemberInvites}
+                  onValueChange={(value) => handleSettingToggle('allowMemberInvites', value)}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={settings.allowMemberInvites ? theme.primary : isDarkMode ? '#888' : '#f4f3f4'}
+                />
+              </View>
+
+              {/* Only Admins Can @everyone */}
+              <View style={[
+                styles.settingItem,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                }
+              ]}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                    {t('chats.onlyAdminsCanMention')}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
+                    {t('chats.onlyAdminsCanMentionDesc')}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.onlyAdminsCanMention}
+                  onValueChange={(value) => handleSettingToggle('onlyAdminsCanMention', value)}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={settings.onlyAdminsCanMention ? theme.primary : isDarkMode ? '#888' : '#f4f3f4'}
+                />
+              </View>
+
+              {/* Only Admins Can Pin */}
+              <View style={[
+                styles.settingItem,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(255, 255, 255, 0.7)',
+                }
+              ]}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingTitle, { color: theme.text, fontSize: fontSize(14) }]}>
+                    {t('chats.onlyAdminsCanPin')}
+                  </Text>
+                  <Text style={[styles.settingDescription, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
+                    {t('chats.onlyAdminsCanPinDesc')}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.onlyAdminsCanPin}
+                  onValueChange={(value) => handleSettingToggle('onlyAdminsCanPin', value)}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={settings.onlyAdminsCanPin ? theme.primary : isDarkMode ? '#888' : '#f4f3f4'}
+                />
+              </View>
             </View>
 
             <View style={styles.formSection}>
@@ -555,6 +760,61 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Group photo styles
+  photoSection: {
+    alignItems: 'center',
+    position: 'relative',
+  },
+  photoContainer: {
+    width: moderateScale(100),
+    height: moderateScale(100),
+    borderRadius: moderateScale(50),
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  groupPhotoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: moderateScale(50),
+  },
+  photoPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoText: {
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 0,
+    right: wp(30),
+    backgroundColor: '#FFFFFF',
+    borderRadius: moderateScale(12),
+  },
+  // Settings styles
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.sm,
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  settingTitle: {
+    fontWeight: '600',
+    marginBottom: spacing.xs / 2,
+  },
+  settingDescription: {
+    fontWeight: '400',
   },
 });
 

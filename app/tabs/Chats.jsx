@@ -45,6 +45,7 @@ const Chats = ({ navigation }) => {
   const [defaultGroups, setDefaultGroups] = useState([]);
   const [customGroups, setCustomGroups] = useState([]);
   const [privateChats, setPrivateChats] = useState([]);
+  const [activeFilter, setActiveFilter] = useState('all');
   const [unreadCounts, setUnreadCounts] = useState({});
 
   const stageToValue = (stage) => {
@@ -192,27 +193,27 @@ const Chats = ({ navigation }) => {
   const getSectionData = () => {
     const sections = [];
 
-    if (defaultGroups.length > 0) {
+    if ((activeFilter === 'all' || activeFilter === 'class') && defaultGroups.length > 0) {
       sections.push({
-        title: t('chats.classGroups'),
+        title: t('chats.classLabel'),
         data: defaultGroups,
         icon: 'school',
         color: '#3B82F6',
       });
     }
 
-    if (customGroups.length > 0) {
+    if ((activeFilter === 'all' || activeFilter === 'groups') && customGroups.length > 0) {
       sections.push({
-        title: t('chats.myGroups'),
+        title: t('chats.groupsLabel'),
         data: customGroups,
-        icon: 'people-circle',
+        icon: 'people',
         color: '#F59E0B',
       });
     }
 
-    if (privateChats.length > 0) {
+    if ((activeFilter === 'all' || activeFilter === 'direct') && privateChats.length > 0) {
       sections.push({
-        title: t('chats.directChats'),
+        title: t('chats.directLabel'),
         data: privateChats,
         icon: 'chatbubble',
         color: '#10B981',
@@ -224,17 +225,13 @@ const Chats = ({ navigation }) => {
 
   const renderSectionHeader = ({ section }) => (
     <View style={styles.sectionHeader}>
-      <View style={[styles.sectionIconContainer, { backgroundColor: `${section.color}15` }]}>
-        <Ionicons name={section.icon} size={moderateScale(14)} color={section.color} />
-      </View>
-      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: fontSize(13) }]}>
+      <Ionicons name={section.icon} size={moderateScale(12)} color={section.color} />
+      <Text style={[styles.sectionTitle, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
         {section.title}
       </Text>
-      <View style={[styles.sectionBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
-        <Text style={[styles.sectionBadgeText, { color: theme.textSecondary, fontSize: fontSize(11) }]}>
-          {section.data.length}
-        </Text>
-      </View>
+      <Text style={[styles.sectionCount, { color: theme.textSecondary, fontSize: fontSize(10) }]}>
+        {section.data.length}
+      </Text>
     </View>
   );
 
@@ -277,42 +274,60 @@ const Chats = ({ navigation }) => {
     );
   };
 
+  const filterOptions = [
+    { key: 'all', label: t('chats.filterAll') },
+    { key: 'class', label: t('chats.filterClass') },
+    { key: 'groups', label: t('chats.filterGroups') },
+    { key: 'direct', label: t('chats.filterDirect') },
+  ];
+
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.headerTop}>
-        <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, { color: theme.text, fontSize: fontSize(26) }]}>
-            {t('chats.title')}
-          </Text>
-          {user?.department && (
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary, fontSize: fontSize(13) }]}>
-              {user.department}
-            </Text>
-          )}
-        </View>
-      </View>
-      
-      <View style={styles.quickActionsContainer}>
-        <View style={styles.quickActionsRow}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: fontSize(22) }]}>
+          {t('chats.title')}
+        </Text>
+        <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.quickActionButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
+            style={[styles.iconButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
             activeOpacity={0.7}
             onPress={() => navigation.navigate('UserSearch')}>
             <Ionicons name="search" size={moderateScale(18)} color={theme.primary} />
-            <Text style={[styles.quickActionButtonText, { color: theme.text, fontSize: fontSize(13) }]}>
-              {t('chats.searchUsers')}
-            </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.quickActionButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
+            style={[styles.iconButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
             activeOpacity={0.7}
             onPress={() => navigation.navigate('CreateGroup')}>
-            <Ionicons name="add-circle" size={moderateScale(18)} color="#F59E0B" />
-            <Text style={[styles.quickActionButtonText, { color: theme.text, fontSize: fontSize(13) }]}>
-              {t('chats.createGroup')}
-            </Text>
+            <Ionicons name="add" size={moderateScale(18)} color="#F59E0B" />
           </TouchableOpacity>
         </View>
+      </View>
+      
+      <View style={styles.filterContainer}>
+        {filterOptions.map((filter) => (
+          <TouchableOpacity
+            key={filter.key}
+            style={[
+              styles.filterPill,
+              { 
+                backgroundColor: activeFilter === filter.key 
+                  ? theme.primary 
+                  : isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' 
+              }
+            ]}
+            activeOpacity={0.7}
+            onPress={() => setActiveFilter(filter.key)}>
+            <Text style={[
+              styles.filterPillText,
+              { 
+                color: activeFilter === filter.key ? '#FFFFFF' : theme.textSecondary,
+                fontSize: fontSize(11)
+              }
+            ]}>
+              {filter.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -460,46 +475,39 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   headerContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerTitleContainer: {
-    flex: 1,
-  },
   headerTitle: {
     fontWeight: '700',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    marginTop: spacing.xs,
-    fontWeight: '500',
-  },
-  quickActionsContainer: {
-    marginTop: spacing.md,
-  },
-  quickActionsTitle: {
-    fontWeight: '600',
-    marginBottom: spacing.md,
-  },
-  quickActionsRow: {
+  headerActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  quickActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
     gap: spacing.xs,
   },
-  quickActionButtonText: {
+  iconButton: {
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: moderateScale(18),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  filterPill: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: moderateScale(12),
+  },
+  filterPillText: {
     fontWeight: '500',
   },
   quickActionCard: {
@@ -523,29 +531,19 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
     paddingHorizontal: spacing.xs,
-  },
-  sectionIconContainer: {
-    width: moderateScale(24),
-    height: moderateScale(24),
-    borderRadius: moderateScale(12),
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.xs,
+    gap: spacing.xs,
   },
   sectionTitle: {
     fontWeight: '600',
     flex: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  sectionBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: moderateScale(8),
-  },
-  sectionBadgeText: {
-    fontWeight: '600',
+  sectionCount: {
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,

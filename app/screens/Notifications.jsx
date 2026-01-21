@@ -98,6 +98,24 @@ const getNotificationIcon = (type) => {
   }
 };
 
+// Format time with better granularity
+const formatNotificationTime = (dateString, t) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffWeeks = Math.floor(diffDays / 7);
+
+  if (diffMins < 1) return t('time.justNow') || 'now';
+  if (diffMins < 60) return `${diffMins}${t('time.minutesShort') || 'm'}`;
+  if (diffHours < 24) return `${diffHours}${t('time.hoursShort') || 'h'}`;
+  if (diffDays < 7) return `${diffDays}${t('time.daysShort') || 'd'}`;
+  if (diffWeeks < 4) return `${diffWeeks}${t('time.weeksShort') || 'w'}`;
+  return date.toLocaleDateString();
+};
+
 const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme, isDarkMode, t }) => {
   const icon = getNotificationIcon(notification.type);
   const isUnread = !notification.isRead;
@@ -105,107 +123,100 @@ const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme,
   const getNotificationMessage = () => {
     switch (notification.type) {
       case NOTIFICATION_TYPES.POST_LIKE:
-        return t('notifications.likedPost') || 'liked your post';
+        return t('notifications.liked') || 'liked';
       case NOTIFICATION_TYPES.POST_REPLY:
-        return t('notifications.repliedPost') || 'replied to your post';
+        return t('notifications.replied') || 'replied';
       case NOTIFICATION_TYPES.MENTION:
-        return t('notifications.mentionedYou') || 'mentioned you';
+        return t('notifications.mentioned') || 'mentioned';
       case NOTIFICATION_TYPES.FRIEND_POST:
-        return t('notifications.newPost') || 'shared a new post';
+        return t('notifications.posted') || 'posted';
       case NOTIFICATION_TYPES.FOLLOW:
-        return t('notifications.startedFollowing') || 'started following you';
+        return t('notifications.followed') || 'followed you';
       default:
-        return notification.message || '';
+        return '';
     }
   };
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return t('time.justNow') || 'Just now';
-    if (diffMins < 60) return `${diffMins}${t('time.minutesShort') || 'm'}`;
-    if (diffHours < 24) return `${diffHours}${t('time.hoursShort') || 'h'}`;
-    if (diffDays < 7) return `${diffDays}${t('time.daysShort') || 'd'}`;
-    return date.toLocaleDateString();
-  };
-
   return (
-    <TouchableOpacity
+    <View
       style={[
-        styles.notificationItem,
-        {
-          backgroundColor: isUnread
-            ? isDarkMode
-              ? 'rgba(10, 132, 255, 0.1)'
-              : 'rgba(0, 122, 255, 0.08)'
-            : 'transparent',
+        styles.notificationCard,
+        { 
+          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
         },
+        isUnread && { borderLeftWidth: 3, borderLeftColor: theme.primary },
       ]}
-      onPress={() => onPress(notification)}
-      onLongPress={() => onLongPress && onLongPress(notification)}
-      delayLongPress={500}
-      activeOpacity={0.7}
     >
-      <View style={styles.notificationContent}>
-        <View style={styles.avatarContainer}>
-          <ProfilePicture
-            uri={notification.senderProfilePicture}
-            name={notification.senderName}
-            size={moderateScale(48)}
-          />
-          <View
-            style={[
-              styles.iconBadge,
-              { backgroundColor: icon.color },
-            ]}
-          >
-            <Ionicons name={icon.name} size={12} color="#fff" />
+      <TouchableOpacity
+        style={styles.notificationItem}
+        onPress={() => onPress(notification)}
+        onLongPress={() => onLongPress && onLongPress(notification)}
+        delayLongPress={500}
+        activeOpacity={0.7}
+      >
+        <View style={styles.notificationContent}>
+          <View style={styles.avatarContainer}>
+            <ProfilePicture
+              uri={notification.senderProfilePicture}
+              name={notification.senderName}
+              size={moderateScale(40)}
+            />
+            <View
+              style={[
+                styles.iconBadge,
+                { backgroundColor: icon.color },
+              ]}
+            >
+              <Ionicons name={icon.name} size={10} color="#fff" />
+            </View>
+          </View>
+
+          <View style={styles.textContainer}>
+            <View style={styles.topRow}>
+              <Text
+                style={[
+                  styles.notificationText,
+                  { color: theme.text },
+                ]}
+                numberOfLines={1}
+              >
+                <Text style={[styles.senderName, { color: theme.text }]}>{notification.senderName}</Text>
+                {' '}
+                <Text style={{ color: theme.textSecondary }}>{getNotificationMessage()}</Text>
+              </Text>
+              <View style={styles.timeRow}>
+                <Ionicons name="time-outline" size={10} color={theme.textSecondary} />
+                <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+                  {formatNotificationTime(notification.$createdAt, t)}
+                </Text>
+              </View>
+            </View>
+            {notification.postPreview && (
+              <Text
+                style={[styles.previewText, { color: theme.textSecondary }]}
+                numberOfLines={1}
+              >
+                {notification.postPreview}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.rightSection}>
+            {isUnread && (
+              <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
+            )}
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => onDelete && onDelete(notification)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.textContainer}>
-          <Text
-            style={[
-              styles.notificationText,
-              { color: theme.text },
-            ]}
-            numberOfLines={2}
-          >
-            <Text style={styles.senderName}>{notification.senderName}</Text>
-            {' '}
-            {getNotificationMessage()}
-          </Text>
-          {notification.postPreview && (
-            <Text
-              style={[styles.previewText, { color: theme.subText }]}
-              numberOfLines={1}
-            >
-              "{notification.postPreview}"
-            </Text>
-          )}
-          <Text style={[styles.timeText, { color: theme.subText }]}>
-            {formatTime(notification.$createdAt)}
-          </Text>
-        </View>
-
-        {isUnread && (
-          <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
-        )}
-        
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => onDelete && onDelete(notification)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="close" size={18} color={theme.subText} />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -213,124 +224,124 @@ const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme,
 const GroupedNotificationItem = ({ group, onPress, theme, isDarkMode, t }) => {
   const icon = getNotificationIcon(group.type);
   const count = group.notifications.length;
-  const recentUsers = group.notifications.slice(0, 3);
-  
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return t('time.justNow') || 'Just now';
-    if (diffMins < 60) return `${diffMins}${t('time.minutesShort') || 'm'}`;
-    if (diffHours < 24) return `${diffHours}${t('time.hoursShort') || 'h'}`;
-    if (diffDays < 7) return `${diffDays}${t('time.daysShort') || 'd'}`;
-    return date.toLocaleDateString();
-  };
+  // Get unique users (avoid showing same user twice)
+  const uniqueUsers = [];
+  const seenIds = new Set();
+  for (const notif of group.notifications) {
+    if (!seenIds.has(notif.senderId)) {
+      seenIds.add(notif.senderId);
+      uniqueUsers.push(notif);
+    }
+    if (uniqueUsers.length >= 3) break;
+  }
   
   const getGroupMessage = () => {
-    const othersCount = count - 1;
-    const firstName = group.notifications[0]?.senderName || '';
+    const uniqueCount = seenIds.size;
+    const firstName = group.notifications[0]?.senderName?.split(' ')[0] || '';
     
     if (group.type === NOTIFICATION_TYPES.POST_LIKE) {
-      if (count === 1) {
-        return `${firstName} ${t('notifications.likedPost') || 'liked your post'}`;
-      } else if (count === 2) {
-        const secondName = group.notifications[1]?.senderName || '';
-        return `${firstName} ${t('common.and') || 'and'} ${secondName} ${t('notifications.likedPost') || 'liked your post'}`;
+      if (uniqueCount === 1) {
+        return { name: firstName, action: t('notifications.liked') || 'liked' };
+      } else if (uniqueCount === 2) {
+        const secondName = uniqueUsers[1]?.senderName?.split(' ')[0] || '';
+        return { name: `${firstName}, ${secondName}`, action: t('notifications.liked') || 'liked' };
       } else {
-        return `${firstName} ${t('common.and') || 'and'} ${othersCount} ${t('notifications.others') || 'others'} ${t('notifications.likedPost') || 'liked your post'}`;
+        return { name: `${firstName} +${uniqueCount - 1}`, action: t('notifications.liked') || 'liked' };
       }
     } else if (group.type === NOTIFICATION_TYPES.POST_REPLY) {
-      if (count === 1) {
-        return `${firstName} ${t('notifications.repliedPost') || 'replied to your post'}`;
-      } else if (count === 2) {
-        const secondName = group.notifications[1]?.senderName || '';
-        return `${firstName} ${t('common.and') || 'and'} ${secondName} ${t('notifications.repliedPost') || 'replied to your post'}`;
+      if (uniqueCount === 1) {
+        return { name: firstName, action: t('notifications.replied') || 'replied' };
+      } else if (uniqueCount === 2) {
+        const secondName = uniqueUsers[1]?.senderName?.split(' ')[0] || '';
+        return { name: `${firstName}, ${secondName}`, action: t('notifications.replied') || 'replied' };
       } else {
-        return `${firstName} ${t('common.and') || 'and'} ${othersCount} ${t('notifications.others') || 'others'} ${t('notifications.repliedPost') || 'replied to your post'}`;
+        return { name: `${firstName} +${uniqueCount - 1}`, action: t('notifications.replied') || 'replied' };
       }
     }
-    return '';
+    return { name: '', action: '' };
   };
 
+  const message = getGroupMessage();
+
   return (
-    <TouchableOpacity
+    <View
       style={[
-        styles.notificationItem,
-        {
-          backgroundColor: group.hasUnread
-            ? isDarkMode
-              ? 'rgba(10, 132, 255, 0.1)'
-              : 'rgba(0, 122, 255, 0.08)'
-            : 'transparent',
+        styles.notificationCard,
+        { 
+          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
         },
+        group.hasUnread && { borderLeftWidth: 3, borderLeftColor: theme.primary },
       ]}
-      onPress={() => onPress(group)}
-      activeOpacity={0.7}
     >
-      <View style={styles.notificationContent}>
-        <View style={styles.groupedAvatarContainer}>
-          {recentUsers.slice(0, 3).map((notif, index) => (
-            <View 
-              key={notif.$id} 
+      <TouchableOpacity
+        style={styles.notificationItem}
+        onPress={() => onPress(group)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.notificationContent}>
+          <View style={styles.groupedAvatarContainer}>
+            {uniqueUsers.slice(0, 3).map((notif, index) => (
+              <View 
+                key={notif.$id} 
+                style={[
+                  styles.stackedAvatar,
+                  { left: index * 12, zIndex: 3 - index }
+                ]}
+              >
+                <ProfilePicture
+                  uri={notif.senderProfilePicture}
+                  name={notif.senderName}
+                  size={moderateScale(28)}
+                />
+              </View>
+            ))}
+            <View
               style={[
-                styles.stackedAvatar,
-                { left: index * 15, zIndex: 3 - index }
+                styles.groupIconBadge,
+                { backgroundColor: icon.color },
               ]}
             >
-              <ProfilePicture
-                uri={notif.senderProfilePicture}
-                name={notif.senderName}
-                size={moderateScale(32)}
-              />
+              <Ionicons name={icon.name} size={8} color="#fff" />
             </View>
-          ))}
-          <View
-            style={[
-              styles.groupIconBadge,
-              { backgroundColor: icon.color },
-            ]}
-          >
-            <Ionicons name={icon.name} size={10} color="#fff" />
           </View>
-          {count > 3 && (
-            <View style={[styles.moreCount, { backgroundColor: theme.primary }]}>
-              <Text style={styles.moreCountText}>+{count - 3}</Text>
+
+          <View style={styles.textContainer}>
+            <View style={styles.topRow}>
+              <Text
+                style={[
+                  styles.notificationText,
+                  { color: theme.text },
+                ]}
+                numberOfLines={1}
+              >
+                <Text style={[styles.senderName, { color: theme.text }]}>{message.name}</Text>
+                {' '}
+                <Text style={{ color: theme.textSecondary }}>{message.action}</Text>
+              </Text>
+              <View style={styles.timeRow}>
+                <Ionicons name="time-outline" size={10} color={theme.textSecondary} />
+                <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+                  {formatNotificationTime(group.latestTimestamp, t)}
+                </Text>
+              </View>
             </View>
+            {group.postPreview && (
+              <Text
+                style={[styles.previewText, { color: theme.textSecondary }]}
+                numberOfLines={1}
+              >
+                {group.postPreview}
+              </Text>
+            )}
+          </View>
+
+          {group.hasUnread && (
+            <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
           )}
         </View>
-
-        <View style={[styles.textContainer, { marginLeft: count > 1 ? spacing.lg : 0 }]}>
-          <Text
-            style={[
-              styles.notificationText,
-              { color: theme.text },
-            ]}
-            numberOfLines={2}
-          >
-            {getGroupMessage()}
-          </Text>
-          {group.postPreview && (
-            <Text
-              style={[styles.previewText, { color: theme.subText }]}
-              numberOfLines={1}
-            >
-              "{group.postPreview}"
-            </Text>
-          )}
-          <Text style={[styles.timeText, { color: theme.subText }]}>
-            {formatTime(group.latestTimestamp)}
-          </Text>
-        </View>
-
-        {group.hasUnread && (
-          <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
-        )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -675,16 +686,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: fontSize(18),
+    fontSize: fontSize(17),
     fontWeight: '700',
   },
   markAllButton: {
@@ -692,11 +703,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   markAllText: {
-    fontSize: fontSize(13),
+    fontSize: fontSize(12),
     fontWeight: '600',
   },
   placeholder: {
-    width: 80,
+    width: 70,
   },
   loadingContainer: {
     flex: 1,
@@ -704,28 +715,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
+    paddingHorizontal: spacing.sm,
     paddingBottom: spacing.xl,
+    gap: spacing.xs,
   },
   emptyList: {
     flex: 1,
   },
+  notificationCard: {
+    marginVertical: spacing.xs / 2,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
   notificationItem: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
   notificationContent: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
   },
   groupedAvatarContainer: {
     position: 'relative',
-    width: moderateScale(64),
-    height: moderateScale(48),
-    marginRight: spacing.md,
+    width: moderateScale(52),
+    height: moderateScale(32),
+    marginRight: spacing.sm,
   },
   stackedAvatar: {
     position: 'absolute',
@@ -734,72 +753,70 @@ const styles = StyleSheet.create({
   groupIconBadge: {
     position: 'absolute',
     bottom: -2,
-    left: 45,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    left: 32,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
-  },
-  moreCount: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  moreCountText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   iconBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   textContainer: {
     flex: 1,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
   notificationText: {
-    fontSize: fontSize(14),
-    lineHeight: fontSize(20),
+    fontSize: fontSize(13),
+    lineHeight: fontSize(18),
+    flex: 1,
   },
   senderName: {
     fontWeight: '600',
   },
   previewText: {
-    fontSize: fontSize(13),
-    marginTop: 4,
-    fontStyle: 'italic',
+    fontSize: fontSize(12),
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   timeText: {
-    fontSize: fontSize(12),
-    marginTop: 4,
+    fontSize: fontSize(10),
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginLeft: spacing.xs,
   },
   unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginLeft: spacing.sm,
-    marginTop: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   deleteButton: {
     padding: spacing.xs,
-    marginLeft: spacing.sm,
-    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,
@@ -808,23 +825,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   emptyIconContainer: {
-    width: moderateScale(80),
-    height: moderateScale(80),
-    borderRadius: moderateScale(40),
+    width: moderateScale(70),
+    height: moderateScale(70),
+    borderRadius: moderateScale(35),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
   emptyTitle: {
-    fontSize: fontSize(18),
+    fontSize: fontSize(16),
     fontWeight: '600',
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: fontSize(14),
+    fontSize: fontSize(13),
     marginTop: spacing.sm,
     textAlign: 'center',
-    lineHeight: fontSize(20),
+    lineHeight: fontSize(18),
   },
   emptyHintContainer: {
     flexDirection: 'row',
@@ -836,7 +853,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   emptyHint: {
-    fontSize: fontSize(12),
+    fontSize: fontSize(11),
     flex: 1,
   },
 });

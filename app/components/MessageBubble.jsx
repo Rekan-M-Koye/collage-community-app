@@ -28,8 +28,12 @@ import {
 } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
-// Enable LayoutAnimation for Android
-if (RNPlatform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+// Enable LayoutAnimation for Android (skip in New Architecture where it's a no-op)
+if (
+  RNPlatform.OS === 'android' && 
+  UIManager.setLayoutAnimationEnabledExperimental &&
+  !global.__turboModuleProxy
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -242,10 +246,13 @@ const MessageBubble = ({
   otherUserName,
   participantCount,
   isLastSeenMessage = false,
+  groupMembers = [],
+  onNavigateToProfile,
 }) => {
   const { theme, isDarkMode, t, chatSettings } = useAppSettings();
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [actionsVisible, setActionsVisible] = useState(false);
+  const [mentionPreview, setMentionPreview] = useState(null);
   
   const translateX = useRef(new Animated.Value(0)).current;
   const swipeDirection = isCurrentUser ? -1 : 1;
@@ -311,10 +318,12 @@ const MessageBubble = ({
     
     // URL regex pattern
     const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-    const mentionPattern = /(@everyone|@all)/gi;
+    // Pattern for @everyone/@all and @username (username can contain letters, numbers, spaces)
+    const everyoneMentionPattern = /(@everyone|@all)/gi;
+    const userMentionPattern = /@([a-zA-Z0-9\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0980-\u09FF\s]+?)(?=\s|$|[.,!?;:])/g;
     
-    // Combined pattern for both links and mentions
-    const combinedPattern = new RegExp(`(${urlPattern.source}|${mentionPattern.source})`, 'gi');
+    // Combined pattern for links, @everyone, and @username mentions
+    const combinedPattern = new RegExp(`(${urlPattern.source}|${everyoneMentionPattern.source}|@[a-zA-Z0-9\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\u0980-\\u09FF\\s]+?)(?=\\s|$|[.,!?;:])`, 'gi');
     
     const parts = content.split(combinedPattern).filter(Boolean);
     
@@ -325,8 +334,47 @@ const MessageBubble = ({
       }
       Linking.openURL(finalUrl);
     };
+
+    // Handle user mention press - find user and show preview
+    const handleMentionPress = (mentionText) => {
+      // Remove @ symbol
+      const username = mentionText.substring(1).trim();
+      
+      // Try to find the user in mentions array or group members
+      let mentionedUser = null;
+      
+      // Check message.mentions array if available
+      if (message.mentions && Array.isArray(message.mentions)) {
+        // This would need user lookup, for now we'll use groupMembers
+      }
+      
+      // Look up in groupMembers if provided
+      if (groupMembers && groupMembers.length > 0) {
+        mentionedUser = groupMembers.find(member => {
+          const memberName = member?.name || member?.fullName || '';
+          return memberName.toLowerCase() === username.toLowerCase();
+        });
+      }
+      
+      // If we found a user, show preview
+      if (mentionedUser) {
+        setMentionPreview({
+          id: mentionedUser.$id || mentionedUser.id,
+          name: mentionedUser.name || mentionedUser.fullName,
+          profilePicture: mentionedUser.profilePicture,
+        });
+      }
+    };
     
-    const hasSpecialContent = urlPattern.test(content) || mentionPattern.test(content);
+    // Reset URL pattern last index
+    urlPattern.lastIndex = 0;
+    everyoneMentionPattern.lastIndex = 0;
+    
+    const hasSpecialContent = urlPattern.test(content) || everyoneMentionPattern.test(content) || /@\w+/.test(content);
+    
+    // Reset again after test
+    urlPattern.lastIndex = 0;
+    everyoneMentionPattern.lastIndex = 0;
     
     if (hasSpecialContent) {
       return (
@@ -341,12 +389,27 @@ const MessageBubble = ({
           {parts.map((part, index) => {
             if (part.toLowerCase() === '@everyone' || part.toLowerCase() === '@all') {
               return (
-                <Text key={index} style={styles.mentionHighlight}>
+                <Text key={index} style={[styles.mentionHighlight, { color: isCurrentUser ? '#93C5FD' : theme.primary }]}>
                   {part}
                 </Text>
               );
             }
+            // Check for user mentions (@username)
+            if (part.startsWith('@') && part.length > 1 && part.toLowerCase() !== '@everyone' && part.toLowerCase() !== '@all') {
+              return (
+                <Text 
+                  key={index} 
+                  style={[styles.userMentionText, { color: isCurrentUser ? '#93C5FD' : theme.primary }]}
+                  onPress={() => handleMentionPress(part)}
+                >
+                  {part}
+                </Text>
+              );
+            }
+            // Reset before test
+            urlPattern.lastIndex = 0;
             if (urlPattern.test(part)) {
+              urlPattern.lastIndex = 0;
               return (
                 <Text 
                   key={index} 
@@ -638,6 +701,60 @@ const MessageBubble = ({
           </View>
         </Pressable>
       </Modal>
+
+      {/* Mention Preview Modal - Compact popup showing user profile */}
+      <Modal
+        visible={!!mentionPreview}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMentionPreview(null)}>
+        <Pressable 
+          style={styles.mentionPreviewOverlay}
+          onPress={() => setMentionPreview(null)}>
+          <View style={[
+            styles.mentionPreviewContainer,
+            { backgroundColor: isDarkMode ? '#2a2a40' : '#FFFFFF' }
+          ]}>
+            {mentionPreview && (
+              <>
+                <View style={styles.mentionPreviewHeader}>
+                  {mentionPreview.profilePicture ? (
+                    <Image 
+                      source={{ uri: mentionPreview.profilePicture }} 
+                      style={styles.mentionPreviewAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.mentionPreviewAvatarPlaceholder, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.mentionPreviewAvatarText}>
+                        {(mentionPreview.name || '?')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={[styles.mentionPreviewName, { color: theme.text, fontSize: fontSize(16) }]}>
+                    {mentionPreview.name}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.mentionPreviewButton, { backgroundColor: theme.primary }]}
+                  onPress={() => {
+                    setMentionPreview(null);
+                    if (onNavigateToProfile && mentionPreview.id) {
+                      onNavigateToProfile(mentionPreview.id);
+                    } else if (onAvatarPress && mentionPreview.id) {
+                      onAvatarPress(mentionPreview.id);
+                    }
+                  }}
+                  activeOpacity={0.7}>
+                  <Ionicons name="person-outline" size={moderateScale(16)} color="#FFFFFF" />
+                  <Text style={[styles.mentionPreviewButtonText, { fontSize: fontSize(14) }]}>
+                    {t('chats.visitProfile')}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -864,6 +981,70 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontWeight: '500',
+  },
+  // User mention styles
+  userMentionText: {
+    fontWeight: '600',
+    textDecorationLine: 'none',
+  },
+  // Mention preview modal styles
+  mentionPreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mentionPreviewContainer: {
+    width: moderateScale(220),
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  mentionPreviewHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  mentionPreviewAvatar: {
+    width: moderateScale(64),
+    height: moderateScale(64),
+    borderRadius: moderateScale(32),
+    marginBottom: spacing.sm,
+  },
+  mentionPreviewAvatarPlaceholder: {
+    width: moderateScale(64),
+    height: moderateScale(64),
+    borderRadius: moderateScale(32),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  mentionPreviewAvatarText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(24),
+    fontWeight: '600',
+  },
+  mentionPreviewName: {
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  mentionPreviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+    width: '100%',
+  },
+  mentionPreviewButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 

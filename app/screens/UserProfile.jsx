@@ -18,7 +18,6 @@ const UserProfile = ({ route, navigation }) => {
   const { userId, userData: initialUserData } = route.params;
   const { t, theme, isDarkMode } = useAppSettings();
   const { user: currentUser } = useUser();
-  const [activeTab, setActiveTab] = useState('about');
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState(null);
@@ -151,12 +150,6 @@ const UserProfile = ({ route, navigation }) => {
       loadUserPosts();
     }
   }, [userId, loadUserPosts, postsLoaded]);
-
-  useEffect(() => {
-    if (activeTab === 'posts' && !postsLoaded && userId) {
-      loadUserPosts();
-    }
-  }, [activeTab, postsLoaded, userId, loadUserPosts]);
 
   const handleFollowToggle = async () => {
     if (followLoading || !currentUser?.$id || !userId || currentUser.$id === userId) return;
@@ -343,8 +336,9 @@ const UserProfile = ({ route, navigation }) => {
     }
   };
 
-  const renderAboutTab = () => (
-    <View style={styles.tabContent}>
+  const renderAboutSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={[styles.sectionHeader, { color: theme.text }]}>{t('profile.about')}</Text>
       <GlassContainer borderRadius={borderRadius.lg} style={styles.infoCard}>
         <View style={styles.infoRow}>
           <Ionicons name="mail-outline" size={moderateScale(20)} color={theme.primary} />
@@ -446,23 +440,18 @@ const UserProfile = ({ route, navigation }) => {
     </View>
   );
 
-  const renderPostsTab = () => {
-    if (loadingPosts) {
-      return (
-        <View style={styles.tabContent}>
+  const renderPostsSection = () => {
+    return (
+      <View style={styles.sectionContainer}>
+        <Text style={[styles.sectionHeader, { color: theme.text }]}>{t('profile.posts')}</Text>
+        {loadingPosts ? (
           <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
               {t('common.loading')}
             </Text>
           </GlassContainer>
-        </View>
-      );
-    }
-
-    if (postsError) {
-      return (
-        <View style={styles.tabContent}>
+        ) : postsError ? (
           <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
             <Ionicons name="alert-circle-outline" size={moderateScale(40)} color={theme.error} />
             <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
@@ -472,53 +461,36 @@ const UserProfile = ({ route, navigation }) => {
               <Text style={[styles.retryButtonText, { color: theme.primary }]}>{t('common.retry')}</Text>
             </TouchableOpacity>
           </GlassContainer>
-        </View>
-      );
-    }
-
-    if (!userPosts || userPosts.length === 0) {
-      return (
-        <View style={styles.tabContent}>
+        ) : !userPosts || userPosts.length === 0 ? (
           <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
             <Ionicons name="document-text-outline" size={moderateScale(40)} color={theme.textSecondary} />
             <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>
               {t('profile.noPosts')}
             </Text>
           </GlassContainer>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.tabContent}>
-        {userPosts.map((post, index) => (
-          <PostCard
-            key={post.$id || index}
-            post={{
-              ...post,
-              userName: userData.fullName,
-              userProfilePicture: userData.profilePicture,
-            }}
-            onReply={() => navigation.navigate('PostDetails', { post })}
-            onLike={() => handleLike(post.$id)}
-            onUserPress={() => {}}
-            isOwner={false}
-            isLiked={post.likedBy?.includes(currentUser?.$id)}
-            showImages={true}
-          />
-        ))}
+        ) : (
+          <View>
+            {userPosts.map((post, index) => (
+              <PostCard
+                key={post.$id || index}
+                post={{
+                  ...post,
+                  userName: userData.fullName,
+                  userProfilePicture: userData.profilePicture,
+                }}
+                onReply={() => navigation.navigate('PostDetails', { post })}
+                onLike={() => handleLike(post.$id)}
+                onUserPress={() => {}}
+                isOwner={false}
+                isLiked={post.likedBy?.includes(currentUser?.$id)}
+                showImages={true}
+              />
+            ))}
+          </View>
+        )}
       </View>
     );
   };
-
-  const renderActivityTab = () => (
-    <View style={styles.tabContent}>
-      <GlassContainer borderRadius={borderRadius.lg} style={styles.emptyCard}>
-        <Ionicons name="pulse-outline" size={moderateScale(40)} color={theme.textSecondary} />
-        <Text style={[styles.emptyText, { fontSize: fontSize(14), color: theme.textSecondary, marginTop: spacing.sm }]}>{t('profile.noActivity')}</Text>
-      </GlassContainer>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
@@ -652,24 +624,9 @@ const UserProfile = ({ route, navigation }) => {
             </View>
           </View>
           
-          <View style={styles.tabsSection}>
-            <View style={[styles.tabsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)' }]}>
-              <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('about')} activeOpacity={0.7}>
-                <Text style={[styles.tabText, { fontSize: fontSize(13), color: activeTab === 'about' ? theme.primary : theme.textSecondary, fontWeight: activeTab === 'about' ? '700' : '500' }]}>{t('profile.about')}</Text>
-                {activeTab === 'about' && <LinearGradient colors={theme.gradient} style={styles.tabIndicator} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('posts')} activeOpacity={0.7}>
-                <Text style={[styles.tabText, { fontSize: fontSize(13), color: activeTab === 'posts' ? theme.primary : theme.textSecondary, fontWeight: activeTab === 'posts' ? '700' : '500' }]}>{t('profile.posts')}</Text>
-                {activeTab === 'posts' && <LinearGradient colors={theme.gradient} style={styles.tabIndicator} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('activity')} activeOpacity={0.7}>
-                <Text style={[styles.tabText, { fontSize: fontSize(13), color: activeTab === 'activity' ? theme.primary : theme.textSecondary, fontWeight: activeTab === 'activity' ? '700' : '500' }]}>{t('profile.activity')}</Text>
-                {activeTab === 'activity' && <LinearGradient colors={theme.gradient} style={styles.tabIndicator} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />}
-              </TouchableOpacity>
-            </View>
-            {activeTab === 'about' && renderAboutTab()}
-            {activeTab === 'posts' && renderPostsTab()}
-            {activeTab === 'activity' && renderActivityTab()}
+          <View style={styles.contentSection}>
+            {renderAboutSection()}
+            {renderPostsSection()}
           </View>
         </ScrollView>
       </LinearGradient>
@@ -808,18 +765,14 @@ const styles = StyleSheet.create({
   statNumber: { fontWeight: '700', marginBottom: 2 }, 
   statLabel: { fontWeight: '500' }, 
   statDivider: { width: 1, height: moderateScale(30), opacity: 0.2 }, 
-  tabsSection: { paddingHorizontal: wp(5) }, 
-  tabsContainer: { 
-    flexDirection: 'row', 
-    padding: 3, 
-    marginBottom: spacing.md,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+  contentSection: { paddingHorizontal: wp(5) }, 
+  sectionContainer: { marginBottom: spacing.lg }, 
+  sectionHeader: { 
+    fontSize: fontSize(16), 
+    fontWeight: '700', 
+    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   }, 
-  tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, position: 'relative' }, 
-  tabText: { marginBottom: 2 }, 
-  tabIndicator: { position: 'absolute', bottom: 0, height: 2.5, width: '80%', borderRadius: borderRadius.xs }, 
-  tabContent: {}, 
   infoCard: { 
     padding: spacing.md,
     overflow: 'hidden',

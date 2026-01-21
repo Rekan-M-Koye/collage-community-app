@@ -23,7 +23,7 @@ import { borderRadius } from '../theme/designTokens';
 import UserCard from './UserCard';
 import PostCard from './PostCard';
 import { searchUsers } from '../../database/users';
-import { searchPosts } from '../../database/posts';
+import { searchPosts, enrichPostsWithUserData } from '../../database/posts';
 
 const SEARCH_FILTERS = {
   ALL: 'all',
@@ -34,7 +34,7 @@ const SEARCH_FILTERS = {
 
 const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, ref) => {
   const { t, theme, isDarkMode } = useAppSettings();
-  const { user } = useUser();
+  const { user: currentUser } = useUser();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -106,12 +106,17 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
       }
       
       if (filter === SEARCH_FILTERS.POSTS || filter === SEARCH_FILTERS.ALL) {
-        postsResults = await searchPosts(cleanQuery, user?.department, user?.major, 15);
+        postsResults = await searchPosts(cleanQuery, currentUser?.department, currentUser?.major, 15);
       }
       
       if (filter === SEARCH_FILTERS.HASHTAGS) {
         // Search specifically for hashtags/tags
-        postsResults = await searchPosts(`#${cleanQuery}`, user?.department, user?.major, 15);
+        postsResults = await searchPosts(`#${cleanQuery}`, currentUser?.department, currentUser?.major, 15);
+      }
+
+      // Enrich posts with user data (name, profile picture)
+      if (postsResults && postsResults.length > 0) {
+        postsResults = await enrichPostsWithUserData(postsResults);
       }
 
       setResults({
@@ -233,18 +238,26 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
     return (
       <FlatList
         data={[
-          ...(filteredUsers.length > 0 ? [{ type: 'header', title: t('search.users') || 'Users' }] : []),
-          ...filteredUsers.map(user => ({ type: 'user', data: user })),
-          ...(filteredPosts.length > 0 ? [{ type: 'header', title: activeFilter === SEARCH_FILTERS.HASHTAGS ? (t('search.taggedPosts') || 'Tagged Posts') : (t('search.posts') || 'Posts') }] : []),
+          ...(filteredUsers.length > 0 ? [{ type: 'header', title: t('search.users') || 'Users', icon: 'people' }] : []),
+          ...filteredUsers.map(searchedUser => ({ type: 'user', data: searchedUser })),
+          ...(filteredPosts.length > 0 ? [{ type: 'header', title: activeFilter === SEARCH_FILTERS.HASHTAGS ? (t('search.taggedPosts') || 'Tagged Posts') : (t('search.posts') || 'Posts'), icon: activeFilter === SEARCH_FILTERS.HASHTAGS ? 'pricetag' : 'document-text' }] : []),
           ...filteredPosts.map(post => ({ type: 'post', data: post })),
         ]}
         keyExtractor={(item, index) => `${item.type}-${index}`}
         renderItem={({ item }) => {
           if (item.type === 'header') {
             return (
-              <Text style={[styles.sectionHeader, { color: theme.text }]}>
-                {item.title}
-              </Text>
+              <View style={styles.sectionHeaderContainer}>
+                <Ionicons
+                  name={item.icon}
+                  size={moderateScale(16)}
+                  color={theme.primary}
+                  style={styles.sectionHeaderIcon}
+                />
+                <Text style={[styles.sectionHeader, { color: theme.text }]}>
+                  {item.title}
+                </Text>
+              </View>
             );
           } else if (item.type === 'user') {
             return (
@@ -395,38 +408,47 @@ const SearchBar = forwardRef(({ onUserPress, onPostPress, iconOnly = false }, re
               { key: SEARCH_FILTERS.PEOPLE, label: t('search.people') || 'People', icon: 'people-outline' },
               { key: SEARCH_FILTERS.POSTS, label: t('search.posts') || 'Posts', icon: 'document-text-outline' },
               { key: SEARCH_FILTERS.HASHTAGS, label: t('search.hashtags') || 'Tags', icon: 'pricetag-outline' },
-            ].map((filter) => (
-              <TouchableOpacity
-                key={filter.key}
-                style={[
-                  styles.filterTab,
-                  activeFilter === filter.key && {
-                    borderBottomWidth: 2,
-                    borderBottomColor: theme.primary,
-                  },
-                ]}
-                onPress={() => handleFilterChange(filter.key)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={filter.icon}
-                  size={moderateScale(14)}
-                  color={activeFilter === filter.key ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary)}
-                />
-                <Text
+            ].map((filter) => {
+              const isActive = activeFilter === filter.key;
+              return (
+                <TouchableOpacity
+                  key={filter.key}
                   style={[
-                    styles.filterTabText,
+                    styles.filterTab,
                     {
-                      color: activeFilter === filter.key ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.7)' : theme.textSecondary),
-                      fontWeight: activeFilter === filter.key ? '600' : '400',
+                      backgroundColor: isActive
+                        ? (isDarkMode ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.12)')
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'),
+                      borderColor: isActive
+                        ? theme.primary + '50'
+                        : 'transparent',
                     },
                   ]}
+                  onPress={() => handleFilterChange(filter.key)}
+                  activeOpacity={0.7}
                 >
-                  {filter.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Ionicons
+                    name={isActive ? filter.icon.replace('-outline', '') : filter.icon}
+                    size={moderateScale(16)}
+                    color={isActive ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary)}
+                  />
+                  <Text
+                    style={[
+                      styles.filterTabText,
+                      {
+                        color: isActive ? theme.primary : (isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary),
+                        fontWeight: isActive ? '600' : '500',
+                      },
+                    ]}
+                  >
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
+
+          <View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
 
           <View style={styles.resultsContainer}>
             {renderSearchResults()}
@@ -468,22 +490,32 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   filterTabsContainer: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
+    maxHeight: moderateScale(52),
   },
   filterTabsContent: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    alignItems: 'center',
   },
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: 4,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.sm + 2,
+    gap: spacing.xs,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
   },
   filterTabText: {
     fontSize: fontSize(11),
+  },
+  divider: {
+    height: 1,
+    width: '100%',
   },
   searchInputContainer: {
     flex: 1,
@@ -531,11 +563,18 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
   },
-  sectionHeader: {
-    fontWeight: 'bold',
-    fontSize: fontSize(18),
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: spacing.md,
     marginBottom: spacing.sm,
+  },
+  sectionHeaderIcon: {
+    marginRight: spacing.xs,
+  },
+  sectionHeader: {
+    fontWeight: '600',
+    fontSize: fontSize(16),
   },
   resultItem: {
     marginBottom: spacing.sm,

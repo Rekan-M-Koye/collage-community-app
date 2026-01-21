@@ -221,6 +221,11 @@ const MessageInput = ({
     // Clear message immediately for better UX
     setMessage('');
     
+    // Keep focus on input to prevent keyboard from closing
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    
     try {
       let imageUrl = null;
 

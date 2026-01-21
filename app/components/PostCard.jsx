@@ -317,7 +317,7 @@ const PostCard = ({
             </Text>
             {post.isEdited === true && (
               <Text style={[styles.editedText, { color: theme.textTertiary }]}>
-                ({t('post.edited')} {post.$updatedAt ? formatTimeAgo(post.$updatedAt, t) : ''})
+                ({t('post.edited')})
               </Text>
             )}
           </View>

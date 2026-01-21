@@ -208,10 +208,12 @@ export const createCustomGroup = async (groupData, creatorId) => {
             description: groupData.description || '',
             participants: members,
             department: groupData.department || null,
-            requiresRepresentative: false,
+            requiresRepresentative: groupData.requiresRepresentative || false,
             representatives: [creatorId],
             admins: [creatorId],
             messageCount: 0,
+            groupPhoto: groupData.groupPhoto || null,
+            settings: groupData.settings || null,
         };
 
         const chat = await databases.createDocument(
