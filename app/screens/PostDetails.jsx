@@ -20,7 +20,7 @@ import { useCustomAlert } from '../hooks/useCustomAlert';
 import { uploadImage } from '../../services/imgbbService';
 import { createReply, getRepliesByPost, updateReply, deleteReply, markReplyAsAccepted, unmarkReplyAsAccepted } from '../../database/replies';
 import { getUserDocument } from '../../database/auth';
-import { incrementPostViewCount } from '../../database/posts';
+import { incrementPostViewCount, getPost } from '../../database/posts';
 import { notifyPostReply } from '../../database/notifications';
 import ImageGalleryModal from './postDetails/ImageGalleryModal';
 import ReplyItem from './postDetails/ReplyItem';
@@ -31,8 +31,11 @@ const PostDetails = ({ navigation, route }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
   const { showAlert } = useCustomAlert();
-  const { post, onPostUpdate } = route.params || {};
+  const { post: initialPost, postId: routePostId, onPostUpdate } = route.params || {};
 
+  // State to hold the post - either from params or fetched
+  const [post, setPost] = useState(initialPost || null);
+  const [isLoadingPost, setIsLoadingPost] = useState(!initialPost && !!routePostId);
   const [replies, setReplies] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [replyImages, setReplyImages] = useState([]);
@@ -85,6 +88,30 @@ const PostDetails = ({ navigation, route }) => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleGoBack);
     return () => backHandler.remove();
   }, [handleGoBack]);
+
+  // Fetch post if only postId is provided (e.g., from notifications)
+  useEffect(() => {
+    const fetchPost = async () => {
+      if (!initialPost && routePostId) {
+        setIsLoadingPost(true);
+        try {
+          const fetchedPost = await getPost(routePostId);
+          if (fetchedPost) {
+            setPost(fetchedPost);
+          } else {
+            showAlert(t('common.error'), t('post.postNotFound') || 'Post not found', 'error');
+            navigation.goBack();
+          }
+        } catch (error) {
+          showAlert(t('common.error'), t('post.postNotFound') || 'Post not found', 'error');
+          navigation.goBack();
+        } finally {
+          setIsLoadingPost(false);
+        }
+      }
+    };
+    fetchPost();
+  }, [routePostId, initialPost]);
 
   useEffect(() => {
     if (post?.$id) {
@@ -468,6 +495,46 @@ const PostDetails = ({ navigation, route }) => {
   };
 
   const isPostOwner = user?.$id === post?.userId;
+
+  // Show loading state while fetching post
+  if (isLoadingPost) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('post.replies')}</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>{t('common.loading')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state if no post
+  if (!post) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('post.replies')}</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: theme.textSecondary }]}>{t('post.postNotFound') || 'Post not found'}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>

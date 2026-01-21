@@ -136,4 +136,49 @@ export const chatRoomStyles = StyleSheet.create({
   pinnedMessageText: {
     fontWeight: '400',
   },
+  // Search bar styles
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    gap: spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: Platform.OS === 'ios' ? spacing.xs : 0,
+  },
+  searchNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: spacing.sm,
+    gap: spacing.xs,
+  },
+  searchCount: {
+    minWidth: moderateScale(45),
+    textAlign: 'center',
+  },
+  searchNavBtn: {
+    padding: spacing.xs,
+  },
+  searchNavBtnDisabled: {
+    opacity: 0.4,
+  },
+  searchCloseBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  searchCloseText: {
+    fontWeight: '600',
+  },
 });

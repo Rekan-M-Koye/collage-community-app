@@ -117,11 +117,15 @@ const formatNotificationTime = (dateString, t) => {
 };
 
 const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme, isDarkMode, t }) => {
-  const icon = getNotificationIcon(notification.type);
-  const isUnread = !notification.isRead;
+  const icon = getNotificationIcon(notification?.type);
+  const isUnread = !notification?.isRead;
+  
+  // Add safeguards for missing data
+  const senderName = notification?.senderName || t('common.user') || 'User';
+  const createdAt = notification?.$createdAt;
   
   const getNotificationMessage = () => {
-    switch (notification.type) {
+    switch (notification?.type) {
       case NOTIFICATION_TYPES.POST_LIKE:
         return t('notifications.liked') || 'liked';
       case NOTIFICATION_TYPES.POST_REPLY:
@@ -136,6 +140,11 @@ const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme,
         return '';
     }
   };
+
+  // Skip rendering if notification is invalid
+  if (!notification || !notification.$id) {
+    return null;
+  }
 
   return (
     <View
@@ -181,14 +190,14 @@ const NotificationItem = ({ notification, onPress, onLongPress, onDelete, theme,
                 ]}
                 numberOfLines={1}
               >
-                <Text style={[styles.senderName, { color: theme.text }]}>{notification.senderName}</Text>
+                <Text style={[styles.senderName, { color: theme.text }]}>{senderName}</Text>
                 {' '}
                 <Text style={{ color: theme.textSecondary }}>{getNotificationMessage()}</Text>
               </Text>
               <View style={styles.timeRow}>
                 <Ionicons name="time-outline" size={10} color={theme.textSecondary} />
                 <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-                  {formatNotificationTime(notification.$createdAt, t)}
+                  {createdAt ? formatNotificationTime(createdAt, t) : ''}
                 </Text>
               </View>
             </View>
@@ -389,6 +398,10 @@ const Notifications = ({ navigation }) => {
 
   // Handle real-time notification updates
   const handleNewNotification = useCallback((newNotification) => {
+    if (!newNotification || !newNotification.$id) {
+      return;
+    }
+    
     setNotifications(prev => {
       // Check if notification already exists
       const exists = prev.some(n => n.$id === newNotification.$id);

@@ -248,6 +248,8 @@ const MessageBubble = ({
   isLastSeenMessage = false,
   groupMembers = [],
   onNavigateToProfile,
+  searchQuery = '',
+  isCurrentSearchResult = false,
 }) => {
   const { theme, isDarkMode, t, chatSettings } = useAppSettings();
   const [imageModalVisible, setImageModalVisible] = useState(false);
@@ -310,11 +312,55 @@ const MessageBubble = ({
     }
   };
 
-  // Render message content with @everyone highlighting and link detection
+  // Render message content with @everyone highlighting, link detection, and search highlighting
   const renderMessageContent = () => {
     if (!hasText) return null;
     
     const content = message.content;
+    
+    // Helper to highlight search matches in text
+    const highlightSearchMatches = (text, keyPrefix = '') => {
+      if (!searchQuery || searchQuery.trim().length === 0) {
+        return text;
+      }
+      
+      const query = searchQuery.toLowerCase();
+      const lowerText = text.toLowerCase();
+      const parts = [];
+      let lastIndex = 0;
+      let matchIndex = lowerText.indexOf(query, lastIndex);
+      
+      while (matchIndex !== -1) {
+        // Add text before match
+        if (matchIndex > lastIndex) {
+          parts.push(text.substring(lastIndex, matchIndex));
+        }
+        // Add highlighted match
+        parts.push(
+          <Text 
+            key={`${keyPrefix}-match-${matchIndex}`} 
+            style={[
+              styles.searchHighlight, 
+              { 
+                backgroundColor: isCurrentSearchResult ? '#FFEB3B' : '#FFF176',
+                color: '#000000',
+              }
+            ]}
+          >
+            {text.substring(matchIndex, matchIndex + query.length)}
+          </Text>
+        );
+        lastIndex = matchIndex + query.length;
+        matchIndex = lowerText.indexOf(query, lastIndex);
+      }
+      
+      // Add remaining text
+      if (lastIndex < text.length) {
+        parts.push(text.substring(lastIndex));
+      }
+      
+      return parts.length > 0 ? parts : text;
+    };
     
     // URL regex pattern
     const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
@@ -390,7 +436,7 @@ const MessageBubble = ({
             if (part.toLowerCase() === '@everyone' || part.toLowerCase() === '@all') {
               return (
                 <Text key={index} style={[styles.mentionHighlight, { color: isCurrentUser ? '#93C5FD' : theme.primary }]}>
-                  {part}
+                  {highlightSearchMatches(part, `mention-${index}`)}
                 </Text>
               );
             }
@@ -402,7 +448,7 @@ const MessageBubble = ({
                   style={[styles.userMentionText, { color: isCurrentUser ? '#93C5FD' : theme.primary }]}
                   onPress={() => handleMentionPress(part)}
                 >
-                  {part}
+                  {highlightSearchMatches(part, `user-${index}`)}
                 </Text>
               );
             }
@@ -416,11 +462,11 @@ const MessageBubble = ({
                   style={[styles.linkText, { color: isCurrentUser ? '#93C5FD' : theme.primary }]}
                   onPress={() => handleLinkPress(part)}
                 >
-                  {part}
+                  {highlightSearchMatches(part, `link-${index}`)}
                 </Text>
               );
             }
-            return part;
+            return <Text key={index}>{highlightSearchMatches(part, `text-${index}`)}</Text>;
           })}
         </Text>
       );
@@ -435,7 +481,7 @@ const MessageBubble = ({
         },
         hasImage && styles.messageTextWithImage,
       ]}>
-        {content}
+        {highlightSearchMatches(content, 'content')}
       </Text>
     );
   };
@@ -555,7 +601,8 @@ const MessageBubble = ({
   return (
     <View style={[
       styles.container,
-      isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer
+      isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
+      isCurrentSearchResult && styles.currentSearchResultContainer,
     ]}>
       {/* Show sender name for other users */}
       {!isCurrentUser && senderName && (
@@ -1060,6 +1107,21 @@ const styles = StyleSheet.create({
   mentionPreviewButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Search highlight styles
+  searchHighlight: {
+    borderRadius: 2,
+    paddingHorizontal: 2,
+  },
+  currentSearchResult: {
+    borderWidth: 2,
+    borderColor: '#FFEB3B',
+  },
+  currentSearchResultContainer: {
+    backgroundColor: 'rgba(255, 235, 59, 0.15)',
+    borderRadius: borderRadius.md,
+    marginHorizontal: -spacing.xs,
+    paddingHorizontal: spacing.xs,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   ImageBackground,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,6 +77,71 @@ const ChatRoom = ({ route, navigation }) => {
     handleClearChat,
   } = useChatRoom({ chat, user, t, navigation });
 
+  // Search in chat state
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+  const searchInputRef = useRef(null);
+
+  // Compute search results when query changes
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      const query = searchQuery.toLowerCase();
+      const results = messages
+        .map((msg, index) => ({ ...msg, originalIndex: index }))
+        .filter(msg => msg.content && msg.content.toLowerCase().includes(query));
+      setSearchResults(results);
+      setCurrentSearchIndex(results.length > 0 ? results.length - 1 : 0); // Start from newest (bottom)
+    } else {
+      setSearchResults([]);
+      setCurrentSearchIndex(0);
+    }
+  }, [searchQuery, messages]);
+
+  // Scroll to current search result
+  useEffect(() => {
+    if (searchResults.length > 0 && flatListRef.current) {
+      const currentResult = searchResults[currentSearchIndex];
+      if (currentResult) {
+        flatListRef.current.scrollToIndex({
+          index: currentResult.originalIndex,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }
+    }
+  }, [currentSearchIndex, searchResults]);
+
+  const handleSearchPrev = useCallback(() => {
+    if (searchResults.length > 0) {
+      setCurrentSearchIndex(prev => (prev > 0 ? prev - 1 : searchResults.length - 1));
+    }
+  }, [searchResults.length]);
+
+  const handleSearchNext = useCallback(() => {
+    if (searchResults.length > 0) {
+      setCurrentSearchIndex(prev => (prev < searchResults.length - 1 ? prev + 1 : 0));
+    }
+  }, [searchResults.length]);
+
+  const closeSearch = useCallback(() => {
+    setSearchActive(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setCurrentSearchIndex(0);
+  }, []);
+
+  const openSearch = useCallback(() => {
+    setSearchActive(true);
+    setTimeout(() => searchInputRef.current?.focus(), 100);
+  }, []);
+
+  // Get current search result messageId for highlighting
+  const currentSearchMessageId = searchResults.length > 0 
+    ? searchResults[currentSearchIndex]?.$id 
+    : null;
+
   useEffect(() => {
     // Get header background color to match chat background
     const getHeaderBgColor = () => {
@@ -122,6 +188,11 @@ const ChatRoom = ({ route, navigation }) => {
       headerTintColor: theme.text,
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <TouchableOpacity
+            style={{ marginRight: spacing.sm }}
+            onPress={openSearch}>
+            <Ionicons name="search-outline" size={moderateScale(22)} color={theme.text} />
+          </TouchableOpacity>
           {chat.type === 'custom_group' && (
             <TouchableOpacity
               style={{ marginRight: spacing.md }}
@@ -132,7 +203,7 @@ const ChatRoom = ({ route, navigation }) => {
         </View>
       ),
     });
-  }, [chat, isDarkMode, theme, muteStatus, chatSettings]);
+  }, [chat, isDarkMode, theme, muteStatus, chatSettings, openSearch, getChatDisplayName, handleChatHeaderPress, navigation, t]);
 
   const memoizedMessages = useMemo(() => messages, [messages]);
 
@@ -195,6 +266,9 @@ const ChatRoom = ({ route, navigation }) => {
     
     // Check if this is the last message seen by the other user (for animated read receipt)
     const isLastSeenMessage = isCurrentUser && item.$id === lastSeenMessageId;
+    
+    // Check if this message is the current search result
+    const isCurrentSearchResult = item.$id === currentSearchMessageId;
 
     return (
       <MessageBubble
@@ -222,6 +296,8 @@ const ChatRoom = ({ route, navigation }) => {
         isLastSeenMessage={isLastSeenMessage}
         groupMembers={groupMembers}
         onNavigateToProfile={handleNavigateToProfile}
+        searchQuery={searchActive ? searchQuery : ''}
+        isCurrentSearchResult={isCurrentSearchResult}
       />
     );
   };
@@ -309,11 +385,86 @@ const ChatRoom = ({ route, navigation }) => {
     );
   }
 
+  const handleScrollToIndexFailed = useCallback((info) => {
+    // Handle failed scroll - wait and retry
+    setTimeout(() => {
+      if (flatListRef.current && info.index < memoizedMessages.length) {
+        flatListRef.current.scrollToIndex({
+          index: info.index,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }
+    }, 100);
+  }, [memoizedMessages.length]);
+
+  const renderSearchBar = () => {
+    if (!searchActive) return null;
+    
+    const searchBarBg = isDarkMode ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.95)';
+    
+    return (
+      <View style={[styles.searchBar, { backgroundColor: searchBarBg }]}>
+        <View style={[styles.searchInputContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+          <Ionicons name="search" size={moderateScale(18)} color={theme.textSecondary} />
+          <TextInput
+            ref={searchInputRef}
+            style={[styles.searchInput, { color: theme.text, fontSize: fontSize(14) }]}
+            placeholder={t('chats.searchInChat')}
+            placeholderTextColor={theme.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={moderateScale(18)} color={theme.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        <View style={styles.searchNav}>
+          {searchResults.length > 0 ? (
+            <Text style={[styles.searchCount, { color: theme.text, fontSize: fontSize(12) }]}>
+              {currentSearchIndex + 1}/{searchResults.length}
+            </Text>
+          ) : searchQuery.length > 0 ? (
+            <Text style={[styles.searchCount, { color: theme.textSecondary, fontSize: fontSize(12) }]}>
+              {t('chats.noResultsFound')}
+            </Text>
+          ) : null}
+          
+          <TouchableOpacity 
+            onPress={handleSearchPrev} 
+            disabled={searchResults.length === 0}
+            style={[styles.searchNavBtn, searchResults.length === 0 && styles.searchNavBtnDisabled]}>
+            <Ionicons name="chevron-up" size={moderateScale(20)} color={searchResults.length > 0 ? theme.text : theme.textSecondary} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={handleSearchNext} 
+            disabled={searchResults.length === 0}
+            style={[styles.searchNavBtn, searchResults.length === 0 && styles.searchNavBtnDisabled]}>
+            <Ionicons name="chevron-down" size={moderateScale(20)} color={searchResults.length > 0 ? theme.text : theme.textSecondary} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={closeSearch} style={styles.searchCloseBtn}>
+            <Text style={[styles.searchCloseText, { color: theme.primary, fontSize: fontSize(14) }]}>
+              {t('common.close')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderChatContent = () => (
     <KeyboardAvoidingView 
       style={styles.keyboardAvoidingView}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 95 : 85}>
+      
+      {renderSearchBar()}
       
       {chat.requiresRepresentative && !canSend && (
         <View style={[
@@ -334,12 +485,23 @@ const ChatRoom = ({ route, navigation }) => {
         keyExtractor={(item, index) => item.$id || `message-${index}`}
         contentContainerStyle={styles.messagesList}
         ListEmptyComponent={renderEmpty}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={() => {
+          if (!searchActive) {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
+        onLayout={() => {
+          if (!searchActive) {
+            flatListRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         removeClippedSubviews={Platform.OS === 'android'}
         maxToRenderPerBatch={15}
         windowSize={10}
         initialNumToRender={20}
+        inverted={false}
+        maintainVisibleContentPosition={searchActive ? { minIndexForVisible: 0 } : undefined}
       />
 
       <MessageInput 

@@ -75,10 +75,6 @@ export const createNotification = async (notificationData) => {
 
         return notification;
     } catch (error) {
-        // Log error in development for debugging
-        if (__DEV__) {
-            // Notification creation failed - check Appwrite collection setup
-        }
         return null;
     }
 };
@@ -113,7 +109,6 @@ export const getNotifications = async (userId, limit = 20, offset = 0) => {
 
         return notifications.documents || [];
     } catch (error) {
-        // Return empty array on any error to prevent app crashes
         return [];
     }
 };

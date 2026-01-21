@@ -911,6 +911,7 @@ export default {
     tapForOptions: 'Tap for options',
     visitProfile: 'Visit Profile',
     searchInChat: 'Search in Chat',
+    noResultsFound: 'No results found',
     clearChat: 'Clear Chat',
     clearChatConfirm: 'Are you sure you want to clear all messages in this chat? This action cannot be undone.',
     chatCleared: 'Chat cleared successfully. {count} messages deleted.',

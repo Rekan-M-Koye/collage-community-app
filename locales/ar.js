@@ -904,6 +904,7 @@ export default {
     tapForOptions: 'اضغط للخيارات',
     visitProfile: 'زيارة الملف الشخصي',
     searchInChat: 'البحث في المحادثة',
+    noResultsFound: 'لا توجد نتائج',
     clearChat: 'مسح المحادثة',
     clearChatConfirm: 'هل أنت متأكد من مسح جميع الرسائل في هذه المحادثة؟ لا يمكن التراجع عن هذا الإجراء.',
     chatCleared: 'تم مسح المحادثة بنجاح. تم حذف {count} رسائل.',
