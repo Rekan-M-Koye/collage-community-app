@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList, RefreshControl, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, StatusBar, ActivityIndicator, Platform, FlatList, RefreshControl, Alert, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useUser } from '../context/UserContext';
@@ -359,7 +359,7 @@ const Profile = ({ navigation, route }) => {
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={moderateScale(20)} color={theme.textSecondary} />
               <View style={styles.infoTextContainer}>
-                <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary }]}>{t('profile.joinedDate') || 'Joined'}</Text>
+                <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary }]}>{t('profile.joinedDate')}</Text>
                 <Text style={[styles.infoValue, { fontSize: fontSize(13), color: theme.text }]}>
                   {new Date(user.$createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                 </Text>
@@ -368,6 +368,53 @@ const Profile = ({ navigation, route }) => {
           </>
         )}
       </View>
+
+      {/* Social Links - Own profile always visible */}
+      {user?.socialLinks && Object.values(user.socialLinks).some(v => v) && (
+        <View 
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: cardBackground,
+              borderRadius: borderRadius.lg,
+              borderWidth: isDarkMode ? 0 : 1,
+              borderColor: 'rgba(0, 0, 0, 0.04)',
+              marginTop: spacing.md,
+            }
+          ]}>
+          <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary, marginBottom: spacing.sm }]}>
+            {t('settings.socialLinks')}
+          </Text>
+          <View style={styles.socialLinksContainer}>
+            {[
+              { key: 'instagram', icon: 'logo-instagram', color: '#E4405F', prefix: 'https://instagram.com/' },
+              { key: 'twitter', icon: 'logo-twitter', color: '#1DA1F2', prefix: 'https://twitter.com/' },
+              { key: 'linkedin', icon: 'logo-linkedin', color: '#0A66C2', prefix: '' },
+              { key: 'github', icon: 'logo-github', color: isDarkMode ? '#FFFFFF' : '#333333', prefix: '' },
+              { key: 'website', icon: 'globe-outline', color: theme.primary, prefix: '' },
+            ].map(({ key, icon, color, prefix }) => {
+              const value = user.socialLinks?.[key];
+              if (!value) return null;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.socialLinkButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }]}
+                  onPress={() => {
+                    let url = value;
+                    if (!url.startsWith('http') && prefix) {
+                      url = prefix + url.replace('@', '');
+                    } else if (!url.startsWith('http') && key === 'website') {
+                      url = 'https://' + url;
+                    }
+                    Linking.openURL(url).catch(() => {});
+                  }}>
+                  <Ionicons name={icon} size={moderateScale(22)} color={color} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
     </View>
   );
 
@@ -641,6 +688,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   }, 
   emptyText: { fontWeight: '500', textAlign: 'center' },
+  socialLinksContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  socialLinkButton: {
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default Profile;

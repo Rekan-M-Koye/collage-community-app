@@ -50,7 +50,7 @@ const ProfileSettings = ({ navigation }) => {
 
   const bioInputRef = useRef(null);
   
-  const [editMode, setEditMode] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -65,7 +65,7 @@ const ProfileSettings = ({ navigation }) => {
     department: '',
     stage: '',
     bio: '',
-    pronouns: '',
+    gender: '',
     profilePicture: '',
     lastAcademicUpdate: null,
     socialLinks: {
@@ -75,6 +75,7 @@ const ProfileSettings = ({ navigation }) => {
       github: '',
       website: '',
     },
+    socialLinksVisibility: 'everyone',
   });
 
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -131,10 +132,11 @@ const ProfileSettings = ({ navigation }) => {
           department: user.department || '',
           stage: user.stage || '',
           bio: user.bio || '',
-          pronouns: user.pronouns || '',
+          gender: user.gender || '',
           profilePicture: user.profilePicture || '',
           lastAcademicUpdate: user.lastAcademicUpdate || null,
           socialLinks: user.socialLinks || { instagram: '', twitter: '', linkedin: '', github: '', website: '' },
+          socialLinksVisibility: user.socialLinksVisibility || 'everyone',
         });
       } else {
         const userData = await AsyncStorage.getItem('userData');
@@ -148,10 +150,11 @@ const ProfileSettings = ({ navigation }) => {
             department: parsedData.department || '',
             stage: parsedData.stage || '',
             bio: parsedData.bio || '',
-            pronouns: parsedData.pronouns || '',
+            gender: parsedData.gender || '',
             profilePicture: parsedData.profilePicture || '',
             lastAcademicUpdate: parsedData.lastAcademicUpdate || null,
             socialLinks: parsedData.socialLinks || { instagram: '', twitter: '', linkedin: '', github: '', website: '' },
+            socialLinksVisibility: parsedData.socialLinksVisibility || 'everyone',
           });
         }
       }
@@ -198,7 +201,7 @@ const ProfileSettings = ({ navigation }) => {
           title: t('common.success'),
           message: hasAcademicChanges ? t('settings.academicInfoUpdated') : t('settings.profileUpdated'),
         });
-        setEditMode(false);
+        setHasChanges(false);
       } else {
         throw new Error('Update failed');
       }
@@ -245,6 +248,7 @@ const ProfileSettings = ({ navigation }) => {
   };
 
   const handleUniversityChange = (value) => {
+    setHasChanges(true);
     setProfileData(prev => ({
       ...prev,
       university: value,
@@ -255,6 +259,7 @@ const ProfileSettings = ({ navigation }) => {
   };
 
   const handleCollegeChange = (value) => {
+    setHasChanges(true);
     setProfileData(prev => ({
       ...prev,
       college: value,
@@ -263,6 +268,7 @@ const ProfileSettings = ({ navigation }) => {
   };
 
   const handleDepartmentChange = (value) => {
+    setHasChanges(true);
     setProfileData(prev => ({
       ...prev,
       department: value,
@@ -270,6 +276,7 @@ const ProfileSettings = ({ navigation }) => {
   };
 
   const handleStageChange = (value) => {
+    setHasChanges(true);
     setProfileData(prev => ({
       ...prev,
       stage: value,
@@ -277,14 +284,22 @@ const ProfileSettings = ({ navigation }) => {
   };
 
   const handleBioChange = (text) => {
+    setHasChanges(true);
     setProfileData(prev => ({ ...prev, bio: text }));
   };
 
-  const handlePronounsChange = (text) => {
-    setProfileData(prev => ({ ...prev, pronouns: text }));
+  const handleGenderChange = (value) => {
+    setHasChanges(true);
+    setProfileData(prev => ({ ...prev, gender: value }));
+  };
+
+  const handleSocialLinksVisibilityChange = (value) => {
+    setHasChanges(true);
+    setProfileData(prev => ({ ...prev, socialLinksVisibility: value }));
   };
 
   const handleSocialLinkChange = (platform, text) => {
+    setHasChanges(true);
     setProfileData(prev => ({
       ...prev,
       socialLinks: {
@@ -295,6 +310,7 @@ const ProfileSettings = ({ navigation }) => {
   };
 
   const handleFullNameChange = (text) => {
+    setHasChanges(true);
     setProfileData(prev => ({ ...prev, fullName: text }));
   };
 
@@ -323,6 +339,21 @@ const ProfileSettings = ({ navigation }) => {
       { key: 'fourthYear', label: t('stages.fourthYear') },
       { key: 'fifthYear', label: t('stages.fifthYear') },
       { key: 'sixthYear', label: t('stages.sixthYear') },
+    ];
+  }, [t]);
+
+  const genderOptions = useMemo(() => {
+    return [
+      { key: 'male', label: t('settings.male') },
+      { key: 'female', label: t('settings.female') },
+    ];
+  }, [t]);
+
+  const socialLinksVisibilityOptions = useMemo(() => {
+    return [
+      { key: 'everyone', label: t('settings.visibilityEveryone') },
+      { key: 'friends', label: t('settings.visibilityFriends') },
+      { key: 'noone', label: t('settings.visibilityNoOne') },
     ];
   }, [t]);
 
@@ -378,15 +409,7 @@ const ProfileSettings = ({ navigation }) => {
               {t('settings.profileSettings')}
             </Text>
           </View>
-          {!editMode ? (
-            <TouchableOpacity
-              onPress={() => setEditMode(true)}
-              style={styles.editButton}>
-              <Ionicons name="create-outline" size={24} color={theme.primary} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.placeholder} />
-          )}
+          <View style={styles.placeholder} />
         </View>
 
         <ScrollView
@@ -445,7 +468,7 @@ const ProfileSettings = ({ navigation }) => {
                   ]}
                   value={profileData.fullName}
                   onChangeText={handleFullNameChange}
-                  editable={editMode}
+                  editable={true}
                   placeholderTextColor={theme.textSecondary}
                 />
               </View>
@@ -486,7 +509,7 @@ const ProfileSettings = ({ navigation }) => {
                   ]}
                   value={profileData.bio}
                   onChangeText={handleBioChange}
-                  editable={editMode}
+                  editable={true}
                   multiline={true}
                   numberOfLines={4}
                   maxLength={200}
@@ -500,26 +523,16 @@ const ProfileSettings = ({ navigation }) => {
                 </Text>
               </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={[styles.inputLabel, { color: theme.text }]}>
-                  {t('settings.pronouns') || 'Pronouns'}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                  {t('settings.gender')}
                 </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.text,
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-                    },
-                  ]}
-                  value={profileData.pronouns}
-                  onChangeText={handlePronounsChange}
-                  editable={editMode}
-                  maxLength={30}
-                  placeholder={t('settings.pronounsPlaceholder') || 'e.g. he/him, she/her, they/them'}
-                  placeholderTextColor={theme.textSecondary}
-                  autoCorrect={false}
+                <SearchableDropdownNew
+                  items={genderOptions}
+                  value={profileData.gender}
+                  onSelect={handleGenderChange}
+                  placeholder={t('settings.selectGender')}
+                  icon="person-outline"
                 />
               </View>
 
@@ -551,7 +564,7 @@ const ProfileSettings = ({ navigation }) => {
                     ]}
                     value={profileData.socialLinks?.[key] || ''}
                     onChangeText={(text) => handleSocialLinkChange(key, text)}
-                    editable={editMode}
+                    editable={true}
                     placeholder={placeholder}
                     placeholderTextColor={theme.textSecondary}
                     autoCapitalize="none"
@@ -561,10 +574,23 @@ const ProfileSettings = ({ navigation }) => {
                 </View>
               ))}
 
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                  {t('settings.socialLinksVisibility')}
+                </Text>
+                <SearchableDropdownNew
+                  items={socialLinksVisibilityOptions}
+                  value={profileData.socialLinksVisibility}
+                  onSelect={handleSocialLinksVisibilityChange}
+                  placeholder={t('settings.selectVisibility')}
+                  icon="eye-outline"
+                />
+              </View>
+
               <View style={styles.divider} />
 
               <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                {t('settings.academicInfo') || 'Academic Information'}
+                {t('settings.academicInfo')}
               </Text>
 
               {!canEditAcademic && cooldownInfo && (
@@ -584,7 +610,7 @@ const ProfileSettings = ({ navigation }) => {
                 </View>
               )}
 
-              {canEditAcademic && editMode && (
+              {canEditAcademic && (
                 <View style={[styles.cooldownBanner, { 
                   backgroundColor: isDarkMode ? 'rgba(52, 199, 89, 0.15)' : 'rgba(52, 199, 89, 0.1)',
                   borderColor: isDarkMode ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)',
@@ -608,7 +634,7 @@ const ProfileSettings = ({ navigation }) => {
                   onSelect={handleUniversityChange}
                   placeholder={t('auth.selectUniversity')}
                   icon="school-outline"
-                  disabled={!editMode || !canEditAcademic}
+                  disabled={!canEditAcademic}
                 />
               </View>
 
@@ -622,7 +648,7 @@ const ProfileSettings = ({ navigation }) => {
                   onSelect={handleCollegeChange}
                   placeholder={t('auth.selectCollege')}
                   icon="library-outline"
-                  disabled={!editMode || !canEditAcademic || !profileData.university}
+                  disabled={!canEditAcademic || !profileData.university}
                 />
               </View>
 
@@ -636,7 +662,7 @@ const ProfileSettings = ({ navigation }) => {
                   onSelect={handleDepartmentChange}
                   placeholder={t('auth.selectDepartment')}
                   icon="briefcase-outline"
-                  disabled={!editMode || !canEditAcademic || !profileData.college}
+                  disabled={!canEditAcademic || !profileData.college}
                 />
               </View>
 
@@ -650,42 +676,42 @@ const ProfileSettings = ({ navigation }) => {
                   onSelect={handleStageChange}
                   placeholder={t('auth.selectStage')}
                   icon="stats-chart-outline"
-                  disabled={!editMode || !canEditAcademic}
+                  disabled={!canEditAcademic}
                 />
               </View>
             </View>
           </GlassCard>
 
-          {editMode && (
-            <View style={styles.actions}>
-              <TouchableOpacity
-                onPress={() => {
-                  setEditMode(false);
-                  loadUserProfile();
-                }}
-                style={[styles.cancelButton, { borderColor: theme.border }]}>
-                <Text style={[styles.cancelButtonText, { color: theme.text }]}>
-                  {t('common.cancel')}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={saveProfileChanges}
-                disabled={isSaving}
-                style={[styles.saveButton, { backgroundColor: theme.primary }]}>
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveButtonText}>
-                    {t('common.save')}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.bottomPadding} />
+          <View style={[styles.bottomPadding, hasChanges && { height: hp(12) }]} />
         </ScrollView>
+
+        {hasChanges && (
+          <View style={[styles.fixedButtonContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              onPress={() => {
+                setHasChanges(false);
+                loadUserProfile();
+              }}
+              style={[styles.cancelButton, { borderColor: theme.border }]}>
+              <Text style={[styles.cancelButtonText, { color: theme.text }]}>
+                {t('common.cancel')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={saveProfileChanges}
+              disabled={isSaving}
+              style={[styles.saveButton, { backgroundColor: theme.primary }]}>
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>
+                  {t('common.save')}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </View>
   );
@@ -862,10 +888,17 @@ const styles = StyleSheet.create({
   cooldownSubtitle: {
     fontSize: responsiveFontSize(12),
   },
-  actions: {
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     gap: spacing.md,
-    marginTop: spacing.xl,
+    paddingHorizontal: wp(5),
+    paddingTop: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
+    borderTopWidth: 1,
   },
   cancelButton: {
     flex: 1,

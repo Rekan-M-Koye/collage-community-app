@@ -10,6 +10,7 @@ import PostCard from '../components/PostCard';
 import { getPostsByUser, togglePostLike } from '../../database/posts';
 import { getUserById, followUser, unfollowUser, isFollowing as checkIsFollowing, blockUser } from '../../database/users';
 import { notifyFollow } from '../../database/notifications';
+import { createPrivateChat } from '../../database/chatHelpers';
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 import { useUserProfile } from '../hooks/useRealtimeSubscription';
@@ -29,6 +30,7 @@ const UserProfile = ({ route, navigation }) => {
   const [userError, setUserError] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
+  const [messageLoading, setMessageLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
 
   // Generate profile link for sharing
@@ -100,13 +102,23 @@ const UserProfile = ({ route, navigation }) => {
       try {
         const fetchedUser = await getUserById(userId);
         
+        // Parse socialLinks from profileViews field (stored as JSON string)
+        let socialLinksData = { links: null, visibility: 'everyone' };
+        if (fetchedUser.profileViews) {
+          try {
+            socialLinksData = JSON.parse(fetchedUser.profileViews);
+          } catch (e) {
+            socialLinksData = { links: null, visibility: 'everyone' };
+          }
+        }
+        
         // Map the database fields to expected format
         const mappedUser = {
           $id: fetchedUser.$id,
           fullName: fetchedUser.name || fetchedUser.fullName,
           email: fetchedUser.email,
           bio: fetchedUser.bio || '',
-          pronouns: fetchedUser.pronouns || '',
+          gender: fetchedUser.gender || '',
           profilePicture: fetchedUser.profilePicture || '',
           university: fetchedUser.university || '',
           college: fetchedUser.major || fetchedUser.college || '',
@@ -115,6 +127,8 @@ const UserProfile = ({ route, navigation }) => {
           postsCount: fetchedUser.postsCount || 0,
           followersCount: fetchedUser.followersCount || 0,
           followingCount: fetchedUser.followingCount || 0,
+          socialLinks: socialLinksData.links || null,
+          socialLinksVisibility: socialLinksData.visibility || 'everyone',
         };
         
         setUserData(mappedUser);
@@ -253,6 +267,35 @@ const UserProfile = ({ route, navigation }) => {
     );
   };
 
+  const handleDirectMessage = async () => {
+    if (messageLoading || !currentUser?.$id || !userId || currentUser.$id === userId) return;
+    
+    setMessageLoading(true);
+    try {
+      const chat = await createPrivateChat(
+        { $id: currentUser.$id, name: currentUser.fullName || currentUser.name },
+        { $id: userId, name: userData?.fullName || userData?.name }
+      );
+      
+      if (chat) {
+        navigation.navigate('ChatRoom', {
+          chat: {
+            ...chat,
+            otherUser: {
+              $id: userId,
+              name: userData?.fullName || userData?.name,
+              profilePicture: userData?.profilePicture,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), t('chats.errorCreatingChat') || 'Failed to start conversation');
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
   const handleLike = async (postId) => {
     if (!currentUser?.$id) return;
     
@@ -345,7 +388,7 @@ const UserProfile = ({ route, navigation }) => {
     name: userData.fullName || 'User',
     email: userData.email || '',
     bio: userData.bio || t('profile.defaultBio'),
-    pronouns: userData.pronouns || '',
+    gender: userData.gender || '',
     avatar: avatarUri,
     university: userData.university ? t(`universities.${userData.university}`) : '',
     college: userData.college ? t(`colleges.${userData.college}`) : '',
@@ -423,11 +466,14 @@ const UserProfile = ({ route, navigation }) => {
         )}
       </GlassContainer>
 
-      {/* Social Links */}
-      {userData?.socialLinks && Object.values(userData.socialLinks).some(v => v) && (
+      {/* Social Links - respect visibility settings */}
+      {userData?.socialLinks && 
+       Object.values(userData.socialLinks).some(v => v) && 
+       (userData.socialLinksVisibility === 'everyone' || 
+        (userData.socialLinksVisibility === 'friends' && isFollowing)) && (
         <GlassContainer borderRadius={borderRadius.lg} style={[styles.infoCard, { marginTop: spacing.md }]}>
           <Text style={[styles.infoLabel, { fontSize: fontSize(10), color: theme.textSecondary, marginBottom: spacing.sm }]}>
-            {t('settings.socialLinks') || 'Social Links'}
+            {t('settings.socialLinks')}
           </Text>
           <View style={styles.socialLinksContainer}>
             {[
@@ -553,63 +599,88 @@ const UserProfile = ({ route, navigation }) => {
             </View>
             
             <Text style={[styles.name, { fontSize: fontSize(22), color: isDarkMode ? '#FFFFFF' : '#1C1C1E' }]}>{userProfile.name}</Text>
-            {userProfile.pronouns ? (
-              <Text style={[styles.pronouns, { fontSize: fontSize(12), color: 'rgba(255,255,255,0.6)' }]}>
-                {userProfile.pronouns}
+            {userProfile.gender ? (
+              <Text style={[styles.genderText, { fontSize: fontSize(12), color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(28, 28, 30, 0.6)' }]}>
+                {t(`settings.${userProfile.gender}`)}
               </Text>
             ) : null}
             {userProfile.bio && <Text style={[styles.bio, { fontSize: fontSize(13), color: 'rgba(255,255,255,0.8)' }]} numberOfLines={2}>{userProfile.bio}</Text>}
             
-            <TouchableOpacity 
-              onPress={handleFollowToggle} 
-              activeOpacity={0.8}
-              disabled={followLoading}
-              style={styles.followButtonContainer}
-            >
-              <LinearGradient
-                colors={isFollowing ? ['#64748b', '#475569'] : theme.gradient}
-                style={styles.followButton}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                {followLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons 
-                      name={isFollowing ? 'person-remove-outline' : 'person-add-outline'} 
-                      size={moderateScale(18)} 
-                      color="#FFFFFF" 
-                    />
-                    <Text style={[styles.followButtonText, { fontSize: fontSize(14) }]}>
-                      {isFollowing ? t('profile.unfollow') : t('profile.follow')}
-                    </Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-            
-            {/* Block User Button - Only show for other users */}
+            {/* Action Buttons Row - Compact layout */}
             {currentUser?.$id && userId && currentUser.$id !== userId && (
-              <TouchableOpacity 
-                onPress={handleBlockUser} 
-                activeOpacity={0.8}
-                disabled={blockLoading}
-                style={styles.blockButtonContainer}
-              >
-                <View style={[styles.blockButton, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
-                  {blockLoading ? (
-                    <ActivityIndicator size="small" color="#EF4444" />
-                  ) : (
-                    <>
-                      <Ionicons name="ban-outline" size={moderateScale(16)} color="#EF4444" />
-                      <Text style={[styles.blockButtonText, { fontSize: fontSize(12), color: '#EF4444' }]}>
-                        {t('profile.blockUser')}
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </TouchableOpacity>
+              <View style={styles.actionButtonsRow}>
+                {/* Follow Button */}
+                <TouchableOpacity 
+                  onPress={handleFollowToggle} 
+                  activeOpacity={0.8}
+                  disabled={followLoading}
+                  style={styles.actionButton}
+                >
+                  <LinearGradient
+                    colors={isFollowing ? ['#64748b', '#475569'] : theme.gradient}
+                    style={styles.actionButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {followLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons 
+                          name={isFollowing ? 'person-remove-outline' : 'person-add-outline'} 
+                          size={moderateScale(16)} 
+                          color="#FFFFFF" 
+                        />
+                        <Text style={[styles.actionButtonText, { fontSize: fontSize(12) }]}>
+                          {isFollowing ? t('profile.unfollow') : t('profile.follow')}
+                        </Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Message Button */}
+                <TouchableOpacity 
+                  onPress={handleDirectMessage} 
+                  activeOpacity={0.8}
+                  disabled={messageLoading}
+                  style={styles.actionButton}
+                >
+                  <LinearGradient
+                    colors={['#10B981', '#059669']}
+                    style={styles.actionButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {messageLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="chatbubble-outline" size={moderateScale(16)} color="#FFFFFF" />
+                        <Text style={[styles.actionButtonText, { fontSize: fontSize(12) }]}>
+                          {t('profile.message')}
+                        </Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Block Button */}
+                <TouchableOpacity 
+                  onPress={handleBlockUser} 
+                  activeOpacity={0.8}
+                  disabled={blockLoading}
+                  style={styles.actionButtonSmall}
+                >
+                  <View style={[styles.blockButtonCompact, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                    {blockLoading ? (
+                      <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                      <Ionicons name="ban-outline" size={moderateScale(18)} color="#EF4444" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
             )}
             
             <View style={[styles.statsContainer, { backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.7)' : 'rgba(255, 255, 255, 0.7)' }]}>
@@ -733,7 +804,7 @@ const styles = StyleSheet.create({
   avatarInner: { width: moderateScale(104), height: moderateScale(104), borderRadius: moderateScale(52), padding: 3 }, 
   avatar: { width: moderateScale(98), height: moderateScale(98), borderRadius: moderateScale(49) }, 
   name: { fontWeight: '700', marginBottom: spacing.xs / 2, textAlign: 'center', textShadowColor: 'rgba(0, 0, 0, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }, 
-  pronouns: { textAlign: 'center', marginBottom: spacing.xs, fontStyle: 'italic' },
+  genderText: { textAlign: 'center', marginBottom: spacing.xs, fontStyle: 'italic' },
   bio: { textAlign: 'center', marginBottom: spacing.md, lineHeight: fontSize(18), paddingHorizontal: wp(5) }, 
   followButtonContainer: {
     marginBottom: spacing.md,
@@ -756,6 +827,44 @@ const styles = StyleSheet.create({
   followButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  // New compact action buttons
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  actionButton: {
+    flex: 1,
+    maxWidth: wp(35),
+  },
+  actionButtonSmall: {
+    width: moderateScale(40),
+  },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  blockButtonCompact: {
+    width: moderateScale(40),
+    height: moderateScale(36),
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   blockButtonContainer: {
     marginBottom: spacing.sm,

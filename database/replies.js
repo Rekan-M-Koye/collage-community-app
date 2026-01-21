@@ -122,10 +122,11 @@ export const updateReply = async (replyId, replyData, postId = null) => {
             throw new Error('Invalid reply data');
         }
         
-        const updateData = {
-            ...replyData,
-            isEdited: true
-        };
+        // Only add isEdited if text is being changed (not for vote updates)
+        const updateData = { ...replyData };
+        if (replyData.text !== undefined && replyData.isEdited !== false) {
+            updateData.isEdited = true;
+        }
 
         const reply = await databases.updateDocument(
             config.databaseId,

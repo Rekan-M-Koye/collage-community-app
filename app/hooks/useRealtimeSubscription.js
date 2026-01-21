@@ -211,23 +211,29 @@ export const usePosts = (department, onPostUpdate, onPostDelete, enabled = true)
  * Triggers when new notifications are created for the user
  */
 export const useNotifications = (userId, onNewNotification, onNotificationUpdate, enabled = true) => {
-  const handleUpdate = useCallback((payload) => {
+  const handleUpdate = useCallback((payload, events) => {
     // Only notify if notification is for this user
     if (payload.userId === userId) {
-      onNewNotification?.(payload);
+      // Check if this is a create event (new notification) or update event
+      const isCreate = events?.some(e => e.includes('.create'));
+      if (isCreate) {
+        onNewNotification?.(payload);
+      } else {
+        onNotificationUpdate?.(payload);
+      }
     }
-  }, [userId, onNewNotification]);
+  }, [userId, onNewNotification, onNotificationUpdate]);
 
-  const handleNotificationUpdate = useCallback((payload) => {
+  const handleDelete = useCallback((payload) => {
     if (payload.userId === userId) {
-      onNotificationUpdate?.(payload);
+      // Optionally handle notification deletion
     }
-  }, [userId, onNotificationUpdate]);
+  }, [userId]);
 
   useRealtimeSubscription(
     config.notificationsCollectionId,
     handleUpdate,
-    null,
+    handleDelete,
     { enabled: enabled && !!userId }
   );
 };

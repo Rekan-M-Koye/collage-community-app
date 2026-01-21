@@ -134,6 +134,65 @@ const ChatSettings = ({ navigation }) => {
     }
   };
 
+  // Helper function to render preview bubbles
+  const renderPreviewBubbles = () => (
+    <>
+      {/* Received message bubble */}
+      <View style={[styles.previewBubbleWrapper, { alignSelf: 'flex-start' }]}>
+        <View style={[
+          styles.previewBubble,
+          { 
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            borderRadius: getBubbleRadius(),
+            borderBottomLeftRadius: spacing.xs / 2,
+          }
+        ]}>
+          <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+            {t('settings.sampleReceived') || 'Hey! How are you?'}
+          </Text>
+          <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:30</Text>
+        </View>
+      </View>
+      
+      {/* Sent message bubble - with current settings */}
+      <View style={[styles.previewBubbleWrapper, { alignSelf: 'flex-end' }]}>
+        {chatSettings.bubbleColor?.startsWith('gradient::') ? (
+          <LinearGradient
+            colors={chatSettings.bubbleColor.replace('gradient::', '').split(',')}
+            style={[
+              styles.previewBubble,
+              { 
+                borderRadius: getBubbleRadius(),
+                borderBottomRightRadius: spacing.xs / 2,
+              }
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+              {t('settings.sampleSent') || "I'm doing great! 😊"}
+            </Text>
+            <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:31</Text>
+          </LinearGradient>
+        ) : (
+          <View style={[
+            styles.previewBubble,
+            { 
+              backgroundColor: chatSettings.bubbleColor || '#667eea',
+              borderRadius: getBubbleRadius(),
+              borderBottomRightRadius: spacing.xs / 2,
+            }
+          ]}>
+            <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
+              {t('settings.sampleSent') || "I'm doing great! 😊"}
+            </Text>
+            <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:31</Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <LinearGradient
@@ -171,70 +230,34 @@ const ChatSettings = ({ navigation }) => {
           
           {/* Bubble Preview - Shows actual bubble appearance */}
           <GlassCard style={styles.previewCard}>
-            <View style={[
-              styles.bubblePreviewContainer,
-              { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }
-            ]}>
-              {/* Received message bubble */}
-              <View style={[
-                styles.previewBubbleWrapper,
-                { alignSelf: 'flex-start' }
-              ]}>
-                <View style={[
-                  styles.previewBubble,
-                  { 
-                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                    borderRadius: getBubbleRadius(),
-                    borderBottomLeftRadius: spacing.xs / 2,
-                  }
-                ]}>
-                  <Text style={[styles.previewText, { color: theme.text }]}>
-                    {t('settings.sampleReceived') || 'Hey! How are you?'}
-                  </Text>
-                  <Text style={[styles.previewTime, { color: theme.textSecondary }]}>10:30</Text>
-                </View>
+            {/* Preview Background - shows selected background */}
+            {selectedBackground?.startsWith('gradient_') ? (
+              <LinearGradient
+                colors={BACKGROUND_PRESETS.find(b => b.key === selectedBackground)?.colors || ['#1a1a2e', '#16213e']}
+                style={styles.bubblePreviewContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {renderPreviewBubbles()}
+              </LinearGradient>
+            ) : selectedBackground?.startsWith('pattern_') ? (
+              <View style={[styles.bubblePreviewContainer, { backgroundColor: BACKGROUND_PRESETS.find(b => b.key === selectedBackground)?.baseColor || '#1a1a2e' }]}>
+                {renderPreviewBubbles()}
               </View>
-              
-              {/* Sent message bubble - with current settings */}
-              <View style={[
-                styles.previewBubbleWrapper,
-                { alignSelf: 'flex-end' }
-              ]}>
-                {chatSettings.bubbleColor?.startsWith('gradient::') ? (
-                  <LinearGradient
-                    colors={chatSettings.bubbleColor.replace('gradient::', '').split(',')}
-                    style={[
-                      styles.previewBubble,
-                      { 
-                        borderRadius: getBubbleRadius(),
-                        borderBottomRightRadius: spacing.xs / 2,
-                      }
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
-                      {t('settings.sampleSent') || "I'm doing great! 😊"}
-                    </Text>
-                    <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:31</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={[
-                    styles.previewBubble,
-                    { 
-                      backgroundColor: chatSettings.bubbleColor || '#667eea',
-                      borderRadius: getBubbleRadius(),
-                      borderBottomRightRadius: spacing.xs / 2,
-                    }
-                  ]}>
-                    <Text style={[styles.previewText, { color: '#FFFFFF' }]}>
-                      {t('settings.sampleSent') || "I'm doing great! 😊"}
-                    </Text>
-                    <Text style={[styles.previewTime, { color: 'rgba(255,255,255,0.6)' }]}>10:31</Text>
-                  </View>
-                )}
+            ) : selectedBackground && !BACKGROUND_PRESETS.find(b => b.key === selectedBackground) ? (
+              <View style={styles.bubblePreviewContainer}>
+                <Image 
+                  source={{ uri: selectedBackground }} 
+                  style={StyleSheet.absoluteFillObject}
+                  resizeMode="cover"
+                />
+                {renderPreviewBubbles()}
               </View>
-            </View>
+            ) : (
+              <View style={[styles.bubblePreviewContainer, { backgroundColor: isDarkMode ? '#1a1a2e' : '#f5f5f5' }]}>
+                {renderPreviewBubbles()}
+              </View>
+            )}
           </GlassCard>
         </View>
 

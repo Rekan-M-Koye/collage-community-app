@@ -303,12 +303,17 @@ const PostDetails = ({ navigation, route }) => {
   };
 
   const handleUpvote = async (reply) => {
+    if (!user?.$id) {
+      showAlert(t('common.error'), t('auth.loginRequired') || 'Please log in', 'error');
+      return;
+    }
+    
     try {
       const upvotedBy = reply.upvotedBy || [];
       const downvotedBy = reply.downvotedBy || [];
       
       if (upvotedBy.includes(user.$id)) {
-        showAlert(t('common.error'), t('post.alreadyUpvoted'), 'error');
+        showAlert(t('common.info') || 'Info', t('post.alreadyUpvoted'), 'info');
         return;
       }
       
@@ -321,7 +326,7 @@ const PostDetails = ({ navigation, route }) => {
         downCount: newDownvotedBy.length,
         upvotedBy: newUpvotedBy,
         downvotedBy: newDownvotedBy,
-      });
+      }, post.$id);
       
       if (newUpvotedBy.length >= 5 && !reply.isAccepted) {
         await markReplyAsAccepted(reply.$id);
@@ -334,6 +339,11 @@ const PostDetails = ({ navigation, route }) => {
   };
 
   const handleDownvote = async (reply) => {
+    if (!user?.$id) {
+      showAlert(t('common.error'), t('auth.loginRequired') || 'Please log in', 'error');
+      return;
+    }
+    
     try {
       const upvotedBy = reply.upvotedBy || [];
       const downvotedBy = reply.downvotedBy || [];
@@ -352,7 +362,7 @@ const PostDetails = ({ navigation, route }) => {
         downCount: newDownvotedBy.length,
         upvotedBy: newUpvotedBy,
         downvotedBy: newDownvotedBy,
-      });
+      }, post.$id);
       
       await loadReplies();
     } catch (error) {

@@ -26,11 +26,22 @@ export const UserProvider = ({ children }) => {
         const completeUserData = await getCompleteUserData();
         
         if (completeUserData) {
+          // Parse socialLinks from profileViews field (stored as JSON string)
+          let socialLinksData = { links: null, visibility: 'everyone' };
+          if (completeUserData.profileViews) {
+            try {
+              socialLinksData = JSON.parse(completeUserData.profileViews);
+            } catch (e) {
+              socialLinksData = { links: null, visibility: 'everyone' };
+            }
+          }
+          
           const userData = {
             $id: completeUserData.$id,
             email: completeUserData.email,
             fullName: completeUserData.name,
             bio: completeUserData.bio || '',
+            gender: completeUserData.gender || '',
             profilePicture: completeUserData.profilePicture || '',
             university: completeUserData.university || '',
             college: completeUserData.major || '',
@@ -41,6 +52,8 @@ export const UserProvider = ({ children }) => {
             followingCount: completeUserData.followingCount || 0,
             isEmailVerified: completeUserData.emailVerification || false,
             lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
+            socialLinks: socialLinksData.links || null,
+            socialLinksVisibility: socialLinksData.visibility || 'everyone',
           };
           
           await AsyncStorage.setItem('userData', JSON.stringify(userData));
@@ -80,11 +93,22 @@ export const UserProvider = ({ children }) => {
         const completeUserData = await getCompleteUserData();
         
         if (completeUserData) {
+          // Parse socialLinks from profileViews field (stored as JSON string)
+          let socialLinksData = { links: null, visibility: 'everyone' };
+          if (completeUserData.profileViews) {
+            try {
+              socialLinksData = JSON.parse(completeUserData.profileViews);
+            } catch (e) {
+              socialLinksData = { links: null, visibility: 'everyone' };
+            }
+          }
+          
           const userData = {
             $id: completeUserData.$id,
             email: completeUserData.email,
             fullName: completeUserData.name,
             bio: completeUserData.bio || '',
+            gender: completeUserData.gender || '',
             profilePicture: completeUserData.profilePicture || '',
             university: completeUserData.university || '',
             college: completeUserData.major || '',
@@ -95,6 +119,8 @@ export const UserProvider = ({ children }) => {
             followingCount: completeUserData.followingCount || 0,
             isEmailVerified: completeUserData.emailVerification || false,
             lastAcademicUpdate: completeUserData.lastAcademicUpdate || null,
+            socialLinks: socialLinksData.links || null,
+            socialLinksVisibility: socialLinksData.visibility || 'everyone',
           };
           
           await AsyncStorage.setItem('userData', JSON.stringify(userData));
@@ -171,6 +197,16 @@ export const UserProvider = ({ children }) => {
           appwriteUpdates.year = stageToYear(updates.stage);
         }
         if (updates.lastAcademicUpdate !== undefined) appwriteUpdates.lastAcademicUpdate = updates.lastAcademicUpdate;
+        if (updates.gender !== undefined) appwriteUpdates.gender = updates.gender;
+        
+        // Store socialLinks and visibility as JSON in profileViews field
+        if (updates.socialLinks !== undefined || updates.socialLinksVisibility !== undefined) {
+          const socialLinksData = {
+            links: updates.socialLinks !== undefined ? updates.socialLinks : updatedData.socialLinks,
+            visibility: updates.socialLinksVisibility !== undefined ? updates.socialLinksVisibility : updatedData.socialLinksVisibility,
+          };
+          appwriteUpdates.profileViews = JSON.stringify(socialLinksData);
+        }
         
         await updateUserDocument(appwriteUser.$id, appwriteUpdates);
       }

@@ -152,8 +152,9 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
       const newLastId = reversedMessages.length > 0 ? reversedMessages[reversedMessages.length - 1].$id : null;
       
       setMessages(prev => {
-        // Keep optimistic messages that are still sending
-        const pendingOptimistic = prev.filter(m => m._isOptimistic && m._status === 'sending');
+        // Keep ALL optimistic messages (both sending and recently sent)
+        // This prevents messages from disappearing during the race condition
+        const optimisticMessages = prev.filter(m => m._isOptimistic);
         
         // Create a map of server messages by ID for quick lookup
         const serverMessageMap = new Map(reversedMessages.map(m => [m.$id, m]));
@@ -168,11 +169,13 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
           return serverMsg;
         });
         
-        // Filter out optimistic messages that now exist on server
-        const remainingOptimistic = pendingOptimistic.filter(opt => 
+        // Filter out optimistic messages that now exist on server (by content match)
+        const remainingOptimistic = optimisticMessages.filter(opt => 
           !reversedMessages.some(m => 
             m.senderId === opt.senderId && 
-            m.content === opt.content
+            m.content === opt.content &&
+            // Also check if created within the last 30 seconds (to avoid false matches)
+            Math.abs(new Date(m.$createdAt) - new Date(opt.$createdAt)) < 30000
           )
         );
         

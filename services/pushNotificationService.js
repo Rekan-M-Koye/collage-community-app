@@ -7,15 +7,106 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const PUSH_TOKEN_KEY = 'expoPushToken';
 const PERMISSION_STATUS_KEY = 'notificationPermissionStatus';
 
+/**
+ * Check if the user has enabled notifications globally and for specific category
+ * @param {string} notificationType - The type of notification (chat_message, post_like, post_reply, follow, etc.)
+ * @returns {Promise<boolean>} Whether notifications should be shown
+ */
+const shouldShowNotification = async (notificationType) => {
+  try {
+    // Check if notifications are globally enabled
+    const notificationsEnabled = await AsyncStorage.getItem('notificationsEnabled');
+    if (notificationsEnabled === 'false') {
+      return false;
+    }
+
+    // Check quiet hours
+    const quietHoursStr = await AsyncStorage.getItem('quietHours');
+    if (quietHoursStr) {
+      const quietHours = JSON.parse(quietHoursStr);
+      if (quietHours.enabled) {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const [startHour, startMin] = (quietHours.startTime || '22:00').split(':').map(Number);
+        const [endHour, endMin] = (quietHours.endTime || '07:00').split(':').map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+
+        // Handle overnight quiet hours (e.g., 22:00 - 07:00)
+        let isInQuietHours = false;
+        if (startMinutes > endMinutes) {
+          isInQuietHours = currentMinutes >= startMinutes || currentMinutes < endMinutes;
+        } else {
+          isInQuietHours = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        }
+
+        if (isInQuietHours) {
+          return false;
+        }
+      }
+    }
+
+    // Check category-specific settings
+    const notificationSettingsStr = await AsyncStorage.getItem('notificationSettings');
+    if (notificationSettingsStr) {
+      const settings = JSON.parse(notificationSettingsStr);
+      
+      // Map notification types to setting keys
+      switch (notificationType) {
+        case 'chat_message':
+          // This could be a direct or group chat - handled separately
+          return true;
+        case 'direct_chat':
+          return settings.directChats !== false;
+        case 'group_chat':
+          return settings.groupChats !== false;
+        case 'post_like':
+          return settings.postLikes !== false;
+        case 'post_reply':
+          return settings.postReplies !== false;
+        case 'mention':
+          return settings.mentions !== false;
+        case 'follow':
+        case 'friend_post':
+          return settings.friendPosts !== false;
+        default:
+          return true;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    return true; // Default to showing notification if there's an error
+  }
+};
+
 // Configure how notifications should be displayed when app is in foreground
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data || {};
+    const notificationType = data.type || 'default';
+    
+    // Check if we should show this notification based on user settings
+    const shouldShow = await shouldShowNotification(notificationType);
+    
+    if (!shouldShow) {
+      return {
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    }
+    
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 /**
@@ -330,14 +421,31 @@ export const sendGeneralPushNotification = async ({
   postId = null,
 }) => {
   try {
+    // Validate required parameters
+    if (!recipientUserId || !senderId) {
+      return null;
+    }
+
     // Don't send notification to yourself
     if (recipientUserId === senderId) {
       return null;
     }
 
     // Import database functions here to avoid circular dependencies
-    const { databases, config } = require('../database/config');
-    const { Query } = require('appwrite');
+    let databases, config, Query;
+    try {
+      const dbConfig = require('../database/config');
+      databases = dbConfig.databases;
+      config = dbConfig.config;
+      Query = require('appwrite').Query;
+    } catch (importError) {
+      return null;
+    }
+
+    // Check if push tokens collection is configured
+    if (!config.pushTokensCollectionId || !config.databaseId) {
+      return null;
+    }
 
     // Get push token for recipient
     const pushTokens = await databases.listDocuments(
@@ -349,11 +457,14 @@ export const sendGeneralPushNotification = async ({
       ]
     );
 
-    if (!pushTokens.documents || pushTokens.documents.length === 0) {
+    if (!pushTokens?.documents || pushTokens.documents.length === 0) {
       return null;
     }
 
-    const token = pushTokens.documents[0].token;
+    const token = pushTokens.documents[0]?.token;
+    if (!token) {
+      return null;
+    }
 
     // Prepare notification message
     const message = {
@@ -528,4 +639,5 @@ export default {
   checkInitialNotification,
   sendChatPushNotification,
   sendGeneralPushNotification,
+  shouldShowNotification,
 };

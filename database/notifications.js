@@ -27,11 +27,16 @@ export const NOTIFICATION_TYPES = {
 export const createNotification = async (notificationData) => {
     try {
         if (!notificationData || typeof notificationData !== 'object') {
-            throw new Error('Invalid notification data');
+            return null;
         }
 
         if (!notificationData.userId || !notificationData.type) {
-            throw new Error('userId and type are required');
+            return null;
+        }
+
+        // Check if collection ID is configured
+        if (!config.notificationsCollectionId) {
+            return null;
         }
 
         // Don't create notification if user is notifying themselves
@@ -39,23 +44,42 @@ export const createNotification = async (notificationData) => {
             return null;
         }
 
+        // Build notification document with only valid fields
+        const notificationDoc = {
+            userId: notificationData.userId,
+            senderId: notificationData.senderId,
+            type: notificationData.type,
+            isRead: false,
+        };
+
+        // Add optional fields only if they have values
+        if (notificationData.senderName) {
+            notificationDoc.senderName = notificationData.senderName;
+        }
+        if (notificationData.senderProfilePicture) {
+            notificationDoc.senderProfilePicture = notificationData.senderProfilePicture;
+        }
+        if (notificationData.postId) {
+            notificationDoc.postId = notificationData.postId;
+        }
+        if (notificationData.postPreview) {
+            notificationDoc.postPreview = notificationData.postPreview;
+        }
+
         const notification = await databases.createDocument(
             config.databaseId,
             config.notificationsCollectionId,
             ID.unique(),
-            {
-                ...notificationData,
-                isRead: false,
-            }
+            notificationDoc
         );
 
         return notification;
     } catch (error) {
-        // If collection doesn't exist, fail silently
-        if (error.code === 404) {
-            return null;
+        // Log error in development for debugging
+        if (__DEV__) {
+            // Notification creation failed - check Appwrite collection setup
         }
-        throw error;
+        return null;
     }
 };
 
@@ -69,10 +93,10 @@ export const createNotification = async (notificationData) => {
 export const getNotifications = async (userId, limit = 20, offset = 0) => {
     try {
         if (!userId || typeof userId !== 'string') {
-            throw new Error('Invalid user ID');
+            return [];
         }
 
-        if (!config.notificationsCollectionId) {
+        if (!config.notificationsCollectionId || !config.databaseId) {
             return [];
         }
 
@@ -82,18 +106,15 @@ export const getNotifications = async (userId, limit = 20, offset = 0) => {
             [
                 Query.equal('userId', userId),
                 Query.orderDesc('$createdAt'),
-                Query.limit(limit),
+                Query.limit(Math.min(limit, 100)),
                 Query.offset(offset),
             ]
         );
 
-        return notifications.documents;
+        return notifications.documents || [];
     } catch (error) {
-        // If collection doesn't exist, return empty array
-        if (error.code === 404) {
-            return [];
-        }
-        throw error;
+        // Return empty array on any error to prevent app crashes
+        return [];
     }
 };
 
@@ -271,30 +292,31 @@ export const deleteAllNotifications = async (userId) => {
  * @param {string} postPreview - Preview of post content
  */
 export const notifyPostLike = async (postOwnerId, likerId, likerName, likerPhoto, postId, postPreview) => {
-    // Send push notification
-    try {
-        await sendGeneralPushNotification({
-            recipientUserId: postOwnerId,
-            senderId: likerId,
-            senderName: likerName,
-            type: NOTIFICATION_TYPES.POST_LIKE,
-            title: likerName,
-            body: `❤️ liked your post`,
-            postId,
-        });
-    } catch (pushError) {
-        // Silent fail for push notification
-    }
-
-    return createNotification({
+    // Create in-app notification first (this is the primary notification)
+    const notification = await createNotification({
         userId: postOwnerId,
         senderId: likerId,
         senderName: likerName,
-        senderProfilePicture: likerPhoto,
+        senderProfilePicture: likerPhoto || null,
         type: NOTIFICATION_TYPES.POST_LIKE,
-        postId,
-        postPreview: postPreview?.substring(0, 50),
+        postId: postId || null,
+        postPreview: postPreview?.substring(0, 50) || null,
     });
+
+    // Send push notification in background (non-blocking)
+    sendGeneralPushNotification({
+        recipientUserId: postOwnerId,
+        senderId: likerId,
+        senderName: likerName,
+        type: NOTIFICATION_TYPES.POST_LIKE,
+        title: likerName,
+        body: `❤️ liked your post`,
+        postId,
+    }).catch(() => {
+        // Silent fail for push notification
+    });
+
+    return notification;
 };
 
 /**
@@ -307,30 +329,31 @@ export const notifyPostLike = async (postOwnerId, likerId, likerName, likerPhoto
  * @param {string} replyPreview - Preview of reply content
  */
 export const notifyPostReply = async (postOwnerId, replierId, replierName, replierPhoto, postId, replyPreview) => {
-    // Send push notification
-    try {
-        await sendGeneralPushNotification({
-            recipientUserId: postOwnerId,
-            senderId: replierId,
-            senderName: replierName,
-            type: NOTIFICATION_TYPES.POST_REPLY,
-            title: replierName,
-            body: `💬 replied: ${replyPreview?.substring(0, 50) || 'replied to your post'}`,
-            postId,
-        });
-    } catch (pushError) {
-        // Silent fail for push notification
-    }
-
-    return createNotification({
+    // Create in-app notification first (this is the primary notification)
+    const notification = await createNotification({
         userId: postOwnerId,
         senderId: replierId,
         senderName: replierName,
-        senderProfilePicture: replierPhoto,
+        senderProfilePicture: replierPhoto || null,
         type: NOTIFICATION_TYPES.POST_REPLY,
-        postId,
-        postPreview: replyPreview?.substring(0, 50),
+        postId: postId || null,
+        postPreview: replyPreview?.substring(0, 50) || null,
     });
+
+    // Send push notification in background (non-blocking)
+    sendGeneralPushNotification({
+        recipientUserId: postOwnerId,
+        senderId: replierId,
+        senderName: replierName,
+        type: NOTIFICATION_TYPES.POST_REPLY,
+        title: replierName,
+        body: `💬 replied: ${replyPreview?.substring(0, 50) || 'replied to your post'}`,
+        postId,
+    }).catch(() => {
+        // Silent fail for push notification
+    });
+
+    return notification;
 };
 
 /**
@@ -343,30 +366,31 @@ export const notifyPostReply = async (postOwnerId, replierId, replierName, repli
  * @param {string} contextPreview - Preview of the context
  */
 export const notifyMention = async (mentionedUserId, mentionerId, mentionerName, mentionerPhoto, postId, contextPreview) => {
-    // Send push notification
-    try {
-        await sendGeneralPushNotification({
-            recipientUserId: mentionedUserId,
-            senderId: mentionerId,
-            senderName: mentionerName,
-            type: NOTIFICATION_TYPES.MENTION,
-            title: mentionerName,
-            body: `📢 mentioned you: ${contextPreview?.substring(0, 50) || 'mentioned you'}`,
-            postId,
-        });
-    } catch (pushError) {
-        // Silent fail for push notification
-    }
-
-    return createNotification({
+    // Create in-app notification first (this is the primary notification)
+    const notification = await createNotification({
         userId: mentionedUserId,
         senderId: mentionerId,
         senderName: mentionerName,
-        senderProfilePicture: mentionerPhoto,
+        senderProfilePicture: mentionerPhoto || null,
         type: NOTIFICATION_TYPES.MENTION,
-        postId,
-        postPreview: contextPreview?.substring(0, 50),
+        postId: postId || null,
+        postPreview: contextPreview?.substring(0, 50) || null,
     });
+
+    // Send push notification in background (non-blocking)
+    sendGeneralPushNotification({
+        recipientUserId: mentionedUserId,
+        senderId: mentionerId,
+        senderName: mentionerName,
+        type: NOTIFICATION_TYPES.MENTION,
+        title: mentionerName,
+        body: `📢 mentioned you: ${contextPreview?.substring(0, 50) || 'mentioned you'}`,
+        postId,
+    }).catch(() => {
+        // Silent fail for push notification
+    });
+
+    return notification;
 };
 
 /**
@@ -379,30 +403,31 @@ export const notifyMention = async (mentionedUserId, mentionerId, mentionerName,
  * @param {string} postPreview - Preview of post content
  */
 export const notifyFriendPost = async (followerId, posterId, posterName, posterPhoto, postId, postPreview) => {
-    // Send push notification
-    try {
-        await sendGeneralPushNotification({
-            recipientUserId: followerId,
-            senderId: posterId,
-            senderName: posterName,
-            type: NOTIFICATION_TYPES.FRIEND_POST,
-            title: posterName,
-            body: `📝 posted: ${postPreview?.substring(0, 50) || 'shared a new post'}`,
-            postId,
-        });
-    } catch (pushError) {
-        // Silent fail for push notification
-    }
-
-    return createNotification({
+    // Create in-app notification first (this is the primary notification)
+    const notification = await createNotification({
         userId: followerId,
         senderId: posterId,
         senderName: posterName,
-        senderProfilePicture: posterPhoto,
+        senderProfilePicture: posterPhoto || null,
         type: NOTIFICATION_TYPES.FRIEND_POST,
-        postId,
-        postPreview: postPreview?.substring(0, 50),
+        postId: postId || null,
+        postPreview: postPreview?.substring(0, 50) || null,
     });
+
+    // Send push notification in background (non-blocking)
+    sendGeneralPushNotification({
+        recipientUserId: followerId,
+        senderId: posterId,
+        senderName: posterName,
+        type: NOTIFICATION_TYPES.FRIEND_POST,
+        title: posterName,
+        body: `📝 posted: ${postPreview?.substring(0, 50) || 'shared a new post'}`,
+        postId,
+    }).catch(() => {
+        // Silent fail for push notification
+    });
+
+    return notification;
 };
 
 /**
@@ -413,26 +438,29 @@ export const notifyFriendPost = async (followerId, posterId, posterName, posterP
  * @param {string} followerPhoto - Profile picture of follower
  */
 export const notifyFollow = async (followedUserId, followerId, followerName, followerPhoto) => {
-    // Send push notification
-    try {
-        await sendGeneralPushNotification({
-            recipientUserId: followedUserId,
-            senderId: followerId,
-            senderName: followerName,
-            type: NOTIFICATION_TYPES.FOLLOW,
-            title: followerName,
-            body: `👋 started following you`,
-            postId: null,
-        });
-    } catch (pushError) {
-        // Silent fail for push notification
-    }
-
-    return createNotification({
+    // Create in-app notification first (this is the primary notification)
+    const notification = await createNotification({
         userId: followedUserId,
         senderId: followerId,
         senderName: followerName,
-        senderProfilePicture: followerPhoto,
+        senderProfilePicture: followerPhoto || null,
         type: NOTIFICATION_TYPES.FOLLOW,
+        postId: null,
+        postPreview: null,
     });
+
+    // Send push notification in background (non-blocking)
+    sendGeneralPushNotification({
+        recipientUserId: followedUserId,
+        senderId: followerId,
+        senderName: followerName,
+        type: NOTIFICATION_TYPES.FOLLOW,
+        title: followerName,
+        body: `👋 started following you`,
+        postId: null,
+    }).catch(() => {
+        // Silent fail for push notification
+    });
+
+    return notification;
 };

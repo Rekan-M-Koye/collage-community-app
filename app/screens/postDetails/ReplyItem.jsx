@@ -138,7 +138,7 @@ const ReplyItem = ({
         >
           <Ionicons 
             name={(reply.upvotedBy || []).includes(reply.currentUserId) ? 'arrow-up' : 'arrow-up-outline'} 
-            size={18} 
+            size={14} 
             color={(reply.upvotedBy || []).includes(reply.currentUserId) ? '#FFFFFF' : '#10B981'} 
           />
           <Text style={[
@@ -158,7 +158,7 @@ const ReplyItem = ({
         >
           <Ionicons 
             name={(reply.downvotedBy || []).includes(reply.currentUserId) ? 'arrow-down' : 'arrow-down-outline'} 
-            size={18} 
+            size={14} 
             color={(reply.downvotedBy || []).includes(reply.currentUserId) ? '#FFFFFF' : '#EF4444'} 
           />
           <Text style={[
@@ -320,16 +320,17 @@ const styles = StyleSheet.create({
   },
   replyVoteContainer: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 6,
+    marginTop: 4,
   },
   voteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    gap: 4,
+    gap: 3,
   },
   voteButtonActive: {
     backgroundColor: '#10B981',
@@ -337,17 +338,17 @@ const styles = StyleSheet.create({
   voteButtonDown: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    gap: 4,
+    gap: 3,
   },
   voteButtonDownActive: {
     backgroundColor: '#EF4444',
   },
   voteCount: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
   },
   menuOverlay: {

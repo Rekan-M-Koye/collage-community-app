@@ -169,13 +169,13 @@ const ReplyCard = ({
             activeOpacity={0.7}>
             <Ionicons 
               name={(reply.upvotedBy || []).includes(user?.$id) ? "arrow-up" : "arrow-up-outline"} 
-              size={moderateScale(18)} 
+              size={moderateScale(14)} 
               color={(reply.upvotedBy || []).includes(user?.$id) ? "#FFFFFF" : "#4CAF50"} 
             />
             <Text style={[
               styles.voteCount, 
               { 
-                fontSize: fontSize(12), 
+                fontSize: fontSize(11), 
                 color: (reply.upvotedBy || []).includes(user?.$id) ? "#FFFFFF" : "#4CAF50" 
               }
             ]}>
@@ -195,13 +195,13 @@ const ReplyCard = ({
             activeOpacity={0.7}>
             <Ionicons 
               name={(reply.downvotedBy || []).includes(user?.$id) ? "arrow-down" : "arrow-down-outline"} 
-              size={moderateScale(18)} 
+              size={moderateScale(14)} 
               color={(reply.downvotedBy || []).includes(user?.$id) ? "#FFFFFF" : "#F44336"} 
             />
             <Text style={[
               styles.voteCount, 
               { 
-                fontSize: fontSize(12), 
+                fontSize: fontSize(11), 
                 color: (reply.downvotedBy || []).includes(user?.$id) ? "#FFFFFF" : "#F44336" 
               }
             ]}>
@@ -386,10 +386,10 @@ const styles = StyleSheet.create({
   voteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    gap: spacing.xs / 2,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 3,
+    borderRadius: borderRadius.xs + 2,
+    gap: 2,
   },
   voteCount: {
     fontWeight: '600',

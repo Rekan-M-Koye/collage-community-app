@@ -21,6 +21,7 @@ import SearchBar from '../components/SearchBar';
 import FeedSelector from '../components/FeedSelector';
 import FilterSortModal, { SORT_OPTIONS } from '../components/FilterSortModal';
 import PostCard from '../components/PostCard';
+import GreetingBanner from '../components/GreetingBanner';
 import { PostCardSkeleton } from '../components/SkeletonLoader';
 import {
   wp,
@@ -132,6 +133,12 @@ const Home = ({ navigation, route }) => {
     };
     loadUnreadCount();
     
+    // Set up periodic refresh every 5 minutes as fallback for realtime
+    // This is battery-efficient as it only runs when app is in foreground
+    const intervalId = setInterval(() => {
+      loadUnreadCount();
+    }, 5 * 60 * 1000); // 5 minutes
+    
     // Refresh count and check for post updates when screen is focused
     const unsubscribe = navigation.addListener('focus', async () => {
       loadUnreadCount();
@@ -153,7 +160,11 @@ const Home = ({ navigation, route }) => {
         navigation.setParams({ updatedPostId: undefined, updatedReplyCount: undefined });
       }
     });
-    return unsubscribe;
+    
+    return () => {
+      unsubscribe();
+      clearInterval(intervalId);
+    };
   }, [user?.$id, navigation, route?.params?.updatedPostId, route?.params?.updatedReplyCount]);
 
   // Real-time notification subscription for badge updates
@@ -678,6 +689,7 @@ const Home = ({ navigation, route }) => {
         )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.postsListContent}
+        ListHeaderComponent={<GreetingBanner />}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
