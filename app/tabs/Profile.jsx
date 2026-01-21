@@ -11,7 +11,7 @@ import { getPostsByUser, togglePostLike, markQuestionAsResolved, deletePost } fr
 import { wp, hp, fontSize, spacing, moderateScale } from '../utils/responsive';
 import { borderRadius } from '../theme/designTokens';
 
-const Profile = ({ navigation }) => {
+const Profile = ({ navigation, route }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user, isLoading, refreshUser } = useUser();
   const insets = useSafeAreaInsets();
@@ -48,10 +48,28 @@ const Profile = ({ navigation }) => {
     const unsubscribe = navigation.addListener('focus', () => {
       refreshUser();
       setImageKey(Date.now());
-      setPostsLoaded(false);
+      
+      // Check if there's a post that needs to be refreshed
+      const updatedPostId = route?.params?.updatedPostId;
+      const updatedReplyCount = route?.params?.updatedReplyCount;
+      
+      if (updatedPostId !== undefined && updatedReplyCount !== undefined) {
+        // Update the specific post in the list
+        setUserPosts(prevPosts => 
+          prevPosts.map(p => 
+            p.$id === updatedPostId 
+              ? { ...p, replyCount: updatedReplyCount }
+              : p
+          )
+        );
+        // Clear the params
+        navigation.setParams({ updatedPostId: undefined, updatedReplyCount: undefined });
+      } else {
+        setPostsLoaded(false);
+      }
     });
     return unsubscribe;
-  }, [navigation, refreshUser]);
+  }, [navigation, refreshUser, route?.params?.updatedPostId, route?.params?.updatedReplyCount]);
 
   // Posts are always visible, so load them when user is available
   useEffect(() => {

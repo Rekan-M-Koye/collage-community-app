@@ -40,12 +40,43 @@ const SignIn = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showEmailSuggestion, setShowEmailSuggestion] = useState(false);
   
   const { t, theme, isDarkMode } = useAppSettings();
   const { setUserData } = useUser();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+
+  // Handle email change and show suggestion when @ is typed
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    // Show suggestion when user types @ but hasn't completed the domain
+    if (text.includes('@') && !text.includes('@epu.edu.iq') && !text.endsWith('.')) {
+      const atIndex = text.lastIndexOf('@');
+      const afterAt = text.substring(atIndex + 1);
+      // Show suggestion if the domain part is incomplete
+      if (afterAt.length === 0 || 'epu.edu.iq'.startsWith(afterAt.toLowerCase())) {
+        setShowEmailSuggestion(true);
+      } else {
+        setShowEmailSuggestion(false);
+      }
+    } else {
+      setShowEmailSuggestion(false);
+    }
+  };
+
+  // Apply email suggestion
+  const applyEmailSuggestion = () => {
+    const atIndex = email.lastIndexOf('@');
+    if (atIndex !== -1) {
+      const beforeAt = email.substring(0, atIndex);
+      setEmail(beforeAt + '@epu.edu.iq');
+    } else {
+      setEmail(email + '@epu.edu.iq');
+    }
+    setShowEmailSuggestion(false);
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -304,16 +335,26 @@ const SignIn = ({ navigation }) => {
                     placeholder={t('auth.collegeEmail')}
                     placeholderTextColor={theme.input.placeholder}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={handleEmailChange}
                     onFocus={() => setEmailFocused(true)}
-                    onBlur={() => setEmailFocused(false)}
+                    onBlur={() => {
+                      setEmailFocused(false);
+                      // Hide suggestion on blur with a small delay
+                      setTimeout(() => setShowEmailSuggestion(false), 200);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    caretHidden={false}
-                    contextMenuHidden={false}
-                    selectTextOnFocus={false}
                   />
+                  {showEmailSuggestion && (
+                    <TouchableOpacity 
+                      onPress={applyEmailSuggestion}
+                      style={[styles.emailSuggestion, { backgroundColor: theme.primary }]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.emailSuggestionText}>@epu.edu.iq</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </GlassInput>
 
@@ -519,6 +560,17 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontWeight: '500',
+  },
+  emailSuggestion: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.xs,
+  },
+  emailSuggestionText: {
+    color: '#FFFFFF',
+    fontSize: fontSize(12),
+    fontWeight: '600',
   },
   eyeIcon: {
     padding: spacing.xs,

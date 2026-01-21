@@ -1,5 +1,6 @@
 import { databases, config } from './config';
 import { ID, Query } from 'appwrite';
+import { sendGeneralPushNotification } from '../services/pushNotificationService';
 
 /**
  * Notification Types:
@@ -270,6 +271,21 @@ export const deleteAllNotifications = async (userId) => {
  * @param {string} postPreview - Preview of post content
  */
 export const notifyPostLike = async (postOwnerId, likerId, likerName, likerPhoto, postId, postPreview) => {
+    // Send push notification
+    try {
+        await sendGeneralPushNotification({
+            recipientUserId: postOwnerId,
+            senderId: likerId,
+            senderName: likerName,
+            type: NOTIFICATION_TYPES.POST_LIKE,
+            title: likerName,
+            body: `❤️ liked your post`,
+            postId,
+        });
+    } catch (pushError) {
+        // Silent fail for push notification
+    }
+
     return createNotification({
         userId: postOwnerId,
         senderId: likerId,
@@ -291,6 +307,21 @@ export const notifyPostLike = async (postOwnerId, likerId, likerName, likerPhoto
  * @param {string} replyPreview - Preview of reply content
  */
 export const notifyPostReply = async (postOwnerId, replierId, replierName, replierPhoto, postId, replyPreview) => {
+    // Send push notification
+    try {
+        await sendGeneralPushNotification({
+            recipientUserId: postOwnerId,
+            senderId: replierId,
+            senderName: replierName,
+            type: NOTIFICATION_TYPES.POST_REPLY,
+            title: replierName,
+            body: `💬 replied: ${replyPreview?.substring(0, 50) || 'replied to your post'}`,
+            postId,
+        });
+    } catch (pushError) {
+        // Silent fail for push notification
+    }
+
     return createNotification({
         userId: postOwnerId,
         senderId: replierId,
@@ -312,6 +343,21 @@ export const notifyPostReply = async (postOwnerId, replierId, replierName, repli
  * @param {string} contextPreview - Preview of the context
  */
 export const notifyMention = async (mentionedUserId, mentionerId, mentionerName, mentionerPhoto, postId, contextPreview) => {
+    // Send push notification
+    try {
+        await sendGeneralPushNotification({
+            recipientUserId: mentionedUserId,
+            senderId: mentionerId,
+            senderName: mentionerName,
+            type: NOTIFICATION_TYPES.MENTION,
+            title: mentionerName,
+            body: `📢 mentioned you: ${contextPreview?.substring(0, 50) || 'mentioned you'}`,
+            postId,
+        });
+    } catch (pushError) {
+        // Silent fail for push notification
+    }
+
     return createNotification({
         userId: mentionedUserId,
         senderId: mentionerId,
@@ -333,6 +379,21 @@ export const notifyMention = async (mentionedUserId, mentionerId, mentionerName,
  * @param {string} postPreview - Preview of post content
  */
 export const notifyFriendPost = async (followerId, posterId, posterName, posterPhoto, postId, postPreview) => {
+    // Send push notification
+    try {
+        await sendGeneralPushNotification({
+            recipientUserId: followerId,
+            senderId: posterId,
+            senderName: posterName,
+            type: NOTIFICATION_TYPES.FRIEND_POST,
+            title: posterName,
+            body: `📝 posted: ${postPreview?.substring(0, 50) || 'shared a new post'}`,
+            postId,
+        });
+    } catch (pushError) {
+        // Silent fail for push notification
+    }
+
     return createNotification({
         userId: followerId,
         senderId: posterId,
@@ -352,6 +413,21 @@ export const notifyFriendPost = async (followerId, posterId, posterName, posterP
  * @param {string} followerPhoto - Profile picture of follower
  */
 export const notifyFollow = async (followedUserId, followerId, followerName, followerPhoto) => {
+    // Send push notification
+    try {
+        await sendGeneralPushNotification({
+            recipientUserId: followedUserId,
+            senderId: followerId,
+            senderName: followerName,
+            type: NOTIFICATION_TYPES.FOLLOW,
+            title: followerName,
+            body: `👋 started following you`,
+            postId: null,
+        });
+    } catch (pushError) {
+        // Silent fail for push notification
+    }
+
     return createNotification({
         userId: followedUserId,
         senderId: followerId,

@@ -53,6 +53,7 @@ const SignUp = ({ navigation, route }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailSuggestion, setShowEmailSuggestion] = useState(false);
   
   const [nameFocused, setNameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
@@ -63,6 +64,36 @@ const SignUp = ({ navigation, route }) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Handle email change and show suggestion when @ is typed
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    // Show suggestion when user types @ but hasn't completed the domain
+    if (text.includes('@') && !text.includes('@epu.edu.iq') && !text.endsWith('.')) {
+      const atIndex = text.lastIndexOf('@');
+      const afterAt = text.substring(atIndex + 1);
+      // Show suggestion if the domain part is incomplete
+      if (afterAt.length === 0 || 'epu.edu.iq'.startsWith(afterAt.toLowerCase())) {
+        setShowEmailSuggestion(true);
+      } else {
+        setShowEmailSuggestion(false);
+      }
+    } else {
+      setShowEmailSuggestion(false);
+    }
+  };
+
+  // Apply email suggestion
+  const applyEmailSuggestion = () => {
+    const atIndex = email.lastIndexOf('@');
+    if (atIndex !== -1) {
+      const beforeAt = email.substring(0, atIndex);
+      setEmail(beforeAt + '@epu.edu.iq');
+    } else {
+      setEmail(email + '@epu.edu.iq');
+    }
+    setShowEmailSuggestion(false);
+  };
 
   useEffect(() => {
     if (oauthMode && oauthEmail) {
@@ -485,17 +516,26 @@ const SignUp = ({ navigation, route }) => {
                     placeholder={oauthMode ? t('auth.emailFromGoogle') : t('auth.collegeEmail')}
                     placeholderTextColor={theme.input.placeholder}
                     value={email}
-                    onChangeText={oauthMode ? null : setEmail}
+                    onChangeText={oauthMode ? null : handleEmailChange}
                     onFocus={() => setEmailFocused(true)}
-                    onBlur={() => setEmailFocused(false)}
+                    onBlur={() => {
+                      setEmailFocused(false);
+                      setTimeout(() => setShowEmailSuggestion(false), 200);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    caretHidden={false}
-                    contextMenuHidden={false}
-                    selectTextOnFocus={false}
                     editable={!oauthMode}
                   />
+                  {!oauthMode && showEmailSuggestion && (
+                    <TouchableOpacity 
+                      onPress={applyEmailSuggestion}
+                      style={[styles.emailSuggestion, { backgroundColor: theme.primary }]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.emailSuggestionText}>@epu.edu.iq</Text>
+                    </TouchableOpacity>
+                  )}
                   {oauthMode ? (
                     <Ionicons 
                       name="lock-closed" 
@@ -503,7 +543,7 @@ const SignUp = ({ navigation, route }) => {
                       color={theme.textSecondary} 
                     />
                   ) : (
-                    email.length > 0 && (
+                    !showEmailSuggestion && email.length > 0 && (
                       <Ionicons 
                         name={isEducationalEmail(email) ? "checkmark-circle" : "close-circle"} 
                         size={moderateScale(20)} 
@@ -815,6 +855,17 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontWeight: '500',
+  },
+  emailSuggestion: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.xs,
+  },
+  emailSuggestionText: {
+    color: '#FFFFFF',
+    fontSize: fontSize(12),
+    fontWeight: '600',
   },
   eyeIcon: {
     padding: spacing.xs,

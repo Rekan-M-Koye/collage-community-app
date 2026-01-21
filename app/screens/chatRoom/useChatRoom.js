@@ -70,9 +70,31 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
       await messagesCacheManager.addMessageToCache(chat.$id, payload, 100);
       
       setMessages(prev => {
-        if (prev.some(m => m.$id === payload.$id)) {
-          return prev;
+        // Check if this message already exists (exact ID match)
+        const existingIndex = prev.findIndex(m => m.$id === payload.$id);
+        if (existingIndex >= 0) {
+          // Update existing message with server data (e.g., status updates)
+          const updated = [...prev];
+          updated[existingIndex] = { ...updated[existingIndex], ...payload, _isOptimistic: false };
+          return updated;
         }
+        
+        // Check for optimistic message that should be replaced
+        // Match by content, senderId, and approximate timestamp
+        const optimisticIndex = prev.findIndex(m => 
+          m._isOptimistic && 
+          m.senderId === payload.senderId &&
+          m.content === payload.content
+        );
+        
+        if (optimisticIndex >= 0) {
+          // Replace optimistic message with real one
+          const updated = [...prev];
+          updated[optimisticIndex] = { ...payload, _status: 'sent', _isOptimistic: false };
+          return updated;
+        }
+        
+        // New message from another user or different content
         return [...prev, payload];
       });
       
@@ -99,9 +121,25 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
     setMessages(prev => prev.filter(m => m.$id !== payload.$id));
   }, [chat.$id]);
 
+  // Handle message updates (read status, delivery status, etc.)
+  const handleRealtimeMessageUpdated = useCallback((payload) => {
+    if (payload.chatId === chat.$id) {
+      setMessages(prev => prev.map(m => 
+        m.$id === payload.$id ? { ...m, ...payload } : m
+      ));
+    }
+  }, [chat.$id]);
+
   useChatMessages(
     chat.$id,
-    handleRealtimeNewMessage,
+    (payload, events) => {
+      // Check if it's an update or create event
+      if (events?.some(e => e.includes('.update'))) {
+        handleRealtimeMessageUpdated(payload);
+      } else {
+        handleRealtimeNewMessage(payload);
+      }
+    },
     handleRealtimeMessageDeleted,
     !!chat.$id && !!user?.$id
   );
@@ -112,26 +150,68 @@ export const useChatRoom = ({ chat, user, t, navigation }) => {
       const reversedMessages = fetchedMessages.reverse();
       
       const newLastId = reversedMessages.length > 0 ? reversedMessages[reversedMessages.length - 1].$id : null;
-      if (newLastId !== lastMessageId.current) {
-        lastMessageId.current = newLastId;
-        setMessages(reversedMessages);
+      
+      setMessages(prev => {
+        // Keep optimistic messages that are still sending
+        const pendingOptimistic = prev.filter(m => m._isOptimistic && m._status === 'sending');
         
-        const uniqueSenderIds = [...new Set(reversedMessages.map(m => m.senderId))];
-        const newUsers = uniqueSenderIds.filter(id => !userCacheRef.current[id]);
+        // Create a map of server messages by ID for quick lookup
+        const serverMessageMap = new Map(reversedMessages.map(m => [m.$id, m]));
         
-        if (newUsers.length > 0) {
-          const newUserCache = { ...userCacheRef.current };
-          for (const senderId of newUsers) {
-            try {
-              const userData = await getUserById(senderId);
-              newUserCache[senderId] = userData;
-            } catch (error) {
-              newUserCache[senderId] = { name: 'Unknown User' };
-            }
+        // Merge: use server messages but update with any local status
+        const mergedMessages = reversedMessages.map(serverMsg => {
+          const localMsg = prev.find(m => m.$id === serverMsg.$id);
+          if (localMsg && localMsg._status === 'sent') {
+            // Keep local status updates that haven't synced yet
+            return { ...serverMsg, _status: localMsg._status, _isOptimistic: false };
           }
-          userCacheRef.current = newUserCache;
-          setUserCache(newUserCache);
+          return serverMsg;
+        });
+        
+        // Filter out optimistic messages that now exist on server
+        const remainingOptimistic = pendingOptimistic.filter(opt => 
+          !reversedMessages.some(m => 
+            m.senderId === opt.senderId && 
+            m.content === opt.content
+          )
+        );
+        
+        // Only update if there are actual changes
+        const newMessages = [...mergedMessages, ...remainingOptimistic];
+        const prevIds = prev.map(m => m.$id).join(',');
+        const newIds = newMessages.map(m => m.$id).join(',');
+        
+        if (prevIds === newIds && prev.length === newMessages.length) {
+          // Check for content updates (like readBy, status)
+          const hasUpdates = newMessages.some((newMsg, idx) => {
+            const oldMsg = prev[idx];
+            return oldMsg && (
+              (newMsg.readBy?.length || 0) !== (oldMsg.readBy?.length || 0) ||
+              newMsg.status !== oldMsg.status
+            );
+          });
+          if (!hasUpdates) return prev;
         }
+        
+        lastMessageId.current = newLastId;
+        return newMessages;
+      });
+      
+      const uniqueSenderIds = [...new Set(reversedMessages.map(m => m.senderId))];
+      const newUsers = uniqueSenderIds.filter(id => !userCacheRef.current[id]);
+      
+      if (newUsers.length > 0) {
+        const newUserCache = { ...userCacheRef.current };
+        for (const senderId of newUsers) {
+          try {
+            const userData = await getUserById(senderId);
+            newUserCache[senderId] = userData;
+          } catch (error) {
+            newUserCache[senderId] = { name: 'Unknown User' };
+          }
+        }
+        userCacheRef.current = newUserCache;
+        setUserCache(newUserCache);
       }
     } catch (error) {
       // Silent fail for polling

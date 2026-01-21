@@ -309,6 +309,90 @@ export const checkInitialNotification = async () => {
 };
 
 /**
+ * Send push notification for general notifications (likes, replies, follows, etc.)
+ * @param {Object} options Notification details
+ * @param {string} options.recipientUserId The user ID to send notification to
+ * @param {string} options.senderId The sender's user ID
+ * @param {string} options.senderName The sender's name
+ * @param {string} options.type The notification type (post_like, post_reply, follow, etc.)
+ * @param {string} options.title The notification title
+ * @param {string} options.body The notification body
+ * @param {string} options.postId Optional post ID for navigation
+ * @returns {Promise<Object|null>} The push result or null
+ */
+export const sendGeneralPushNotification = async ({
+  recipientUserId,
+  senderId,
+  senderName,
+  type,
+  title,
+  body,
+  postId = null,
+}) => {
+  try {
+    // Don't send notification to yourself
+    if (recipientUserId === senderId) {
+      return null;
+    }
+
+    // Import database functions here to avoid circular dependencies
+    const { databases, config } = require('../database/config');
+    const { Query } = require('appwrite');
+
+    // Get push token for recipient
+    const pushTokens = await databases.listDocuments(
+      config.databaseId,
+      config.pushTokensCollectionId,
+      [
+        Query.equal('userId', recipientUserId),
+        Query.limit(1)
+      ]
+    );
+
+    if (!pushTokens.documents || pushTokens.documents.length === 0) {
+      return null;
+    }
+
+    const token = pushTokens.documents[0].token;
+
+    // Prepare notification message
+    const message = {
+      to: token,
+      sound: 'default',
+      title,
+      body,
+      data: {
+        type,
+        senderId,
+        senderName,
+        postId,
+        userId: senderId,
+      },
+      channelId: type === 'follow' ? 'social' : 'posts',
+    };
+
+    // Use Expo Push API to send notification
+    const expoPushUrl = 'https://exp.host/--/api/v2/push/send';
+
+    const response = await fetch(expoPushUrl, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    // Silent fail - push notification is not critical
+    return null;
+  }
+};
+
+/**
  * Send push notification for a new chat message
  * This function sends push notifications to all participants except the sender
  * @param {Object} options Message and chat details
@@ -348,17 +432,28 @@ export const sendChatPushNotification = async ({
       return;
     }
     
-    // Get push tokens for recipients
-    const pushTokens = await databases.listDocuments(
-      config.databaseId,
-      config.pushTokensCollectionId,
-      [
-        Query.equal('userId', recipientIds),
-        Query.limit(100)
-      ]
-    );
+    // Get push tokens for recipients - fetch tokens one by one for reliability
+    // Appwrite Query.equal with array may not work consistently across versions
+    let allTokenDocs = [];
     
-    if (!pushTokens.documents || pushTokens.documents.length === 0) {
+    // Batch fetch tokens (max 25 at a time to stay within limits)
+    const batchSize = 25;
+    for (let i = 0; i < recipientIds.length; i += batchSize) {
+      const batch = recipientIds.slice(i, i + batchSize);
+      const pushTokens = await databases.listDocuments(
+        config.databaseId,
+        config.pushTokensCollectionId,
+        [
+          Query.contains('userId', batch),
+          Query.limit(batch.length)
+        ]
+      );
+      if (pushTokens.documents) {
+        allTokenDocs.push(...pushTokens.documents);
+      }
+    }
+    
+    if (allTokenDocs.length === 0) {
       return;
     }
     
@@ -367,7 +462,7 @@ export const sendChatPushNotification = async ({
     const body = content || '📷 Image';
     
     // Send notifications using Expo Push API
-    const messages = pushTokens.documents.map(tokenDoc => ({
+    const messages = allTokenDocs.map(tokenDoc => ({
       to: tokenDoc.token,
       sound: 'default',
       title,
@@ -402,8 +497,8 @@ export const sendChatPushNotification = async ({
     if (result.data) {
       const { markMessageAsDelivered } = require('../database/chats');
       const deliveryPromises = result.data.map(async (ticket, index) => {
-        if (ticket.status === 'ok' && pushTokens.documents[index]) {
-          await markMessageAsDelivered(messageId, pushTokens.documents[index].userId);
+        if (ticket.status === 'ok' && allTokenDocs[index]) {
+          await markMessageAsDelivered(messageId, allTokenDocs[index].userId);
         }
       });
       await Promise.all(deliveryPromises);
@@ -432,4 +527,5 @@ export default {
   getLastNotificationResponse,
   checkInitialNotification,
   sendChatPushNotification,
+  sendGeneralPushNotification,
 };

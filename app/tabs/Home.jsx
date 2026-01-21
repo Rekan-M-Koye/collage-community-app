@@ -42,7 +42,7 @@ import { scheduleLocalNotification } from '../../services/pushNotificationServic
 const POSTS_PER_PAGE = 15;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
-const Home = ({ navigation }) => {
+const Home = ({ navigation, route }) => {
   const { t, theme, isDarkMode, compactMode } = useAppSettings();
   const { user } = useUser();
   const { showAlert } = useCustomAlert();
@@ -132,10 +132,29 @@ const Home = ({ navigation }) => {
     };
     loadUnreadCount();
     
-    // Refresh count when screen is focused
-    const unsubscribe = navigation.addListener('focus', loadUnreadCount);
+    // Refresh count and check for post updates when screen is focused
+    const unsubscribe = navigation.addListener('focus', async () => {
+      loadUnreadCount();
+      
+      // Check if there's a post that needs to be refreshed
+      const updatedPostId = route?.params?.updatedPostId;
+      const updatedReplyCount = route?.params?.updatedReplyCount;
+      
+      if (updatedPostId !== undefined && updatedReplyCount !== undefined) {
+        // Update the specific post in the list
+        setPosts(prevPosts => 
+          prevPosts.map(p => 
+            p.$id === updatedPostId 
+              ? { ...p, replyCount: updatedReplyCount }
+              : p
+          )
+        );
+        // Clear the params
+        navigation.setParams({ updatedPostId: undefined, updatedReplyCount: undefined });
+      }
+    });
     return unsubscribe;
-  }, [user?.$id, navigation]);
+  }, [user?.$id, navigation, route?.params?.updatedPostId, route?.params?.updatedReplyCount]);
 
   // Real-time notification subscription for badge updates
   const handleNewNotification = useCallback((notification) => {

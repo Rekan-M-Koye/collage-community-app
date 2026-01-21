@@ -151,6 +151,28 @@ const UserProfile = ({ route, navigation }) => {
     }
   }, [userId, loadUserPosts, postsLoaded]);
 
+  // Handle post updates when returning from PostDetails
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const updatedPostId = route?.params?.updatedPostId;
+      const updatedReplyCount = route?.params?.updatedReplyCount;
+      
+      if (updatedPostId !== undefined && updatedReplyCount !== undefined) {
+        // Update the specific post in the list
+        setUserPosts(prevPosts => 
+          prevPosts.map(p => 
+            p.$id === updatedPostId 
+              ? { ...p, replyCount: updatedReplyCount }
+              : p
+          )
+        );
+        // Clear the params
+        navigation.setParams({ updatedPostId: undefined, updatedReplyCount: undefined });
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route?.params?.updatedPostId, route?.params?.updatedReplyCount]);
+
   const handleFollowToggle = async () => {
     if (followLoading || !currentUser?.$id || !userId || currentUser.$id === userId) return;
     

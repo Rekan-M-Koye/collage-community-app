@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,7 @@ const PostDetails = ({ navigation, route }) => {
   const { t, theme, isDarkMode } = useAppSettings();
   const { user } = useUser();
   const { showAlert } = useCustomAlert();
-  const { post } = route.params || {};
+  const { post, onPostUpdate } = route.params || {};
 
   const [replies, setReplies] = useState([]);
   const [replyText, setReplyText] = useState('');
@@ -44,6 +45,46 @@ const PostDetails = ({ navigation, route }) => {
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [currentReplyCount, setCurrentReplyCount] = useState(post?.replyCount || 0);
+
+  // Handle going back and updating the parent screen with new reply count
+  const handleGoBack = useCallback(() => {
+    // Check if reply count changed and update the parent screens
+    if (currentReplyCount !== (post?.replyCount || 0)) {
+      // Get the parent route to know where we came from
+      const routes = navigation.getState()?.routes;
+      const currentIndex = navigation.getState()?.index;
+      
+      if (currentIndex > 0) {
+        const parentRoute = routes[currentIndex - 1];
+        
+        // Navigate back with params based on where we came from
+        if (parentRoute?.name === 'Profile' || parentRoute?.name === 'MainTabs') {
+          // For tabs, we need to pass to both Home and Profile
+          navigation.navigate('MainTabs', {
+            screen: 'Home',
+            params: {
+              updatedPostId: post?.$id,
+              updatedReplyCount: currentReplyCount,
+            }
+          });
+        } else {
+          navigation.goBack();
+        }
+      } else {
+        navigation.goBack();
+      }
+    } else {
+      navigation.goBack();
+    }
+    return true;
+  }, [currentReplyCount, post, navigation]);
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleGoBack);
+    return () => backHandler.remove();
+  }, [handleGoBack]);
 
   useEffect(() => {
     if (post?.$id) {
@@ -103,6 +144,8 @@ const PostDetails = ({ navigation, route }) => {
       );
       
       setReplies(repliesWithUserData);
+      // Update the reply count based on actual replies
+      setCurrentReplyCount(repliesWithUserData.length);
     } catch (error) {
       setReplies([]);
     } finally {
@@ -421,7 +464,7 @@ const PostDetails = ({ navigation, route }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       
       <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('post.replies')}</Text>

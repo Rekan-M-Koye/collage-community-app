@@ -117,18 +117,20 @@ export const useRealtimeSubscription = (
 
 /**
  * Hook for subscribing to chat messages in real-time
- * Automatically updates when new messages arrive
+ * Automatically updates when new messages arrive or are updated
+ * Passes events array to callback for distinguishing create vs update
  */
 export const useChatMessages = (chatId, onNewMessage, onMessageDeleted, enabled = true) => {
   const handleUpdate = useCallback((payload, events) => {
     if (payload.chatId === chatId) {
-      onNewMessage?.(payload);
+      // Pass events to callback so it can distinguish between create and update
+      onNewMessage?.(payload, events);
     }
   }, [chatId, onNewMessage]);
 
   const handleDelete = useCallback((payload, events) => {
     if (payload.chatId === chatId) {
-      onMessageDeleted?.(payload);
+      onMessageDeleted?.(payload, events);
     }
   }, [chatId, onMessageDeleted]);
 

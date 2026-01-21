@@ -559,7 +559,7 @@ const MessageBubble = ({
     ]}>
       {/* Show sender name for other users */}
       {!isCurrentUser && senderName && (
-        <View style={[styles.senderNameRow, { marginLeft: showAvatar ? moderateScale(40) : spacing.xs }]}>
+        <View style={[styles.senderNameRow, styles.senderNameWithAvatar]}>
           <Text style={[
             styles.senderName, 
             { fontSize: fontSize(11), color: theme.primary }
@@ -576,25 +576,30 @@ const MessageBubble = ({
       )}
       
       <View style={styles.messageRow}>
-        {/* Show avatar for other users */}
-        {!isCurrentUser && showAvatar && (
-          <TouchableOpacity 
-            style={styles.avatarContainer}
-            onPress={() => onAvatarPress && onAvatarPress(message.senderId)}
-            activeOpacity={0.7}
-          >
-            <ProfilePicture 
-              uri={senderPhoto || message.senderPhoto}
-              name={senderName || message.senderName}
-              size={moderateScale(32)}
-            />
-          </TouchableOpacity>
+        {/* Show avatar for other users - always reserve space for consistent alignment */}
+        {!isCurrentUser && (
+          <View style={styles.avatarContainer}>
+            {showAvatar ? (
+              <TouchableOpacity 
+                onPress={() => onAvatarPress && onAvatarPress(message.senderId)}
+                activeOpacity={0.7}
+              >
+                <ProfilePicture 
+                  uri={senderPhoto || message.senderPhoto}
+                  name={senderName || message.senderName}
+                  size={moderateScale(28)}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
+          </View>
         )}
         
         <Animated.View 
           style={[
             { transform: [{ translateX }] },
-            !isCurrentUser && showAvatar && styles.bubbleWithAvatar,
+            styles.bubbleWrapper,
           ]}
           {...panResponder.panHandlers}>
           {/* Render bubble with gradient or solid color based on chatSettings */}
@@ -792,11 +797,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   avatarContainer: {
+    width: moderateScale(32),
     marginRight: spacing.xs,
     marginBottom: spacing.xs / 2,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
-  bubbleWithAvatar: {
-    maxWidth: '85%',
+  avatarPlaceholder: {
+    width: moderateScale(28),
+    height: moderateScale(1),
+  },
+  bubbleWrapper: {
+    maxWidth: '80%',
   },
   senderName: {
     fontWeight: '600',
@@ -807,6 +819,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
     gap: 4,
+  },
+  senderNameWithAvatar: {
+    marginLeft: moderateScale(36),
   },
   repBadge: {
     flexDirection: 'row',
