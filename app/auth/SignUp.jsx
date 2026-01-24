@@ -495,6 +495,9 @@ const SignUp = ({ navigation, route }) => {
                     onFocus={() => setNameFocused(true)}
                     onBlur={() => setNameFocused(false)}
                     autoCorrect={false}
+                    contextMenuHidden={false}
+                    selectTextOnFocus={false}
+                    textContentType="name"
                   />
                 </View>
               </GlassInput>
@@ -526,6 +529,9 @@ const SignUp = ({ navigation, route }) => {
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!oauthMode}
+                    contextMenuHidden={false}
+                    selectTextOnFocus={false}
+                    textContentType="emailAddress"
                   />
                   {!oauthMode && showEmailSuggestion && (
                     <TouchableOpacity 
@@ -630,6 +636,9 @@ const SignUp = ({ navigation, route }) => {
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
                         autoCorrect={false}
+                        contextMenuHidden={false}
+                        selectTextOnFocus={false}
+                        textContentType="newPassword"
                       />
                       <TouchableOpacity 
                         onPress={() => setShowPassword(!showPassword)}
@@ -693,6 +702,9 @@ const SignUp = ({ navigation, route }) => {
                         secureTextEntry={!showConfirmPassword}
                         autoCapitalize="none"
                         autoCorrect={false}
+                        contextMenuHidden={false}
+                        selectTextOnFocus={false}
+                        textContentType="newPassword"
                       />
                       <TouchableOpacity 
                         onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -855,6 +867,9 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontWeight: '500',
+    minHeight: Platform.OS === 'ios' ? 22 : 40,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   emailSuggestion: {
     paddingHorizontal: spacing.sm,

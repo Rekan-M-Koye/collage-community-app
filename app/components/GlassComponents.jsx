@@ -35,6 +35,7 @@ export const GlassContainer = ({
         <BlurView
           intensity={glassIntensity}
           tint={glassTint}
+          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             { 
@@ -46,6 +47,7 @@ export const GlassContainer = ({
       )}
       {isAndroid && (
         <View
+          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             {
@@ -56,6 +58,7 @@ export const GlassContainer = ({
         />
       )}
       <View 
+        pointerEvents="none"
         style={[
           StyleSheet.absoluteFill,
           { 
@@ -73,6 +76,7 @@ export const GlassContainer = ({
       {isDarkMode && borderWidth > 0 && (
         <>
           <View 
+            pointerEvents="none"
             style={[
               StyleSheet.absoluteFill,
               { 
@@ -83,6 +87,7 @@ export const GlassContainer = ({
             ]} 
           />
           <View 
+            pointerEvents="none"
             style={[
               StyleSheet.absoluteFill,
               { 
@@ -153,9 +158,11 @@ export const GlassInput = ({
             StyleSheet.absoluteFill,
             styles.inputBlur,
           ]}
+          pointerEvents="none"
         />
       )}
       <View 
+        pointerEvents="none"
         style={[
           StyleSheet.absoluteFill,
           { 
@@ -235,7 +242,7 @@ export const GlassButton = ({
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   content: {
     position: 'relative',

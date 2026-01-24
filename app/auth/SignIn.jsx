@@ -345,6 +345,9 @@ const SignIn = ({ navigation }) => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    contextMenuHidden={false}
+                    selectTextOnFocus={false}
+                    textContentType="emailAddress"
                   />
                   {showEmailSuggestion && (
                     <TouchableOpacity 
@@ -381,6 +384,9 @@ const SignIn = ({ navigation }) => {
                     autoCapitalize="none"
                     autoCorrect={false}
                     onSubmitEditing={handleSignIn}
+                    contextMenuHidden={false}
+                    selectTextOnFocus={false}
+                    textContentType="password"
                   />
                   <TouchableOpacity 
                     onPress={() => setShowPassword(!showPassword)}
@@ -560,6 +566,9 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontWeight: '500',
+    minHeight: Platform.OS === 'ios' ? 22 : 40,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   emailSuggestion: {
     paddingHorizontal: spacing.sm,
